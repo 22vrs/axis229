@@ -31,6 +31,7 @@ body {
   overflow: hidden;
   touch-action: none;
   user-select: none;
+  background: #000;
 }
 
 canvas {
@@ -38,4 +39,5 @@ canvas {
   width: 100% !important;
   height: 100% !important;
   touch-action: none;
+  image-rendering: auto;
 }

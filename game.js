@@ -3,6 +3,8 @@ const GAME_HEIGHT = 700;
 const CATCH_SOUND_PATH = 'assets/catch.mp3';
 const BOOSTER_SOUND_PATH = 'assets/booster.mp3';
 const BAD_SOUND_PATH = 'assets/bad.mp3';
+const BUTTON_SOUND_PATH = 'assets/button.mp3';
+const LEVEL_UP_SOUND_PATH = 'assets/level-up.mp3';
 const RED_WAVE_SOUND_PATH = 'assets/red-wave.mp3';
 const BOSS_LASER_SOUND_PATH = 'assets/boss-laser.mp3';
 const SHIELD_BLOCK_SOUND_PATH = 'assets/shield-block.mp3';
@@ -26,34 +28,38 @@ const SHIELD_BUBBLE_RADIUS = 82;
 const SHIELD_BUBBLE_DIAMETER = SHIELD_BUBBLE_RADIUS * 2;
 const MIN_TIMED_BOOSTER_DURATION = 5000;
 const MAX_TIMED_BOOSTER_DURATION = 15000;
-const RED_WAVE_MIN_SCORE = 35;
-const RED_WAVE_CHANCE = 0.025;
-const RED_WAVE_COOLDOWN = 25000;
-const RED_WAVE_DURATION = 10000;
-const RED_WAVE_SPAWN_DELAY = 320;
-const RED_WAVE_ENEMY_GRAVITY_RATIO = 0.8;
-const RED_WAVE_MIN_ENEMY_SPACING = 118;
+const RED_WAVE_DURATION = 15000;
+const RED_WAVE_SPAWN_DELAY = 600;
+const RED_WAVE_ENEMY_GRAVITY_RATIO = 0.72;
+const RED_WAVE_MIN_ENEMY_SPACING = 185;
 const RED_WAVE_RECENT_ENEMY_HEIGHT = 230;
-const ASTEROID_WAVE_MIN_SCORE = 45;
-const ASTEROID_WAVE_CHANCE = 0.015;
-const ASTEROID_WAVE_COOLDOWN = 30000;
-const ASTEROID_WAVE_DURATION = 10000;
+const OBRERA_SPAWN_CHANCE = 0.13;
+const CAPPED_SPEED_OBRERA_SPAWN_CHANCE = 0.2;
+const ASTEROID_WAVE_DURATION = 15000;
 const ASTEROID_WAVE_SPAWN_DELAY = 760;
+const TRAVEL_ASTEROID_CHANCE = 0.075;
+const CAPPED_SPEED_TRAVEL_ASTEROID_CHANCE = 0.12;
 const BOSS_WAVE_DURATION = 30000;
 const BOSS_WAVE_ATTACKS = 5;
-const BOSS_LASER_WARN_DURATION = 2000;
+const TRAVEL_SENTINEL_ATTACKS = 2;
+const TRAVEL_SENTINEL_CHANCE = 0.018;
+const TRAVEL_SENTINEL_COOLDOWN = 26000;
+const BOSS_LASER_WARN_DURATION = 1500;
 const BOSS_LASER_DURATION = 2000;
 const BOSS_ATTACK_GAP = 2000;
 const BOSS_WIDTH = 560;
 const BOSS_HEIGHT = 220;
 const BOSS_LASER_WIDTH = 32;
-const BOSS_ENEMY_SPAWN_DELAY = 1500;
-const BOSS_ENEMY_SPAWN_CHANCE = 0.45;
 const WAVE_CLEAR_DELAY = 2200;
-const WAVE_POST_DELAY = 2200;
-const ASTEROID_CHANCE = 0.12;
-const CAPPED_SPEED_ASTEROID_CHANCE = 0.24;
-const BIG_ASTEROID_CHANCE = 0.22;
+const WAVE_POST_DELAY = 900;
+const BOSS_CUE_BAND_HEIGHT = 76;
+const BOSS_CUE_DESCEND_DURATION = 4600;
+const BOSS_LASER_MIN_X_GAP = 112;
+const RED_ENEMY_SWAY_SPEED = 0.0042;
+const RED_ENEMY_SWAY_MAX_VELOCITY = 24;
+const SHIP_MAX_TILT = 14;
+const SHIP_TILT_SMOOTHING = 0.24;
+const SHIP_TILT_IDLE_DELAY = 170;
 const ASTEROID_WAVE_BIG_ASTEROID_CHANCE = 0.16;
 const ASTEROID_GRAVITY_RATIO = 0.9;
 const BIG_ASTEROID_GRAVITY_RATIO = 0.72;
@@ -70,8 +76,6 @@ const UPGRADE_RESUME_DELAY = 2000;
 const MAGNET_BASE_RADIUS_RATIO = 0.14;
 const MAGNET_PULL_RATIO = 0.75;
 const UPGRADE_BAR_TWEEN_DURATION = 260;
-const DAMAGE_BOOSTER_CHANCE = 0.18;
-const CAPPED_SPEED_DAMAGE_BOOSTER_CHANCE = 0.4;
 const SCORE_BOOSTER_CHANCE = 0.07;
 const SHIELD_BOOSTER_CHANCE = 0.07;
 const LIFE_BOOSTER_CHANCE = 0.025;
@@ -80,18 +84,32 @@ const FALLING_OBJECT_DEPTH = 4;
 const SHIP_DEPTH = 12;
 const FX_DEPTH = 30;
 const UI_DEPTH = 1000;
+const UI_PANEL_COLOR = 0x09111f;
+const UI_PANEL_STROKE = 0x76ffe8;
+const UI_MUTED_STROKE = 0x2d4368;
 const STARFIELD_TEXTURE_WIDTH = 512;
 const STARFIELD_TEXTURE_HEIGHT = 1024;
 const STARFIELD_LAYERS = [
-  { key: 'starsFar', count: 26, color: 0x9fc7ff, minRadius: 0.5, maxRadius: 1.1, alpha: 0.45, speedY: 12, speedX: 2 },
-  { key: 'starsMid', count: 16, color: 0xffffff, minRadius: 0.7, maxRadius: 1.5, alpha: 0.62, speedY: 24, speedX: -3 },
-  { key: 'starsNear', count: 8, color: 0xffe6b0, minRadius: 1.0, maxRadius: 2.0, alpha: 0.78, speedY: 42, speedX: 5 },
+  { key: 'starsFar', count: 80, color: 0x9fc7ff, minRadius: 0.35, maxRadius: 0.9, alpha: 0.42, speedY: 12, speedX: 2 },
+  { key: 'starsMid', count: 54, color: 0xffffff, minRadius: 0.45, maxRadius: 1.2, alpha: 0.58, speedY: 24, speedX: -3 },
+  { key: 'starsNear', count: 24, color: 0xffffff, minRadius: 0.8, maxRadius: 1.7, alpha: 0.72, speedY: 42, speedX: 5 },
 ];
+const HUD_TOP = 20;
+const HUD_HEIGHT = 70;
+const BOOSTER_BAR_Y = HUD_TOP + HUD_HEIGHT + 12;
+const UPGRADE_ICON_Y = BOOSTER_BAR_Y + 18;
 
 const config = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  backgroundColor: '#17172f',
+  backgroundColor: '#040714',
+  resolution: Math.min(2, window.devicePixelRatio || 1),
+  render: {
+    antialias: true,
+    antialiasGL: true,
+    pixelArt: false,
+    roundPixels: false,
+  },
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -122,7 +140,7 @@ let maxLives = INITIAL_HEART_CAPACITY;
 let lives = INITIAL_HEART_CAPACITY;
 let nextUpgradeScore = UPGRADE_POINTS_REQUIRED;
 let levelProgressScore = 0;
-let playerLevel = 1;
+let playerLevel = 0;
 let magnetLevel = 0;
 let lifeBoosterLevel = 0;
 let shieldBoosterLevel = 0;
@@ -139,7 +157,33 @@ let enemyTrailTimer = 0;
 let energyRefinerPassiveTimer = 0;
 
 function getLevelRequirement(level) {
-  return UPGRADE_POINTS_REQUIRED + (level - 1) * UPGRADE_POINTS_GROWTH;
+  return UPGRADE_POINTS_REQUIRED + Math.max(0, level) * UPGRADE_POINTS_GROWTH;
+}
+
+function getBossConfigForLevel(level) {
+  if (level === 1) {
+    return {
+      kind: 'red',
+      name: 'Enjambre',
+      duration: RED_WAVE_DURATION,
+    };
+  }
+  if (level === 2) {
+    return {
+      kind: 'boss',
+      name: 'Centinela',
+      duration: BOSS_WAVE_DURATION,
+      attacks: BOSS_WAVE_ATTACKS,
+    };
+  }
+  if (level === 3) {
+    return {
+      kind: 'asteroid',
+      name: 'Cinturón',
+      duration: ASTEROID_WAVE_DURATION,
+    };
+  }
+  return null;
 }
 
 bootGame();
@@ -282,41 +326,42 @@ function create() {
   shieldGraphics.generateTexture('shieldBooster', 36, 36);
   shieldGraphics.destroy();
 
-  // Textos de puntuacion
-  this.scorePanel = this.add.rectangle(getGameWidth(this) / 2, 18, 10, 10, 0x111629, 1).setOrigin(0.5, 0);
-  this.scoreText = this.add.text(getGameWidth(this) / 2, 28, 'Puntos: 0', {
+  this.scorePanel = this.add
+    .rectangle(24, HUD_TOP, getGameWidth(this) - 48, HUD_HEIGHT, UI_PANEL_COLOR, 0.68)
+    .setOrigin(0, 0)
+    .setStrokeStyle(1, UI_MUTED_STROKE, 0.85);
+  this.scoreAccent = this.add
+    .rectangle(24, HUD_TOP, 3, HUD_HEIGHT, 0xffd84d, 0.95)
+    .setOrigin(0, 0);
+  this.scoreText = this.add.text(getGameWidth(this) / 2, 28, 'PUNTOS 0', {
     fontFamily: FONT_FAMILY,
-    fontSize: '18px',
+    fontSize: '22px',
     fill: '#ffffff',
     fontStyle: 'bold',
   });
   this.scoreText.setOrigin(0, 0);
 
-  this.playerLevelText = this.add.text(24, 24, 'Nivel: 1', {
+  this.playerLevelText = this.add.text(24, 24, 'NIVEL 0', {
     fontFamily: FONT_FAMILY,
-    fontSize: '15px',
+    fontSize: '13px',
     fill: '#ffd84d',
     fontStyle: 'bold',
   }).setOrigin(0, 0);
 
-  this.levelText = this.add.text(24, 104, 'Velocidad: 1.00x', {
+  this.levelText = this.add.text(24, getGameHeight(this) - 38, 'VEL 1.00x', {
     fontFamily: FONT_FAMILY,
-    fontSize: '13px',
-    fill: '#ffffff',
-  }).setOrigin(0, 0);
-  this.boosterLevelText = this.add.text(24, 120, 'Boosters: 0.80x', {
-    fontFamily: FONT_FAMILY,
-    fontSize: '13px',
-    fill: '#ffffff',
-  }).setOrigin(0, 0);
-  this.scorePanel.setVisible(false);
-
-  this.livesText = this.add.text(getGameWidth(this) / 2, getLivesY(this), '', {
-    fontFamily: FONT_FAMILY,
-    fontSize: '26px',
-    fill: '#ff5f7a',
+    fontSize: '12px',
+    fill: '#7f93b8',
     fontStyle: 'bold',
   }).setOrigin(0, 0);
+  this.boosterLevelText = this.add.text(24, getGameHeight(this) - 22, 'BOOST 0.80x', {
+    fontFamily: FONT_FAMILY,
+    fontSize: '12px',
+    fill: '#7f93b8',
+    fontStyle: 'bold',
+  }).setOrigin(0, 0);
+
+  this.livesText = this.add.container(getGameWidth(this) / 2, getLivesY(this));
   updateLivesText(this);
 
   // CORRECCION: usar sprite con fisica para la nave, no rectangle
@@ -337,20 +382,22 @@ function create() {
   updateShieldBubble(this);
 
   this.boosterBarBackground = this.add
-    .rectangle(24, getGameHeight(this) - 16, getGameWidth(this) - 48, 8, 0x000000, 0.45)
+    .rectangle(24, BOOSTER_BAR_Y, getGameWidth(this) - 48, 7, 0x050914, 0.78)
     .setOrigin(0, 0.5)
+    .setStrokeStyle(1, 0x76ffe8, 0.3)
     .setVisible(false);
   this.boosterBarFill = this.add
-    .rectangle(24, getGameHeight(this) - 16, getGameWidth(this) - 48, 8, 0x76ffe8, 1)
+    .rectangle(24, BOOSTER_BAR_Y, getGameWidth(this) - 48, 7, 0x76ffe8, 1)
     .setOrigin(0, 0.5)
     .setVisible(false);
   this.upgradeBarBackground = this.add
-    .rectangle(24, 8, getGameWidth(this) - 48, 8, 0x000000, 0.45)
-    .setOrigin(0, 0.5);
+    .rectangle(24, 8, getGameWidth(this) - 48, 9, 0x050914, 0.8)
+    .setOrigin(0, 0.5)
+    .setStrokeStyle(1, 0xffd84d, 0.24);
   this.upgradeBarFill = this.add
-    .rectangle(24, 8, 0, 8, 0xffd84d, 1)
+    .rectangle(24, 8, 0, 9, 0xffd84d, 1)
     .setOrigin(0, 0.5);
-  this.upgradeProgressText = this.add.text(getGameWidth(this) / 2, 8, '0/' + getLevelRequirement(1), {
+  this.upgradeProgressText = this.add.text(getGameWidth(this) / 2, 8, '0/' + getLevelRequirement(0), {
     fontFamily: FONT_FAMILY,
     fontSize: '10px',
     fill: '#ffffff',
@@ -727,12 +774,13 @@ function isPointerOverShip(scene, pointer) {
 }
 
 function update(time, delta) {
-  updateSpaceBackground(this, delta);
-
   if (state !== 'playing') return;
 
+  updateSpaceBackground(this, delta, time);
   updateShipPropulsion(this, delta);
+  updateShipTilt(this);
   updateEnemyPropulsion(this, delta);
+  updateRedEnemySway(this, time);
   updateEnergyRefinerPassive(this, delta);
   updateScoreBooster(this);
   updateShieldBooster(this);
@@ -763,10 +811,31 @@ function update(time, delta) {
 
 function moveShipTo(scene, x) {
   const y = getShipY(scene);
+  const previousX = scene.ship.x;
+  const deltaX = x - previousX;
   scene.ship.setPosition(x, y);
   scene.ship.body.reset(x, y);
+  if (Math.abs(deltaX) > 0.4 && state === 'playing') {
+    scene.shipTargetAngle = Phaser.Math.Clamp(deltaX * 0.75, -SHIP_MAX_TILT, SHIP_MAX_TILT);
+    scene.lastShipMoveAt = scene.time ? scene.time.now : 0;
+  }
   updateEnergyRefinerModule(scene);
   updateShieldBubble(scene);
+}
+
+function updateShipTilt(scene) {
+  if (!scene.ship) return;
+
+  const now = scene.time ? scene.time.now : 0;
+  if (!scene.lastShipMoveAt || now - scene.lastShipMoveAt > SHIP_TILT_IDLE_DELAY) {
+    scene.shipTargetAngle = 0;
+  }
+
+  const targetAngle = scene.shipTargetAngle || 0;
+  scene.ship.setAngle(Phaser.Math.Linear(scene.ship.angle || 0, targetAngle, SHIP_TILT_SMOOTHING));
+  if (Math.abs(scene.ship.angle) < 0.05 && targetAngle === 0) {
+    scene.ship.setAngle(0);
+  }
 }
 
 function refreshShipSize(scene) {
@@ -884,7 +953,7 @@ function createBackground(scene) {
   const layer = scene.backgroundLayer || scene.add.container(0, 0);
 
   layer.removeAll(true);
-  layer.add(scene.add.rectangle(0, 0, width, height, 0x050712).setOrigin(0));
+  layer.add(scene.add.rectangle(0, 0, width, height, 0x040714).setOrigin(0));
   ensureStarfieldTextures(scene);
 
   scene.starfieldLayers = STARFIELD_LAYERS.map((starLayer) => {
@@ -918,7 +987,7 @@ function ensureStarfieldTextures(scene) {
   });
 }
 
-function updateSpaceBackground(scene, delta) {
+function updateSpaceBackground(scene, delta, time = 0) {
   if (!scene.starfieldLayers) return;
 
   const seconds = delta / 1000;
@@ -952,30 +1021,37 @@ function layoutScene(scene) {
   }
 
   if (scene.scoreText) {
-    scene.scoreText.setPosition(24, 48);
+    scene.scoreText.setPosition(42, 43);
+  }
+
+  if (scene.scorePanel) {
+    scene.scorePanel.setPosition(24, HUD_TOP).setSize(width - 48, HUD_HEIGHT);
+  }
+
+  if (scene.scoreAccent) {
+    scene.scoreAccent.setPosition(24, HUD_TOP).setSize(3, HUD_HEIGHT);
   }
 
   if (scene.playerLevelText) {
-    scene.playerLevelText.setPosition(24, 24);
+    scene.playerLevelText.setPosition(42, 28);
   }
 
   if (scene.levelText) {
-    scene.levelText.setPosition(24, 104);
+    scene.levelText.setPosition(24, height - 42);
   }
 
   if (scene.boosterLevelText) {
-    scene.boosterLevelText.setPosition(24, 120);
+    scene.boosterLevelText.setPosition(24, height - 26);
   }
 
   if (scene.livesText) {
-    scene.livesText.setPosition(24, getLivesY(scene));
+    scene.livesText.setPosition(width - 42, 35);
   }
 
   if (scene.boosterBarBackground && scene.boosterBarFill) {
     const barWidth = width - 48;
-    const barY = height - 16;
-    scene.boosterBarBackground.setPosition(24, barY).setSize(barWidth, 8);
-    scene.boosterBarFill.setPosition(24, barY);
+    scene.boosterBarBackground.setPosition(24, BOOSTER_BAR_Y).setSize(barWidth, 7);
+    scene.boosterBarFill.setPosition(24, BOOSTER_BAR_Y);
     const activeTimedBooster = getActiveCountdown(scene);
     const boosterProgress = activeTimedBooster
       ? Math.max(0, (activeTimedBooster.endsAt - scene.time.now) / activeTimedBooster.duration)
@@ -985,7 +1061,7 @@ function layoutScene(scene) {
 
   if (scene.upgradeBarBackground && scene.upgradeBarFill) {
     const barWidth = width - 48;
-    scene.upgradeBarBackground.setPosition(24, 8).setSize(barWidth, 8);
+    scene.upgradeBarBackground.setPosition(24, 8).setSize(barWidth, 9);
     scene.upgradeBarFill.setPosition(24, 8);
     if (scene.upgradeProgressText) {
       scene.upgradeProgressText.setPosition(centerX, 8);
@@ -994,7 +1070,7 @@ function layoutScene(scene) {
   }
 
   if (scene.upgradeStatusContainer) {
-    scene.upgradeStatusContainer.setPosition(196, 22);
+    scene.upgradeStatusContainer.setPosition(24, UPGRADE_ICON_Y);
     updateUpgradeStatusIcons(scene);
   }
 
@@ -1013,55 +1089,109 @@ function layoutScene(scene) {
     scene.upgradeOverlay.setPosition(centerX, centerY);
     fitPanelToContents(scene.upgradeOverlay.panelBackground, scene.upgradeOverlay.panelItems, 28, 26);
   }
+
 }
 
 // --- Menu principal ---
 
+function createPanelBackground(scene, alpha = 0.94, strokeColor = UI_PANEL_STROKE) {
+  return scene.add
+    .rectangle(0, 0, 10, 10, UI_PANEL_COLOR, alpha)
+    .setStrokeStyle(1, strokeColor, 0.34);
+}
+
+function createActionButton(scene, x, y, label, options = {}) {
+  const width = options.width || 190;
+  const height = options.height || 52;
+  const color = options.color || 0x76ffe8;
+  const hoverColor = options.hoverColor || 0xa4fff0;
+  const textColor = options.textColor || '#08111f';
+  const fontSize = options.fontSize || '22px';
+  const container = scene.add.container(x, y);
+  const shadow = scene.add.rectangle(3, 4, width, height, 0x000000, 0.28);
+  const background = scene.add.rectangle(0, 0, width, height, color, 1)
+    .setStrokeStyle(1, 0xffffff, 0.42);
+  const text = scene.add.text(0, 0, label, {
+    fontFamily: FONT_FAMILY,
+    fontSize,
+    fill: textColor,
+    fontStyle: 'bold',
+  }).setOrigin(0.5);
+
+  container.add([shadow, background, text]);
+  container.setSize(width, height);
+  container.setInteractive(
+    new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height),
+    Phaser.Geom.Rectangle.Contains
+  );
+  background.setInteractive({ useHandCursor: true });
+  text.setInteractive({ useHandCursor: true });
+  container.background = background;
+  container.buttonText = text;
+  container.baseColor = color;
+  container.hoverColor = hoverColor;
+  const triggerButton = () => {
+    const now = scene.time ? scene.time.now : Date.now();
+    if (container.lastTriggeredAt && now - container.lastTriggeredAt < 80) return;
+    container.lastTriggeredAt = now;
+    playButtonSound(scene);
+    container.emit('buttondown');
+  };
+  container.on('pointerdown', triggerButton);
+  container.on('pointerover', () => background.setFillStyle(hoverColor, 1));
+  container.on('pointerout', () => background.setFillStyle(color, 1));
+  background.on('pointerdown', triggerButton);
+  text.on('pointerdown', triggerButton);
+  background.on('pointerover', () => container.emit('pointerover'));
+  text.on('pointerover', () => container.emit('pointerover'));
+  background.on('pointerout', () => container.emit('pointerout'));
+  text.on('pointerout', () => container.emit('pointerout'));
+  return container;
+}
+
 function createMenu(scene) {
   const container = scene.add.container(getGameWidth(scene) / 2, getGameHeight(scene) / 2);
 
-  const background = scene.add
-    .rectangle(0, 0, 10, 10, 0x111629, 0.94);
+  const background = createPanelBackground(scene, 0.92);
+  const eyebrow = scene.add.text(0, -138, 'RECOLECTA Y SOBREVIVE', {
+    fontFamily: FONT_FAMILY,
+    fontSize: '12px',
+    fill: '#76ffe8',
+    fontStyle: 'bold',
+  }).setOrigin(0.5);
 
   const title = scene.add
-    .text(0, -92, 'Recoge las bolas', {
+    .text(0, -96, 'HORIZONTE INFINITO', {
       fontFamily: FONT_FAMILY,
-      fontSize: '30px',
-      fill: '#ffd3ef',
+      fontSize: '31px',
+      fill: '#ffffff',
       fontStyle: 'bold',
+      align: 'center',
     })
     .setOrigin(0.5);
 
   const instructions = scene.add
-    .text(0, -22, 'Mueve la nave con el ratón\ny recoge todas las bolas doradas', {
+    .text(0, -12, 'Arrastra la nave, recolecta orbes de energía,\nconsigue mejoras y evita las amenazas.', {
       fontFamily: FONT_FAMILY,
-      fontSize: '17px',
-      fill: '#cfe8ff',
+      fontSize: '15px',
+      fill: '#b9cdec',
       align: 'center',
-      lineSpacing: 8,
+      lineSpacing: 7,
     })
     .setOrigin(0.5);
 
-  const playButton = scene.add
-    .text(0, 78, 'JUGAR', {
-      fontFamily: FONT_FAMILY,
-      fontSize: '26px',
-      fill: '#10162a',
-      backgroundColor: '#76ffe8',
-      padding: { x: 34, y: 13 },
-    })
-    .setOrigin(0.5)
-    .setInteractive({ useHandCursor: true });
+  const playButton = createActionButton(scene, 0, 92, 'Jugar', {
+    width: 198,
+    height: 54,
+    fontSize: '24px',
+  });
+  playButton.on('buttondown', () => startGame.call(scene));
 
-  playButton.on('pointerdown', () => startGame.call(scene));
-  playButton.on('pointerover', () => playButton.setStyle({ backgroundColor: '#a4fff0' }));
-  playButton.on('pointerout', () => playButton.setStyle({ backgroundColor: '#76ffe8' }));
-
-  container.add([background, title, instructions, playButton]);
+  container.add([background, eyebrow, title, instructions, playButton]);
   container.setDepth(UI_DEPTH);
-  fitPanelToContents(background, [title, instructions, playButton], 34, 30);
+  fitPanelToContents(background, [eyebrow, title, instructions, playButton], 34, 32);
   container.panelBackground = background;
-  container.panelItems = [title, instructions, playButton];
+  container.panelItems = [eyebrow, title, instructions, playButton];
   return container;
 }
 
@@ -1070,13 +1200,12 @@ function createMenu(scene) {
 function createGameOver(scene) {
   const container = scene.add.container(getGameWidth(scene) / 2, getGameHeight(scene) / 2).setVisible(false);
 
-  const background = scene.add
-    .rectangle(0, 0, 10, 10, 0x111629, 0.94);
+  const background = createPanelBackground(scene, 0.94, 0xff5f7a);
 
   const title = scene.add
-    .text(0, -110, 'Partida perdida', {
+    .text(0, -112, 'Misión fallida', {
       fontFamily: FONT_FAMILY,
-      fontSize: '30px',
+      fontSize: '28px',
       fill: '#ff8090',
       fontStyle: 'bold',
     })
@@ -1085,40 +1214,28 @@ function createGameOver(scene) {
   const finalScore = scene.add
     .text(0, -50, 'Puntuación: 0', {
       fontFamily: FONT_FAMILY,
-      fontSize: '26px',
+      fontSize: '24px',
       fill: '#ffffff',
+      fontStyle: 'bold',
     })
     .setOrigin(0.5);
 
-  const retryButton = scene.add
-    .text(0, 30, 'Reintentar', {
-      fontFamily: FONT_FAMILY,
-      fontSize: '24px',
-      fill: '#10162a',
-      backgroundColor: '#76ffe8',
-      padding: { x: 26, y: 12 },
-    })
-    .setOrigin(0.5)
-    .setInteractive({ useHandCursor: true });
+  const retryButton = createActionButton(scene, 0, 32, 'REINTENTAR', {
+    width: 216,
+    height: 52,
+    fontSize: '22px',
+  });
+  const menuButton = createActionButton(scene, 0, 104, 'MENU', {
+    width: 168,
+    height: 44,
+    color: 0x263859,
+    hoverColor: 0x38527c,
+    textColor: '#ffffff',
+    fontSize: '18px',
+  });
 
-  const menuButton = scene.add
-    .text(0, 105, 'Volver al menú', {
-      fontFamily: FONT_FAMILY,
-      fontSize: '19px',
-      fill: '#ffffff',
-      backgroundColor: '#2e385f',
-      padding: { x: 20, y: 10 },
-    })
-    .setOrigin(0.5)
-    .setInteractive({ useHandCursor: true });
-
-  retryButton.on('pointerdown', () => startGame.call(scene));
-  retryButton.on('pointerover', () => retryButton.setStyle({ backgroundColor: '#a4fff0' }));
-  retryButton.on('pointerout', () => retryButton.setStyle({ backgroundColor: '#76ffe8' }));
-
-  menuButton.on('pointerdown', () => showMenu.call(scene));
-  menuButton.on('pointerover', () => menuButton.setStyle({ backgroundColor: '#44527f' }));
-  menuButton.on('pointerout', () => menuButton.setStyle({ backgroundColor: '#2e385f' }));
+  retryButton.on('buttondown', () => startGame.call(scene));
+  menuButton.on('buttondown', () => showMenu.call(scene));
 
   container.add([background, title, finalScore, retryButton, menuButton]);
   container.setDepth(UI_DEPTH);
@@ -1131,17 +1248,17 @@ function createGameOver(scene) {
 
 function createPauseOverlay(scene) {
   const container = scene.add.container(getGameWidth(scene) / 2, getGameHeight(scene) / 2).setVisible(false);
-  const background = scene.add.rectangle(0, 0, 10, 10, 0x111629, 0.92);
-  const title = scene.add.text(0, -24, 'Pausa', {
+  const background = createPanelBackground(scene, 0.9);
+  const title = scene.add.text(0, -28, 'PAUSA', {
     fontFamily: FONT_FAMILY,
-    fontSize: '38px',
-    fill: '#ffd3ef',
+    fontSize: '36px',
+    fill: '#ffffff',
     fontStyle: 'bold',
   }).setOrigin(0.5);
-  const instructions = scene.add.text(0, 28, 'Pilota la nave para seguir jugando', {
+  const instructions = scene.add.text(0, 28, 'Toca la nave para continuar', {
     fontFamily: FONT_FAMILY,
-    fontSize: '19px',
-    fill: '#cfe8ff',
+    fontSize: '18px',
+    fill: '#b9cdec',
     align: 'center',
   }).setOrigin(0.5);
 
@@ -1155,10 +1272,10 @@ function createPauseOverlay(scene) {
 
 function createUpgradeOverlay(scene) {
   const container = scene.add.container(getGameWidth(scene) / 2, getGameHeight(scene) / 2).setVisible(false);
-  const background = scene.add.rectangle(0, 0, 10, 10, 0x111629, 0.95);
-  const title = scene.add.text(0, -134, 'Elige mejora', {
+  const background = createPanelBackground(scene, 0.95, 0xffd84d);
+  const title = scene.add.text(0, -134, 'MEJORA DISPONIBLE', {
     fontFamily: FONT_FAMILY,
-    fontSize: '28px',
+    fontSize: '22px',
     fill: '#ffd84d',
     fontStyle: 'bold',
   }).setOrigin(0.5);
@@ -1185,16 +1302,17 @@ function createUpgradeButton(scene, x, y, label, color) {
   const button = scene.add.text(x, y, label, {
     fontFamily: FONT_FAMILY,
     fontSize: '15px',
-    fill: '#10162a',
+    fill: '#08111f',
     backgroundColor: color,
     align: 'center',
     fixedWidth: 310,
-    fixedHeight: 84,
+    fixedHeight: 88,
     wordWrap: { width: 276, useAdvancedWrap: true },
-    padding: { x: 18, y: 10 },
+    padding: { x: 18, y: 12 },
   }).setOrigin(0.5).setInteractive({ useHandCursor: true });
   button.setLineSpacing(4);
 
+  button.on('pointerdown', () => playButtonSound(scene));
   button.on('pointerover', () => button.setAlpha(0.86));
   button.on('pointerout', () => button.setAlpha(1));
   return button;
@@ -1214,35 +1332,26 @@ function fitPanelToContents(background, items, paddingX, paddingY) {
     { left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity }
   );
 
-  background.setDisplaySize(bounds.right - bounds.left + paddingX * 2, bounds.bottom - bounds.top + paddingY * 2);
+  background.setSize(bounds.right - bounds.left + paddingX * 2, bounds.bottom - bounds.top + paddingY * 2);
 }
 
 function fitScorePanel(scene) {
   if (scene.scorePanel) {
-    scene.scorePanel.setVisible(false);
+    scene.scorePanel.setVisible(true);
+    scene.scorePanel.setPosition(24, HUD_TOP);
+    scene.scorePanel.setSize(getGameWidth(scene) - 48, HUD_HEIGHT);
   }
-  return;
-
-  const bounds = [scene.scoreText, scene.levelText, scene.boosterLevelText].reduce(
-    (area, item) => {
-      const itemBounds = item.getBounds();
-      return {
-        left: Math.min(area.left, itemBounds.left),
-        right: Math.max(area.right, itemBounds.right),
-        top: Math.min(area.top, itemBounds.top),
-        bottom: Math.max(area.bottom, itemBounds.bottom),
-      };
-    },
-    { left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity }
-  );
-
-  scene.scorePanel.setPosition(getGameWidth(scene) / 2, 18);
-  scene.scorePanel.setDisplaySize(bounds.right - bounds.left + 36, bounds.bottom - bounds.top + 20);
+  if (scene.scoreAccent) {
+    scene.scoreAccent.setVisible(true);
+    scene.scoreAccent.setPosition(24, HUD_TOP);
+    scene.scoreAccent.setSize(3, HUD_HEIGHT);
+  }
 }
 
 function setUiDepth(scene) {
   [
     scene.scorePanel,
+    scene.scoreAccent,
     scene.scoreText,
     scene.playerLevelText,
     scene.levelText,
@@ -1264,6 +1373,23 @@ function setUiDepth(scene) {
 
   if (scene.shieldBubble) scene.shieldBubble.setDepth(SHIP_DEPTH + 1);
   if (scene.energyRefinerModule) scene.energyRefinerModule.setDepth(SHIP_DEPTH + 2);
+}
+
+function setHudVisible(scene, visible) {
+  [
+    scene.scorePanel,
+    scene.scoreAccent,
+    scene.scoreText,
+    scene.playerLevelText,
+    scene.levelText,
+    scene.boosterLevelText,
+    scene.upgradeBarBackground,
+    scene.upgradeBarFill,
+    scene.upgradeProgressText,
+    scene.upgradeStatusContainer,
+  ].forEach((item) => {
+    if (item) item.setVisible(visible);
+  });
 }
 
 // --- Control de estados ---
@@ -1289,6 +1415,7 @@ function showMenu() {
   this.upgradeOverlay.setVisible(false);
   this.livesText.setVisible(false);
   resetCounters.call(this);
+  setHudVisible(this, false);
 }
 
 function startGame() {
@@ -1299,6 +1426,7 @@ function startGame() {
   this.gameOverContainer.setVisible(false);
   this.pauseOverlay.setVisible(false);
   this.upgradeOverlay.setVisible(false);
+  setHudVisible(this, true);
   this.livesText.setVisible(true);
   this.balls.clear(true, true);
   resetCounters.call(this);
@@ -1337,6 +1465,7 @@ function endGame() {
   playBackgroundMusic(this);
   this.balls.clear(true, true);
   this.livesText.setVisible(false);
+  setHudVisible(this, false);
   this.pauseOverlay.setVisible(false);
   this.upgradeOverlay.setVisible(false);
   this.gameOverContainer.finalScore.setText('Puntuación: ' + score);
@@ -1358,7 +1487,7 @@ function resetCounters() {
   maxLives = INITIAL_HEART_CAPACITY;
   lives = maxLives;
   levelProgressScore = 0;
-  playerLevel = 1;
+  playerLevel = 0;
   nextUpgradeScore = getLevelRequirement(playerLevel);
   magnetLevel = 0;
   lifeBoosterLevel = 0;
@@ -1370,9 +1499,13 @@ function resetCounters() {
   energyRefinerPassiveTimer = 0;
   this.nextRedWaveEligibleAt = 0;
   this.nextAsteroidWaveEligibleAt = 0;
-  this.pendingBossWave = false;
+  this.obreraSpawnsUnlocked = false;
+  this.asteroidSpawnsUnlocked = false;
+  this.travelSentinelUnlocked = false;
+  this.nextTravelSentinelEligibleAt = 0;
+  this.pendingBossWave = null;
   resetBossWave(this);
-  this.scoreText.setText('Puntos: 0');
+  this.scoreText.setText('PUNTOS 0');
   updatePlayerLevelText(this);
   updateSpeedTexts(this);
   updateUpgradeBar(this);
@@ -1386,8 +1519,22 @@ function resetCounters() {
 function updateLivesText(scene) {
   if (!scene.livesText) return;
 
-  scene.livesText.setText('\u2665'.repeat(lives));
-  scene.livesText.setColor(isShieldActive(scene) ? '#4da3ff' : '#ff5f7a');
+  scene.livesText.removeAll(true);
+  const spacing = 22;
+  const activeColor = isShieldActive(scene) ? '#4da3ff' : '#4dff88';
+  for (let i = 0; i < maxLives; i += 1) {
+    const isFull = i < lives;
+    const heart = scene.add.text(-((maxLives - 1 - i) * spacing), 0, '\u2665', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '24px',
+      fill: isFull ? activeColor : '#9aa3ad',
+      fontStyle: 'bold',
+      stroke: '#4dff88',
+      strokeThickness: isFull ? 0 : 2,
+    }).setOrigin(1, 0);
+    heart.setAlpha(isFull ? 1 : 0.42);
+    scene.livesText.add(heart);
+  }
 }
 
 function loseLife(scene) {
@@ -1437,7 +1584,7 @@ function scheduleNextSpawn(scene, delayOverride = null) {
     return;
   }
 
-  if (scene.activeBossWave && !scene.activeBossWave.isSpawningEnemies) {
+  if (isBlockingBossWave(scene)) {
     return;
   }
 
@@ -1449,6 +1596,10 @@ function scheduleNextSpawn(scene, delayOverride = null) {
       scheduleNextSpawn(scene);
     },
   });
+}
+
+function isBlockingBossWave(scene) {
+  return Boolean(scene.activeBossWave && !scene.activeBossWave.isTravelEncounter && !scene.activeBossWave.isSpawningEnemies);
 }
 
 function pauseGame() {
@@ -1485,7 +1636,7 @@ function pauseTimedGameplay(scene) {
   [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeAsteroidWave, scene.activeBossWave]
     .forEach((countdown) => pauseCountdown(scene, countdown));
 
-  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossEnemySpawnEvent].forEach((event) => {
+  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent].forEach((event) => {
     if (event) event.paused = true;
   });
   if (scene.bossEnterTween) scene.bossEnterTween.pause();
@@ -1506,7 +1657,7 @@ function resumeTimedGameplay(scene) {
   [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeAsteroidWave, scene.activeBossWave]
     .forEach((countdown) => resumeCountdown(scene, countdown));
 
-  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossEnemySpawnEvent].forEach((event) => {
+  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent].forEach((event) => {
     if (event) event.paused = false;
   });
   if (scene.bossEnterTween) scene.bossEnterTween.resume();
@@ -1567,6 +1718,7 @@ function resetTimedBoosters(scene) {
 function resetRedWave(scene) {
   scene.activeRedWave = null;
   clearWaveTimers(scene);
+  clearBossCue(scene);
 
   if (scene.ship) {
     setShipTextureForCurrentState(scene);
@@ -1578,6 +1730,7 @@ function resetRedWave(scene) {
 function resetAsteroidWave(scene) {
   scene.activeAsteroidWave = null;
   clearWaveTimers(scene);
+  clearBossCue(scene);
 
   if (scene.ship) {
     setShipTextureForCurrentState(scene);
@@ -1601,6 +1754,10 @@ function resetBossWave(scene) {
     scene.bossLaserEvent.remove(false);
     scene.bossLaserEvent = null;
   }
+  if (scene.bossLaserClearEvent) {
+    scene.bossLaserClearEvent.remove(false);
+    scene.bossLaserClearEvent = null;
+  }
   stopBossEnemySpawns(scene);
   if (scene.bossEnterTween) {
     scene.bossEnterTween.stop();
@@ -1616,6 +1773,7 @@ function resetBossWave(scene) {
   }
   clearBossWarningParticles(scene);
   clearBossLaser(scene);
+  clearBossCue(scene);
   scene.activeBossWave = null;
 }
 
@@ -1672,7 +1830,7 @@ function getEnergyBallValue() {
 function addScore(scene, points, animate = true) {
   score += points;
   levelProgressScore += points;
-  scene.scoreText.setText('Puntos: ' + score);
+  scene.scoreText.setText('PUNTOS ' + score);
   fitScorePanel(scene);
   updateUpgradeBar(scene, animate);
 }
@@ -1856,15 +2014,16 @@ function updateShieldBooster(scene) {
   }
 }
 
-function activateRedWave(scene) {
+function activateRedWave(scene, bossConfig = getBossConfigForLevel(1)) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
   scene.activeRedWave = {
     endsAt: null,
-    duration: RED_WAVE_DURATION,
+    duration: bossConfig.duration || RED_WAVE_DURATION,
     isSpawningDamageBoosters: false,
     hasStarted: false,
     isDraining: false,
+    bossName: bossConfig.name || 'Enjambre',
   };
 
   setShipTextureForCurrentState(scene);
@@ -1906,15 +2065,16 @@ function updateRedWave(scene) {
   finishWaveSpawning(scene, redWave, 'red');
 }
 
-function activateAsteroidWave(scene) {
+function activateAsteroidWave(scene, bossConfig = getBossConfigForLevel(3)) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
   scene.activeAsteroidWave = {
     endsAt: null,
-    duration: ASTEROID_WAVE_DURATION,
+    duration: bossConfig.duration || ASTEROID_WAVE_DURATION,
     isSpawningAsteroids: false,
     hasStarted: false,
     isDraining: false,
+    bossName: bossConfig.name || 'Cinturón',
   };
 
   setShipTextureForCurrentState(scene);
@@ -1949,15 +2109,18 @@ function updateAsteroidWave(scene) {
   finishWaveSpawning(scene, asteroidWave, 'asteroid');
 }
 
-function activateBossWave(scene) {
+function activateBossWave(scene, bossConfig = getBossConfigForLevel(2)) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
   scene.activeBossWave = {
     endsAt: null,
-    duration: BOSS_WAVE_DURATION,
+    duration: bossConfig.duration || BOSS_WAVE_DURATION,
     hasStarted: false,
     attacksDone: 0,
+    attacksTotal: bossConfig.attacks || BOSS_WAVE_ATTACKS,
     isRetreating: false,
+    bossName: bossConfig.name || 'Centinela',
+    isTravelEncounter: false,
   };
 
   hideWaveBar(scene);
@@ -1968,6 +2131,35 @@ function activateBossWave(scene) {
   }
 
   scheduleWaveStart(scene, 'boss');
+}
+
+function activateTravelSentinel(scene) {
+  if (scene.activeBossWave || state !== 'playing') return;
+
+  playBackgroundMusic(scene);
+  scene.activeBossWave = {
+    endsAt: null,
+    duration: 12000,
+    hasStarted: false,
+    attacksDone: 0,
+    attacksTotal: TRAVEL_SENTINEL_ATTACKS,
+    isRetreating: false,
+    bossName: 'Centinela',
+    isTravelEncounter: true,
+  };
+  scene.nextTravelSentinelEligibleAt = scene.time.now + TRAVEL_SENTINEL_COOLDOWN;
+  startBossWave(scene);
+}
+
+function activateLevelBoss(scene, bossConfig) {
+  if (!bossConfig) return;
+  if (bossConfig.kind === 'red') {
+    activateRedWave(scene, bossConfig);
+  } else if (bossConfig.kind === 'asteroid') {
+    activateAsteroidWave(scene, bossConfig);
+  } else if (bossConfig.kind === 'boss') {
+    activateBossWave(scene, bossConfig);
+  }
 }
 
 function updateBossWave(scene) {
@@ -1994,7 +2186,6 @@ function startBossWave(scene) {
   bossWave.endsAt = scene.time.now + bossWave.duration;
   bossWave.attacksDone = 0;
 
-  playRedWaveSound(scene);
   hideWaveBar(scene);
   setShipTextureForCurrentState(scene);
   refreshShipSize(scene);
@@ -2006,29 +2197,12 @@ function startBossWave(scene) {
 
   scene.bossEnterTween = scene.tweens.add({
     targets: scene.bossShip,
-    y: 52,
+    y: 86,
     duration: 1100,
     ease: 'Sine.easeOut',
     onComplete: () => {
       scene.bossEnterTween = null;
-      startBossEnemySpawns(scene);
       scheduleBossAttack(scene, BOSS_ATTACK_GAP);
-    },
-  });
-}
-
-function startBossEnemySpawns(scene) {
-  stopBossEnemySpawns(scene);
-  scene.bossEnemySpawnEvent = scene.time.addEvent({
-    delay: BOSS_ENEMY_SPAWN_DELAY,
-    loop: true,
-    callback: () => {
-      const bossWave = scene.activeBossWave;
-      if (!bossWave || bossWave.isRetreating || state !== 'playing') return;
-      if (Math.random() >= BOSS_ENEMY_SPAWN_CHANCE) return;
-      bossWave.isSpawningEnemies = true;
-      spawnBall(scene);
-      bossWave.isSpawningEnemies = false;
     },
   });
 }
@@ -2053,7 +2227,7 @@ function beginBossLaserCharge(scene) {
   if (!bossWave || !scene.bossShip) return;
 
   scene.bossAttackEvent = null;
-  const laserX = Phaser.Math.Between(46, getGameWidth(scene) - 46);
+  const laserX = getNextBossLaserX(scene, bossWave);
   bossWave.currentLaserX = laserX;
   showBossLaserWarning(scene, laserX);
 
@@ -2063,6 +2237,28 @@ function beginBossLaserCharge(scene) {
   });
 }
 
+function getNextBossLaserX(scene, bossWave) {
+  const min = 46;
+  const max = getGameWidth(scene) - 46;
+  const blockedX = bossWave.previousLaserX;
+  const roomyCandidates = [];
+
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    const x = Phaser.Math.Between(min, max);
+    if (blockedX === undefined || Math.abs(x - blockedX) >= BOSS_LASER_MIN_X_GAP) {
+      roomyCandidates.push(x);
+    }
+  }
+
+  if (roomyCandidates.length) {
+    return Phaser.Utils.Array.GetRandom(roomyCandidates);
+  }
+
+  const leftX = Phaser.Math.Clamp((blockedX || getGameWidth(scene) / 2) - BOSS_LASER_MIN_X_GAP, min, max);
+  const rightX = Phaser.Math.Clamp((blockedX || getGameWidth(scene) / 2) + BOSS_LASER_MIN_X_GAP, min, max);
+  return Math.abs(leftX - blockedX) > Math.abs(rightX - blockedX) ? leftX : rightX;
+}
+
 function showBossLaserWarning(scene, laserX) {
   clearBossWarningParticles(scene);
   scene.bossWarningParticles = [];
@@ -2070,7 +2266,7 @@ function showBossLaserWarning(scene, laserX) {
   for (let i = 0; i < 34; i += 1) {
     const particle = scene.add.image(
       laserX + Phaser.Math.Between(-15, 15),
-      142 + Phaser.Math.Between(-10, 22),
+      172 + Phaser.Math.Between(-10, 22),
       'goldTrailParticle'
     );
     particle
@@ -2083,7 +2279,7 @@ function showBossLaserWarning(scene, laserX) {
     scene.tweens.add({
       targets: particle,
       x: laserX + Phaser.Math.Between(-5, 5),
-      y: 150 + Phaser.Math.Between(-4, 6),
+      y: 180 + Phaser.Math.Between(-4, 6),
       scale: 0.2,
       alpha: 0.15,
       duration: BOSS_LASER_WARN_DURATION,
@@ -2100,7 +2296,13 @@ function fireBossLaser(scene, laserX) {
 
   scene.bossLaserEvent = null;
   clearBossWarningParticles(scene);
+  if (scene.bossLaserClearEvent) {
+    scene.bossLaserClearEvent.remove(false);
+    scene.bossLaserClearEvent = null;
+  }
   clearBossLaser(scene);
+  bossWave.attacksDone += 1;
+  bossWave.previousLaserX = laserX;
 
   const laserHeight = getGameHeight(scene);
   const laserCenterY = laserHeight / 2 + 78;
@@ -2113,26 +2315,26 @@ function fireBossLaser(scene, laserX) {
   scene.bossLaser.setData('hasDamagedShip', false);
   playBossLaserSound(scene);
 
-  scene.bossLaserEvent = scene.time.addEvent({
+  scene.bossLaserClearEvent = scene.time.addEvent({
     delay: BOSS_LASER_DURATION,
     callback: () => finishBossLaserAttack(scene),
   });
+
+  if (bossWave.attacksDone < bossWave.attacksTotal) {
+    scheduleBossAttack(scene, BOSS_ATTACK_GAP);
+  }
 }
 
 function finishBossLaserAttack(scene) {
   const bossWave = scene.activeBossWave;
   if (!bossWave) return;
 
-  scene.bossLaserEvent = null;
+  scene.bossLaserClearEvent = null;
   clearBossLaser(scene);
-  bossWave.attacksDone += 1;
 
-  if (bossWave.attacksDone >= BOSS_WAVE_ATTACKS) {
+  if (bossWave.attacksDone >= bossWave.attacksTotal) {
     retreatBoss(scene);
-    return;
   }
-
-  scheduleBossAttack(scene);
 }
 
 function retreatBoss(scene) {
@@ -2181,6 +2383,13 @@ function startWaveCountdown(scene, waveKind) {
     return;
   }
 
+  scene.waveStartEvent = null;
+  showBossCueBand(scene, waveKind, 'warning', () => startWaveAfterCue(scene, waveKind));
+}
+
+function startWaveAfterCue(scene, waveKind) {
+  if (state !== 'playing') return;
+
   if (waveKind === 'boss') {
     startBossWave(scene);
     return;
@@ -2188,7 +2397,6 @@ function startWaveCountdown(scene, waveKind) {
   const wave = waveKind === 'red' ? scene.activeRedWave : scene.activeAsteroidWave;
   if (!wave || wave.hasStarted) return;
 
-  scene.waveStartEvent = null;
   wave.hasStarted = true;
   wave.endsAt = scene.time.now + wave.duration;
   if (waveKind === 'red') {
@@ -2197,7 +2405,6 @@ function startWaveCountdown(scene, waveKind) {
     wave.isSpawningAsteroids = true;
   }
 
-  playRedWaveSound(scene);
   setShipTextureForCurrentState(scene);
   refreshShipSize(scene);
   moveShipTo(scene, clampShipX(scene, scene.ship.x));
@@ -2206,6 +2413,90 @@ function startWaveCountdown(scene, waveKind) {
 
   spawnBall(scene);
   scheduleNextSpawn(scene);
+}
+
+function showBossCueBand(scene, waveKind, cueKind, onCross) {
+  clearBossCue(scene);
+
+  const width = getGameWidth(scene) + 96;
+  const height = BOSS_CUE_BAND_HEIGHT;
+  const centerX = getGameWidth(scene) / 2;
+  const shipY = getShipY(scene);
+  const baseColor = cueKind === 'safe' ? 0x26f07a : 0xffd84d;
+  const bossName = getWaveBossName(scene, waveKind);
+  const container = scene.add.container(centerX, -height);
+  const background = scene.add.rectangle(0, 0, width, height, baseColor, 0.24)
+    .setStrokeStyle(2, baseColor, 0.7);
+  const stripes = scene.add.graphics();
+  const labelText = cueKind === 'safe' ? 'CONTINUAR VIAJE' : bossName.toUpperCase();
+  const label = scene.add.text(0, 0, labelText, {
+    fontFamily: FONT_FAMILY,
+    fontSize: '16px',
+    fill: cueKind === 'safe' ? '#c7ffdc' : '#fff0a6',
+    fontStyle: 'bold',
+    stroke: '#050914',
+    strokeThickness: 4,
+  }).setOrigin(0.5, 0.5);
+
+  stripes.fillStyle(0x050914, 0.48);
+  for (let x = -width / 2 - height; x < width / 2 + height; x += 34) {
+    stripes.fillPoints([
+      { x, y: -height / 2 },
+      { x: x + 18, y: -height / 2 },
+      { x: x + 18 + height, y: height / 2 },
+      { x: x + height, y: height / 2 },
+    ], true);
+  }
+
+  container.add([background, stripes, label]);
+  container.setDepth(FX_DEPTH + 10);
+  container.setAlpha(0.92);
+  container.setData('hasCrossedShip', false);
+  scene.bossCueBand = container;
+
+  scene.bossCueTween = scene.tweens.add({
+    targets: container,
+    y: shipY,
+    duration: BOSS_CUE_DESCEND_DURATION,
+    ease: 'Sine.easeInOut',
+    onUpdate: () => {
+      if (container.getData('hasCrossedShip')) return;
+      if (container.y + height / 2 < shipY) return;
+      container.setData('hasCrossedShip', true);
+      if (cueKind === 'warning') {
+        playRedWaveSound(scene);
+      }
+      if (onCross) onCross();
+    },
+    onComplete: () => {
+      scene.bossCueTween = scene.tweens.add({
+        targets: container,
+        y: getGameHeight(scene) + height,
+        alpha: 0,
+        duration: 520,
+        ease: 'Sine.easeIn',
+        onComplete: () => clearBossCue(scene),
+      });
+    },
+  });
+}
+
+function getWaveBossName(scene, waveKind) {
+  if (waveKind === 'red' && scene.activeRedWave) return scene.activeRedWave.bossName || 'Enjambre';
+  if (waveKind === 'asteroid' && scene.activeAsteroidWave) return scene.activeAsteroidWave.bossName || 'Cinturón';
+  if (waveKind === 'boss' && scene.activeBossWave) return scene.activeBossWave.bossName || 'Centinela';
+  return 'Jefe';
+}
+
+function clearBossCue(scene) {
+  if (scene.bossCueTween) {
+    scene.bossCueTween.stop();
+    scene.bossCueTween = null;
+  }
+  if (scene.bossCueBand) {
+    scene.bossCueBand.destroy();
+    scene.bossCueBand = null;
+  }
 }
 
 function finishWaveSpawning(scene, wave, waveKind) {
@@ -2248,10 +2539,18 @@ function endWaveAfterPause(scene, waveKind) {
   }
 
   if (waveKind === 'red') {
+    scene.obreraSpawnsUnlocked = true;
     scene.activeRedWave = null;
   } else if (waveKind === 'asteroid') {
+    scene.asteroidSpawnsUnlocked = true;
     scene.activeAsteroidWave = null;
   } else if (waveKind === 'boss') {
+    if (currentWave.isTravelEncounter) {
+      resetBossWave(scene);
+      if (state === 'playing') scheduleNextSpawn(scene);
+      return;
+    }
+    scene.travelSentinelUnlocked = true;
     resetBossWave(scene);
   }
 
@@ -2265,9 +2564,10 @@ function endWaveAfterPause(scene, waveKind) {
     delay: WAVE_POST_DELAY,
     callback: () => {
       scene.waveResumeEvent = null;
-      if (state === 'playing') {
-        scheduleNextSpawn(scene);
-      }
+      if (state !== 'playing') return;
+      showBossCueBand(scene, waveKind, 'safe', () => {
+        if (state === 'playing') scheduleNextSpawn(scene);
+      });
     },
   });
 }
@@ -2317,7 +2617,7 @@ function isLaserTouchingShip(scene, laser) {
 function updateBoosterBar(scene, progress) {
   const fullWidth = getGameWidth(scene) - 48;
   const width = Math.max(0, fullWidth * progress);
-  scene.boosterBarFill.setSize(width, 8);
+  scene.boosterBarFill.setSize(width, 7);
 }
 
 function updateUpgradeBar(scene, animate = false, onComplete = null) {
@@ -2334,7 +2634,7 @@ function updateUpgradeBar(scene, animate = false, onComplete = null) {
   }
 
   if (!animate) {
-    scene.upgradeBarFill.setSize(width, 8);
+    scene.upgradeBarFill.setSize(width, 9);
     updateUpgradeProgressText(scene, pointsTowardUpgrade);
     if (onComplete) onComplete();
     return;
@@ -2346,10 +2646,10 @@ function updateUpgradeBar(scene, animate = false, onComplete = null) {
     width,
     duration: UPGRADE_BAR_TWEEN_DURATION,
     ease: 'Sine.easeOut',
-    onUpdate: () => scene.upgradeBarFill.setSize(tweenState.width, 8),
+    onUpdate: () => scene.upgradeBarFill.setSize(tweenState.width, 9),
     onComplete: () => {
       scene.upgradeBarTween = null;
-      scene.upgradeBarFill.setSize(width, 8);
+      scene.upgradeBarFill.setSize(width, 9);
       updateUpgradeProgressText(scene, pointsTowardUpgrade);
       if (onComplete) onComplete();
     },
@@ -2368,6 +2668,7 @@ function updateUpgradeProgressText(scene, pointsTowardUpgrade = null) {
 function maybeOpenUpgradeChoice(scene) {
   if (levelProgressScore < nextUpgradeScore || state !== 'playing') return;
 
+  playLevelUpSound(scene);
   advancePlayerLevel(scene);
 
   while (levelProgressScore >= nextUpgradeScore && !hasAvailableUpgrades()) {
@@ -2403,9 +2704,7 @@ function advancePlayerLevel(scene) {
   levelProgressScore = Math.max(0, levelProgressScore - nextUpgradeScore);
   playerLevel += 1;
   nextUpgradeScore = getLevelRequirement(playerLevel);
-  if (playerLevel > 1 && playerLevel % 5 === 0) {
-    scene.pendingBossWave = true;
-  }
+  scene.pendingBossWave = getBossConfigForLevel(playerLevel);
   increaseDifficulty(scene);
   updatePlayerLevelText(scene);
 }
@@ -2423,21 +2722,21 @@ function getUpgradeConfig(upgradeKind) {
   if (upgradeKind === 'lifeBooster') {
     return {
       label: 'Booster de vida',
-      description: 'Curas verdes. Nv 1 cura 1 corazón; Nv 5 cura 5.',
+      description: 'Orbes verdes. Nv 1 recupera 1 corazón; Nv 5 recupera 5.',
       color: '#4dff88',
     };
   }
   if (upgradeKind === 'shieldBooster') {
     return {
       label: 'Booster de escudo',
-      description: 'Escudos azules. Bloquean daño de enemigos y meteoritos.',
+      description: 'Escudos azules. Bloquean daño de obreras, meteoritos y láseres.',
       color: '#4da3ff',
     };
   }
   if (upgradeKind === 'scoreBooster') {
     return {
       label: 'Booster de bonificación',
-      description: 'Bonus morado. Las bolas valen x2 durante más tiempo.',
+      description: 'Bonus morado. Los orbes de energía valen x2 durante más tiempo.',
       color: '#9b5cff',
     };
   }
@@ -2479,9 +2778,10 @@ function chooseUpgrade(scene, upgradeKind) {
   scene.availableUpgradeChoices = null;
 
   if (scene.pendingBossWave) {
+    const bossConfig = scene.pendingBossWave;
     scene.pendingBossWave = false;
     state = 'playing';
-    activateBossWave(scene);
+    activateLevelBoss(scene, bossConfig);
     return;
   }
 
@@ -2709,23 +3009,19 @@ function getPointToSegmentDistance(x, y, pointA, pointB) {
 // --- Logica de bolas ---
 
 function spawnBall(scene) {
-  if ((scene.activeBossWave && !scene.activeBossWave.isSpawningEnemies) || scene.pendingBossWave) return;
+  if (isBlockingBossWave(scene) || scene.pendingBossWave) return;
 
-  if (!scene.activeBossWave && shouldStartRedWave(scene)) {
-    activateRedWave(scene);
-    return;
-  }
-
-  if (!scene.activeBossWave && shouldStartAsteroidWave(scene)) {
-    activateAsteroidWave(scene);
+  if (shouldStartTravelSentinel(scene)) {
+    activateTravelSentinel(scene);
     return;
   }
 
   const kind = getNextSpawnKind(scene);
+  if (!kind) return;
   const isBooster = isBoosterKind(kind);
   const x = isAsteroidKind(kind)
     ? findAsteroidSpawnX(scene)
-    : kind === 'damageBooster' && (scene.activeRedWave || scene.activeBossWave)
+    : kind === 'damageBooster'
     ? findRedWaveEnemySpawnX(scene)
     : isBooster
       ? findBoosterSpawnX(scene)
@@ -2750,7 +3046,38 @@ function spawnBall(scene) {
     setBallEnergyColor(ball, Boolean(scene.activeScoreBooster));
   } else if (isAsteroidKind(kind)) {
     ball.setAngularVelocity(Phaser.Math.Between(-110, 110));
+  } else if (kind === 'damageBooster') {
+    setupRedEnemySway(ball);
   }
+}
+
+function setupRedEnemySway(enemy) {
+  enemy.setData('swayPhase', Phaser.Math.FloatBetween(0, Math.PI * 2));
+  enemy.setData('swaySpeed', Phaser.Math.FloatBetween(RED_ENEMY_SWAY_SPEED * 0.85, RED_ENEMY_SWAY_SPEED * 1.15));
+  enemy.setData('swayVelocity', Phaser.Math.FloatBetween(RED_ENEMY_SWAY_MAX_VELOCITY * 0.65, RED_ENEMY_SWAY_MAX_VELOCITY));
+}
+
+function updateRedEnemySway(scene, time) {
+  const min = 34;
+  const max = Math.max(min, getGameWidth(scene) - 34);
+  scene.balls.getChildren().forEach((enemy) => {
+    if (!enemy.active || enemy.getData('kind') !== 'damageBooster') return;
+    if (!enemy.body) return;
+
+    const phase = enemy.getData('swayPhase') || 0;
+    const speed = enemy.getData('swaySpeed') || RED_ENEMY_SWAY_SPEED;
+    const swayVelocity = enemy.getData('swayVelocity') || RED_ENEMY_SWAY_MAX_VELOCITY;
+    let velocityX = Math.sin(time * speed + phase) * swayVelocity;
+
+    if (enemy.x < min) {
+      velocityX = Math.abs(velocityX);
+    } else if (enemy.x > max) {
+      velocityX = -Math.abs(velocityX);
+    }
+
+    enemy.body.setVelocityX(velocityX);
+    enemy.body.setVelocityY(getFallingVelocity('damageBooster', scene, enemy));
+  });
 }
 
 function setBallEnergyColor(ball, isPurple) {
@@ -2785,53 +3112,48 @@ function getNextSpawnKind(scene) {
     return Math.random() < ASTEROID_WAVE_BIG_ASTEROID_CHANCE ? 'bigAsteroid' : 'asteroid';
   }
 
+  const threatKind = getNextTravelThreatKind(scene);
+  if (threatKind) return threatKind;
   const asteroidKind = getNextAsteroidKind(scene);
   if (asteroidKind) return asteroidKind;
   const boosterKind = getNextBoosterKind(scene);
+  if (scene.activeBossWave && scene.activeBossWave.isTravelEncounter) return boosterKind;
   return boosterKind || 'ball';
 }
 
-function shouldStartRedWave(scene) {
-  if ((scene.activeBossWave && !scene.activeBossWave.isSpawningEnemies) || scene.pendingBossWave) return false;
-  if (scene.activeRedWave || scene.activeAsteroidWave || getActiveTimedBooster(scene)) return false;
-  if (score < RED_WAVE_MIN_SCORE) return false;
-  if (scene.time.now < scene.nextRedWaveEligibleAt) return false;
-  if (hasFallingBooster(scene) || hasFallingAsteroid(scene)) return false;
-  if (Math.random() >= RED_WAVE_CHANCE) return false;
+function getNextTravelThreatKind(scene) {
+  if (!scene.obreraSpawnsUnlocked || scene.activeRedWave || scene.activeAsteroidWave) return null;
 
-  scene.nextRedWaveEligibleAt = scene.time.now + RED_WAVE_COOLDOWN;
-  return true;
+  const chance = currentGravity >= MAX_BALL_GRAVITY
+    ? CAPPED_SPEED_OBRERA_SPAWN_CHANCE
+    : OBRERA_SPAWN_CHANCE;
+  return Math.random() < chance ? 'damageBooster' : null;
 }
 
-function shouldStartAsteroidWave(scene) {
-  if ((scene.activeBossWave && !scene.activeBossWave.isSpawningEnemies) || scene.pendingBossWave) return false;
-  if (scene.activeRedWave || scene.activeAsteroidWave || getActiveTimedBooster(scene)) return false;
-  if (score < ASTEROID_WAVE_MIN_SCORE) return false;
-  if (scene.time.now < scene.nextAsteroidWaveEligibleAt) return false;
-  if (hasFallingBooster(scene) || hasFallingAsteroid(scene)) return false;
-  if (Math.random() >= ASTEROID_WAVE_CHANCE) return false;
+function shouldStartTravelSentinel(scene) {
+  if (!scene.travelSentinelUnlocked || scene.activeBossWave || scene.activeRedWave || scene.activeAsteroidWave) return false;
+  if (scene.pendingBossWave || getActiveTimedBooster(scene)) return false;
+  if (scene.time.now < scene.nextTravelSentinelEligibleAt) return false;
+  if (Math.random() >= TRAVEL_SENTINEL_CHANCE) return false;
 
-  scene.nextAsteroidWaveEligibleAt = scene.time.now + ASTEROID_WAVE_COOLDOWN;
   return true;
 }
 
 function getNextAsteroidKind(scene) {
-  if (scene.activeRedWave || scene.activeAsteroidWave || hasFallingAsteroid(scene)) return null;
+  if (!scene.asteroidSpawnsUnlocked || scene.activeRedWave || scene.activeAsteroidWave) return null;
 
-  const asteroidChance =
-    currentGravity >= MAX_BALL_GRAVITY ? CAPPED_SPEED_ASTEROID_CHANCE : ASTEROID_CHANCE;
-  if (Math.random() >= asteroidChance) return null;
-  return Math.random() < BIG_ASTEROID_CHANCE ? 'bigAsteroid' : 'asteroid';
+  const chance = currentGravity >= MAX_BALL_GRAVITY
+    ? CAPPED_SPEED_TRAVEL_ASTEROID_CHANCE
+    : TRAVEL_ASTEROID_CHANCE;
+  if (Math.random() >= chance) return null;
+  return Math.random() < 0.24 ? 'bigAsteroid' : 'asteroid';
 }
 
 function getNextBoosterKind(scene) {
   if (hasFallingBooster(scene)) return null;
 
   const timedBoosterActive = getActiveTimedBooster(scene);
-  const damageBoosterChance =
-    currentGravity >= MAX_BALL_GRAVITY ? CAPPED_SPEED_DAMAGE_BOOSTER_CHANCE : DAMAGE_BOOSTER_CHANCE;
   const options = [
-    { kind: 'damageBooster', chance: damageBoosterChance },
     { kind: 'scoreBooster', chance: timedBoosterActive || scoreBoosterLevel <= 0 ? 0 : SCORE_BOOSTER_CHANCE },
     { kind: 'shieldBooster', chance: timedBoosterActive || shieldBoosterLevel <= 0 ? 0 : SHIELD_BOOSTER_CHANCE },
     { kind: 'lifeBooster', chance: lifeBoosterLevel > 0 && lives < maxLives ? LIFE_BOOSTER_CHANCE : 0 },
@@ -2852,7 +3174,7 @@ function getNextBoosterKind(scene) {
 function hasFallingBooster(scene) {
   return scene.balls
     .getChildren()
-    .some((ball) => ball.active && isBoosterKind(ball.getData('kind')));
+    .some((ball) => ball.active && isHelpfulBoosterKind(ball.getData('kind')));
 }
 
 function hasFallingAsteroid(scene) {
@@ -2873,6 +3195,10 @@ function getTextureForKind(kind) {
 
 function isBoosterKind(kind) {
   return kind === 'damageBooster' || kind === 'lifeBooster' || kind === 'scoreBooster' || kind === 'shieldBooster';
+}
+
+function isHelpfulBoosterKind(kind) {
+  return kind === 'lifeBooster' || kind === 'scoreBooster' || kind === 'shieldBooster';
 }
 
 function isCollectibleBallKind(kind) {
@@ -2998,14 +3324,14 @@ function resetGameSpeed(scene) {
 function updateSpeedTexts(scene) {
   const multiplier = (currentGravity / BASE_GRAVITY).toFixed(2);
   const boosterMultiplier = (currentBoosterGravity / BASE_GRAVITY).toFixed(2);
-  scene.levelText.setText('Velocidad: ' + multiplier + 'x');
-  scene.boosterLevelText.setText('Boosters: ' + boosterMultiplier + 'x');
+  scene.levelText.setText('VEL ' + multiplier + 'x');
+  scene.boosterLevelText.setText('BOOST ' + boosterMultiplier + 'x');
   fitScorePanel(scene);
 }
 
 function updatePlayerLevelText(scene) {
   if (!scene.playerLevelText) return;
-  scene.playerLevelText.setText('Nivel: ' + playerLevel);
+  scene.playerLevelText.setText('NIVEL ' + playerLevel);
 }
 
 function updateFallingObjectSpeeds(scene) {
@@ -3142,6 +3468,14 @@ function playBadSound(scene) {
   playAudioFile(scene, 'badAudio', BAD_SOUND_PATH, 0.5);
 }
 
+function playButtonSound(scene) {
+  playAudioFile(scene, 'buttonAudio', BUTTON_SOUND_PATH, 0.45);
+}
+
+function playLevelUpSound(scene) {
+  playAudioFile(scene, 'levelUpAudio', LEVEL_UP_SOUND_PATH, 0.55);
+}
+
 function playRedWaveSound(scene) {
   playAudioFile(scene, 'redWaveAudio', RED_WAVE_SOUND_PATH, 0.6);
 }
@@ -3197,7 +3531,7 @@ function stopBackgroundMusic(scene) {
 }
 
 function stopNonMusicAudio(scene) {
-  ['catchAudio', 'boosterAudio', 'badAudio', 'redWaveAudio', 'bossLaserAudio', 'shieldBlockAudio'].forEach((audioKey) => {
+  ['catchAudio', 'boosterAudio', 'badAudio', 'buttonAudio', 'levelUpAudio', 'redWaveAudio', 'bossLaserAudio', 'shieldBlockAudio'].forEach((audioKey) => {
     const audio = scene[audioKey];
     if (!audio) return;
     audio.pause();
@@ -3311,5 +3645,3 @@ function getAbsorbParticleTint(kind, isPurpleEnergy = false) {
   if (kind === 'shieldBooster') return 0x4da3ff;
   return 0xffc84d;
 }
-
-
