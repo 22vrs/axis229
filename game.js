@@ -66,7 +66,8 @@ const BOSS_LASER_WIDTH = 32;
 const WAVE_CLEAR_DELAY = 2200;
 const WAVE_POST_DELAY = 900;
 const BOSS_CUE_BAND_HEIGHT = 76;
-const BOSS_CUE_DESCEND_DURATION = 3600;
+const BOSS_CUE_HOLD_DURATION = 900;
+const BOSS_CUE_FADE_DURATION = 520;
 const BOSS_LASER_MIN_X_GAP = 112;
 const RED_ENEMY_SWAY_SPEED = 0.0042;
 const RED_ENEMY_SWAY_MAX_VELOCITY = 24;
@@ -152,7 +153,7 @@ let maxLives = INITIAL_HEART_CAPACITY;
 let lives = INITIAL_HEART_CAPACITY;
 let nextUpgradeScore = UPGRADE_POINTS_REQUIRED;
 let levelProgressScore = 0;
-let playerLevel = 0;
+let playerLevel = 1;
 let magnetLevel = 0;
 let lifeBoosterLevel = 0;
 let shieldBoosterLevel = 0;
@@ -235,8 +236,9 @@ function setHudBoosterVisible(visible, color = '#76ffe8', label = null) {
 }
 
 function getLevelRequirement(level) {
-  if (level <= 0) return 10;
-  return 10 + level * 8 + Math.floor(level * level * 1.15);
+  const progressionLevel = Math.max(0, level - 1);
+  if (progressionLevel <= 0) return 10;
+  return 10 + progressionLevel * 8 + Math.floor(progressionLevel * progressionLevel * 1.15);
 }
 
 function getBossConfigForLevel(level) {
@@ -273,8 +275,8 @@ function getBossConfigForLevel(level) {
 }
 
 function getBossIndexForLevel(level) {
-  if (level < 5 || level % 5 !== 0) return -1;
-  return Math.floor(level / 5) - 1;
+  if (level < 3 || level % 3 !== 0) return -1;
+  return Math.floor(level / 3) - 1;
 }
 
 bootGame();
@@ -476,15 +478,14 @@ function create() {
   this.input.on('pointerdown', (pointer) => {
     if (state === 'paused') {
       if (this.optionsOverlay && this.optionsOverlay.element && this.optionsOverlay.element.classList.contains('is-visible')) return;
-      if (!isPointerOverShip(this, pointer)) return;
+      if (!canResumeFromShipPoint(this, pointer.x, pointer.y)) return;
       resumeGame.call(this);
+      startDraggingShipAt(this, pointer.x);
+      return;
     }
     if (state !== 'playing') return;
     if (!isPointerOverShip(this, pointer)) return;
-    isDraggingShip = true;
-    this.input.setDefaultCursor('grabbing');
-    const newX = clampShipX(this, pointer.x);
-    moveShipTo(this, newX);
+    startDraggingShipAt(this, pointer.x);
   });
 
   this.input.on('pointermove', (pointer) => {
@@ -848,6 +849,17 @@ function isPointerOverShip(scene, pointer) {
   return isGamePointOverShip(scene, pointer.x, pointer.y);
 }
 
+function canResumeFromShipPoint(scene, x, y) {
+  return isGamePointOverShip(scene, x, y, SHIP_RESUME_TOUCH_PADDING_X, SHIP_RESUME_TOUCH_PADDING_Y);
+}
+
+function startDraggingShipAt(scene, x) {
+  if (state !== 'playing') return;
+  isDraggingShip = true;
+  scene.input.setDefaultCursor('grabbing');
+  moveShipTo(scene, clampShipX(scene, x));
+}
+
 function isGamePointOverShip(scene, x, y, paddingX = 0, paddingY = 0) {
   if (!scene || !scene.ship) return false;
 
@@ -867,18 +879,40 @@ function bindPausedShipResumeFallback(scene) {
   if (!container || container.dataset.resumeFallbackBound === '1') return;
   container.dataset.resumeFallbackBound = '1';
 
-  container.addEventListener('pointerdown', (event) => {
+  const resumeFromEvent = (event) => {
     if (state !== 'paused') return;
     if (event.target && event.target.closest && event.target.closest('.ui-panel')) return;
     if (scene.optionsOverlay && scene.optionsOverlay.element && scene.optionsOverlay.element.classList.contains('is-visible')) return;
 
     const point = getGamePointFromClient(scene, event.clientX, event.clientY);
     if (!point) return;
-    if (!isGamePointOverShip(scene, point.x, point.y, SHIP_RESUME_TOUCH_PADDING_X, SHIP_RESUME_TOUCH_PADDING_Y)) return;
+    if (!canResumeFromShipPoint(scene, point.x, point.y)) return;
 
     event.preventDefault();
     resumeGame.call(scene);
-  });
+    startDraggingShipAt(scene, point.x);
+  };
+
+  container.addEventListener('pointerdown', resumeFromEvent, { capture: true });
+  container.addEventListener('pointermove', (event) => {
+    if (!isDraggingShip || state !== 'playing') return;
+    const point = getGamePointFromClient(scene, event.clientX, event.clientY);
+    if (!point) return;
+    moveShipTo(scene, clampShipX(scene, point.x));
+  }, { capture: true });
+
+  window.addEventListener('pointerup', () => pauseIfDraggingShip(scene));
+  window.addEventListener('pointercancel', () => pauseIfDraggingShip(scene));
+}
+
+function pauseIfDraggingShip(scene) {
+  const wasDragging = isDraggingShip;
+  isDraggingShip = false;
+  if (state !== 'playing') return;
+  scene.input.setDefaultCursor('default');
+  if (wasDragging) {
+    pauseGame.call(scene);
+  }
 }
 
 function getGamePointFromClient(scene, clientX, clientY) {
@@ -1744,7 +1778,7 @@ function resetCounters() {
   maxLives = INITIAL_HEART_CAPACITY;
   lives = maxLives;
   levelProgressScore = 0;
-  playerLevel = 0;
+  playerLevel = 1;
   nextUpgradeScore = getLevelRequirement(playerLevel);
   magnetLevel = 0;
   lifeBoosterLevel = 0;
@@ -2381,7 +2415,7 @@ function updateShieldBooster(scene) {
   updateBoosterBar(scene, 0);
 }
 
-function activateRedWave(scene, bossConfig = getBossConfigForLevel(1)) {
+function activateRedWave(scene, bossConfig = getBossConfigForLevel(3)) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
   scene.activeRedWave = {
@@ -2433,7 +2467,7 @@ function updateRedWave(scene) {
   finishWaveSpawning(scene, redWave, 'red');
 }
 
-function activateAsteroidWave(scene, bossConfig = getBossConfigForLevel(2)) {
+function activateAsteroidWave(scene, bossConfig = getBossConfigForLevel(6)) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
   scene.activeAsteroidWave = {
@@ -2459,7 +2493,7 @@ function activateAsteroidWave(scene, bossConfig = getBossConfigForLevel(2)) {
   scheduleWaveStart(scene, 'asteroid');
 }
 
-function activatePlasmaWave(scene, bossConfig = getBossConfigForLevel(4)) {
+function activatePlasmaWave(scene, bossConfig = getBossConfigForLevel(12)) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
   scene.activePlasmaWave = {
@@ -2512,7 +2546,7 @@ function updatePlasmaWave(scene) {
   finishWaveSpawning(scene, plasmaWave, 'plasma');
 }
 
-function activateBossWave(scene, bossConfig = getBossConfigForLevel(3)) {
+function activateBossWave(scene, bossConfig = getBossConfigForLevel(9)) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
   scene.activeBossWave = {
@@ -2839,62 +2873,34 @@ function showBossCueBand(scene, waveKind, cueKind, onCross) {
     return;
   }
 
-  const shipY = getShipY(scene);
-  const cueDuration = BOSS_CUE_DESCEND_DURATION;
   const bossName = getWaveBossName(scene, waveKind);
   const labelText = cueKind === 'safe' ? 'CONTINUAR VIAJE' : bossName.toUpperCase();
 
   const height = BOSS_CUE_BAND_HEIGHT;
-  const shipYPx = shipY;
-  const startY = -height - 8;
-  const targetY = shipYPx - height / 2;
-  const exitY = GAME_HEIGHT + height;
-  const crossDelay = Math.round(cueDuration * ((shipYPx + height / 2) / (shipYPx + height)));
+  const targetY = getGameHeight(scene) / 2 - height / 2;
 
   label.textContent = labelText;
   element.classList.toggle('is-safe', cueKind === 'safe');
   element.classList.add('is-active');
   element.style.height = height + 'px';
+  element.style.opacity = '0.92';
   element.style.transition = 'none';
   scene.bossCueBand = element;
-  scene.bossCueMotion = { y: startY };
-  element.style.transform = 'translateY(' + startY + 'px)';
+  scene.bossCueMotion = null;
+  element.style.transform = 'translateY(' + targetY + 'px)';
 
-  scene.bossCueMoveTween = scene.tweens.add({
-    targets: scene.bossCueMotion,
-    y: targetY,
-    duration: cueDuration,
-    ease: 'Sine.easeInOut',
-    onUpdate: () => {
-      if (!scene.bossCueBand || !scene.bossCueMotion) return;
-      scene.bossCueBand.style.transform = 'translateY(' + scene.bossCueMotion.y + 'px)';
-    },
-  });
-
-  scene.bossCueTween = scene.time.delayedCall(crossDelay, () => {
+  scene.bossCueTween = scene.time.delayedCall(BOSS_CUE_HOLD_DURATION, () => {
     scene.bossCueTween = null;
     if (cueKind === 'warning') {
       playRedWaveSound(scene);
     }
     if (onCross) onCross();
-  });
 
-  scene.bossCueClearEvent = scene.time.delayedCall(cueDuration, () => {
-    scene.bossCueClearEvent = null;
-    if (scene.bossCueMoveTween) {
-      scene.bossCueMoveTween.remove();
-      scene.bossCueMoveTween = null;
-    }
-    scene.bossCueExitTween = scene.tweens.add({
-      targets: scene.bossCueMotion,
-      y: exitY,
-      duration: 520,
-      ease: 'Sine.easeIn',
-      onUpdate: () => {
-        if (!scene.bossCueBand || !scene.bossCueMotion) return;
-        scene.bossCueBand.style.transform = 'translateY(' + scene.bossCueMotion.y + 'px)';
-      },
-      onComplete: () => clearBossCue(scene),
+    element.style.transition = 'opacity ' + BOSS_CUE_FADE_DURATION + 'ms ease-out';
+    element.style.opacity = '0';
+    scene.bossCueClearEvent = scene.time.delayedCall(BOSS_CUE_FADE_DURATION, () => {
+      scene.bossCueClearEvent = null;
+      clearBossCue(scene);
     });
   });
 }
@@ -2928,6 +2934,7 @@ function clearBossCue(scene) {
     scene.bossCueBand.classList.remove('is-active', 'is-safe');
     scene.bossCueBand.style.transition = 'none';
     scene.bossCueBand.style.transform = 'translateY(-100px)';
+    scene.bossCueBand.style.opacity = '';
     scene.bossCueBand = null;
   }
   scene.bossCueMotion = null;
@@ -3277,10 +3284,11 @@ function maybeOpenUpgradeChoice(scene) {
 }
 
 function advancePlayerLevel(scene) {
+  const completedLevel = playerLevel;
   levelProgressScore = Math.max(0, levelProgressScore - nextUpgradeScore);
   playerLevel += 1;
   nextUpgradeScore = getLevelRequirement(playerLevel);
-  scene.pendingBossWave = getBossConfigForLevel(playerLevel);
+  scene.pendingBossWave = getBossConfigForLevel(completedLevel);
   increaseDifficulty(scene);
   updatePlayerLevelText(scene);
 }
