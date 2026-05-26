@@ -34,9 +34,9 @@ const SHIELD_BUBBLE_DIAMETER = SHIELD_BUBBLE_RADIUS * 2;
 const MIN_TIMED_BOOSTER_DURATION = 5000;
 const MAX_TIMED_BOOSTER_DURATION = 15000;
 const RED_WAVE_DURATION = 15000;
-const RED_WAVE_SPAWN_DELAY = 600;
+const RED_WAVE_SPAWN_DELAY = 480;
 const RED_WAVE_ENEMY_GRAVITY_RATIO = 0.72;
-const RED_WAVE_MIN_ENEMY_SPACING = 185;
+const RED_WAVE_MIN_ENEMY_SPACING = SHIP_WIDTH + 56;
 const RED_WAVE_RECENT_ENEMY_HEIGHT = 230;
 const OBRERA_SPAWN_CHANCE = 0.17;
 const CAPPED_SPEED_OBRERA_SPAWN_CHANCE = 0.16;
@@ -390,16 +390,22 @@ function create() {
     engine: 0xd6dbe3,
   });
   createShipTexture(this, 'purpleShip', {
-    hull: 0xb985ff,
-    wing: 0x7b45ff,
-    cockpit: 0xf5e6ff,
-    engine: 0xffb8ef,
+    hull: 0xb8bec8,
+    wing: 0x8f55ff,
+    cockpit: 0xf1f4f8,
+    engine: 0xd8a8ff,
   });
   createShipTexture(this, 'blueShip', {
-    hull: 0x72c4ff,
-    wing: 0x2f7dff,
+    hull: 0x66bfff,
+    wing: 0x6f7784,
     cockpit: 0xe7f7ff,
-    engine: 0x76ffe8,
+    engine: 0xd6dbe3,
+  });
+  createShipTexture(this, 'bluePurpleShip', {
+    hull: 0x66bfff,
+    wing: 0x8f55ff,
+    cockpit: 0xe7f7ff,
+    engine: 0xd8a8ff,
   });
   createShipTexture(this, 'redShip', {
     hull: 0xff5366,
@@ -434,7 +440,7 @@ function create() {
   this.energyRefinerModule = this.add.graphics()
     .setDepth(SHIP_DEPTH + 2)
     .setVisible(false);
-  updateEnergyRefinerModule(this);
+  updateShipEquipmentModules(this);
 
   this.shieldBubble = this.add.graphics()
     .setDepth(SHIP_DEPTH + 1)
@@ -976,7 +982,7 @@ function moveShipTo(scene, x) {
     scene.shipTargetAngle = Phaser.Math.Clamp(deltaX * 0.75, -SHIP_MAX_TILT, SHIP_MAX_TILT);
     scene.lastShipMoveAt = scene.time ? scene.time.now : 0;
   }
-  updateEnergyRefinerModule(scene);
+  updateShipEquipmentModules(scene);
   updateShieldBubble(scene);
 }
 
@@ -1009,15 +1015,19 @@ function refreshShipSize(scene) {
 function setShipTextureForCurrentState(scene) {
   if (!scene.ship) return;
 
-  if (isWaveCountdownActive(scene)) {
-    scene.ship.setTexture('ship');
-  } else if (scene.activeScoreBooster) {
+  if (shieldBoosterLevel > 0 && scoreBoosterLevel > 0) {
+    scene.ship.setTexture('bluePurpleShip');
+  } else if (scoreBoosterLevel > 0) {
     scene.ship.setTexture('purpleShip');
-  } else if (scene.activeShieldBooster) {
+  } else if (shieldBoosterLevel > 0) {
     scene.ship.setTexture('blueShip');
   } else {
     scene.ship.setTexture('ship');
   }
+}
+
+function updateShipEquipmentModules(scene) {
+  updateEnergyRefinerModule(scene);
 }
 
 function updateEnergyRefinerModule(scene) {
@@ -1491,7 +1501,7 @@ function setPauseOverlayMode(scene, mode = 'normal') {
     scene.pauseOverlay.title.textContent = isUpgradePause ? 'Nave mejorada' : 'PAUSA';
   }
   if (scene.pauseOverlay.copy) {
-    scene.pauseOverlay.copy.textContent = 'Toca la nave para continuar';
+    scene.pauseOverlay.copy.textContent = 'Arrastra la nave para continuar';
   }
 }
 
@@ -1803,7 +1813,7 @@ function resetCounters() {
   updateUpgradeStatusIcons(this);
   updateLivesText(this);
   setShipTextureForCurrentState(this);
-  updateEnergyRefinerModule(this);
+  updateShipEquipmentModules(this);
 }
 
 function trackGameplayVisual(scene, object) {
@@ -1879,6 +1889,11 @@ function takeDirectDamage(scene) {
 
 function flashPlayerShip(scene, damaged = false) {
   if (!scene.ship) return;
+  if (scene.shipAbsorbTween) {
+    scene.shipAbsorbTween.stop();
+    scene.shipAbsorbTween = null;
+    scene.ship.setAlpha(1);
+  }
   if (scene.shipDamageTween) {
     scene.shipDamageTween.stop();
     scene.shipDamageTween = null;
@@ -2076,6 +2091,7 @@ function resetTimedBoosters(scene) {
 
   clearScoreBoosterBallColor(scene);
   updateLivesText(scene);
+  updateShipEquipmentModules(scene);
 
   if (scene.ship) {
     refreshShipSize(scene);
@@ -2338,6 +2354,7 @@ function activateScoreBooster(scene) {
   };
 
   setShipTextureForCurrentState(scene);
+  updateShipEquipmentModules(scene);
   applyScoreBoosterBallColor(scene);
   playPurpleBoosterMusic(scene);
 
@@ -2353,6 +2370,7 @@ function activateShieldBooster(scene) {
   };
 
   setShipTextureForCurrentState(scene);
+  updateShipEquipmentModules(scene);
   refreshShipSize(scene);
   moveShipTo(scene, clampShipX(scene, scene.ship.x));
   updateShieldBubble(scene);
@@ -2376,6 +2394,7 @@ function updateScoreBooster(scene) {
   scoreMultiplier = 1;
   clearScoreBoosterBallColor(scene);
   setShipTextureForCurrentState(scene);
+  updateShipEquipmentModules(scene);
   playBackgroundMusic(scene);
   setHudBoosterVisible(false);
   updateBoosterBar(scene, 0);
@@ -2407,6 +2426,7 @@ function updateShieldBooster(scene) {
 
   scene.activeShieldBooster = null;
   setShipTextureForCurrentState(scene);
+  updateShipEquipmentModules(scene);
   refreshShipSize(scene);
   moveShipTo(scene, clampShipX(scene, scene.ship.x));
   updateShieldBubble(scene);
@@ -2874,7 +2894,7 @@ function showBossCueBand(scene, waveKind, cueKind, onCross) {
   }
 
   const bossName = getWaveBossName(scene, waveKind);
-  const labelText = cueKind === 'safe' ? 'CONTINUAR VIAJE' : bossName.toUpperCase();
+  const labelText = cueKind === 'safe' ? 'AMENAZA SUPERADA' : bossName.toUpperCase();
 
   const height = BOSS_CUE_BAND_HEIGHT;
   const targetY = getGameHeight(scene) / 2 - height / 2;
@@ -3371,7 +3391,7 @@ function chooseUpgrade(scene, upgradeKind) {
   updateUpgradeBar(scene);
   updateUpgradeStatusIcons(scene);
   setShipTextureForCurrentState(scene);
-  updateEnergyRefinerModule(scene);
+  updateShipEquipmentModules(scene);
   showOverlayScreen(scene, null);
   scene.availableUpgradeChoices = null;
 
@@ -4362,12 +4382,22 @@ function showAbsorbEffect(scene, x, y, kind, isPurpleEnergy = false) {
     });
   }
 
-  scene.tweens.add({
+  if (scene.shipAbsorbTween) {
+    scene.shipAbsorbTween.stop();
+    scene.shipAbsorbTween = null;
+    scene.ship.setAlpha(1);
+  }
+
+  scene.shipAbsorbTween = scene.tweens.add({
     targets: scene.ship,
     alpha: 0.72,
     duration: 70,
     yoyo: true,
     ease: 'Sine.easeOut',
+    onComplete: () => {
+      scene.shipAbsorbTween = null;
+      scene.ship.setAlpha(1);
+    },
   });
 }
 
