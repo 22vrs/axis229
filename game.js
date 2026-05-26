@@ -73,6 +73,8 @@ const RED_ENEMY_SWAY_MAX_VELOCITY = 24;
 const SHIP_MAX_TILT = 14;
 const SHIP_TILT_SMOOTHING = 0.24;
 const SHIP_TILT_IDLE_DELAY = 170;
+const SHIP_RESUME_TOUCH_PADDING_X = 12;
+const SHIP_RESUME_TOUCH_PADDING_Y = 24;
 const ASTEROID_WAVE_BIG_ASTEROID_CHANCE = 0.16;
 const ASTEROID_GRAVITY_RATIO = 0.9;
 const BIG_ASTEROID_GRAVITY_RATIO = 0.72;
@@ -301,6 +303,7 @@ function create() {
   gameScene = this;
   this.physics.world.setBounds(0, 0, getGameWidth(this), getGameHeight(this));
   bindUiEventGuards();
+  bindPausedShipResumeFallback(this);
 
   this.backgroundLayer = this.add.container(0, 0);
   createBackground(this);
@@ -842,15 +845,53 @@ function createBigAsteroidTexture(scene) {
 }
 
 function isPointerOverShip(scene, pointer) {
+  return isGamePointOverShip(scene, pointer.x, pointer.y);
+}
+
+function isGamePointOverShip(scene, x, y, paddingX = 0, paddingY = 0) {
+  if (!scene || !scene.ship) return false;
+
   const halfWidth = getShipWidth(scene) / 2;
   const halfHeight = SHIP_HEIGHT / 2;
 
   return (
-    pointer.x >= scene.ship.x - halfWidth &&
-    pointer.x <= scene.ship.x + halfWidth &&
-    pointer.y >= scene.ship.y - halfHeight &&
-    pointer.y <= scene.ship.y + halfHeight
+    x >= scene.ship.x - halfWidth - paddingX &&
+    x <= scene.ship.x + halfWidth + paddingX &&
+    y >= scene.ship.y - halfHeight - paddingY &&
+    y <= scene.ship.y + halfHeight + paddingY
   );
+}
+
+function bindPausedShipResumeFallback(scene) {
+  const container = document.getElementById('game-container');
+  if (!container || container.dataset.resumeFallbackBound === '1') return;
+  container.dataset.resumeFallbackBound = '1';
+
+  container.addEventListener('pointerdown', (event) => {
+    if (state !== 'paused') return;
+    if (event.target && event.target.closest && event.target.closest('.ui-panel')) return;
+    if (scene.optionsOverlay && scene.optionsOverlay.element && scene.optionsOverlay.element.classList.contains('is-visible')) return;
+
+    const point = getGamePointFromClient(scene, event.clientX, event.clientY);
+    if (!point) return;
+    if (!isGamePointOverShip(scene, point.x, point.y, SHIP_RESUME_TOUCH_PADDING_X, SHIP_RESUME_TOUCH_PADDING_Y)) return;
+
+    event.preventDefault();
+    resumeGame.call(scene);
+  });
+}
+
+function getGamePointFromClient(scene, clientX, clientY) {
+  const canvas = scene && scene.game && scene.game.canvas;
+  if (!canvas) return null;
+
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return null;
+
+  return {
+    x: (clientX - rect.left) * (getGameWidth(scene) / rect.width),
+    y: (clientY - rect.top) * (getGameHeight(scene) / rect.height),
+  };
 }
 
 function update(time, delta) {
