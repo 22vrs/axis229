@@ -21,7 +21,7 @@ const SPAWN_DELAY_EASING = 1.8;
 const BASE_GRAVITY = 220;
 const MAX_SPEED_MULTIPLIER = 2;
 const MAX_BALL_GRAVITY = BASE_GRAVITY * MAX_SPEED_MULTIPLIER;
-const SPEED_TARGET_LEVEL = 4;
+const SPEED_TARGET_LEVEL = 3;
 const STARFIELD_SPEED_RATIO = 0.32;
 const MAX_STARFIELD_SPEED_MULTIPLIER = 2.6;
 const BOOSTER_GRAVITY_RATIO = 0.8;
@@ -3949,9 +3949,9 @@ function increaseDifficulty(scene) {
 }
 
 function getSpeedMultiplierForLevel(level) {
-  if (level <= 0) return 1;
+  if (level <= 1) return 1;
   if (level >= SPEED_TARGET_LEVEL) return MAX_SPEED_MULTIPLIER;
-  const progress = Phaser.Math.Clamp(level / SPEED_TARGET_LEVEL, 0, 1);
+  const progress = Phaser.Math.Clamp((level - 1) / (SPEED_TARGET_LEVEL - 1), 0, 1);
   return 1 + progress * (MAX_SPEED_MULTIPLIER - 1);
 }
 
