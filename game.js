@@ -15,8 +15,8 @@ const SUPABASE_ANON_KEY = 'sb_publishable_Up1cBihd6uOftnMkhj3A3w_ZH1q7YOR';
 const SUPABASE_RANKING_TABLE = 'ranking';
 const SUPABASE_SCORE_COLUMN = 'puntos';
 const DEFAULT_PLAYER_NAME = 'Anónimo';
-const INITIAL_SPAWN_DELAY = 1700;
-const MIN_SPAWN_DELAY = 680;
+const INITIAL_SPAWN_DELAY = 1500;
+const MIN_SPAWN_DELAY = 600;
 const SPAWN_DELAY_EASING = 1.8;
 const BASE_GRAVITY = 220;
 const MAX_SPEED_MULTIPLIER = 2;
@@ -38,14 +38,14 @@ const RED_WAVE_SPAWN_DELAY = 600;
 const RED_WAVE_ENEMY_GRAVITY_RATIO = 0.72;
 const RED_WAVE_MIN_ENEMY_SPACING = 185;
 const RED_WAVE_RECENT_ENEMY_HEIGHT = 230;
-const OBRERA_SPAWN_CHANCE = 0.13;
-const CAPPED_SPEED_OBRERA_SPAWN_CHANCE = 0.12;
+const OBRERA_SPAWN_CHANCE = 0.17;
+const CAPPED_SPEED_OBRERA_SPAWN_CHANCE = 0.16;
 const ASTEROID_WAVE_DURATION = 15000;
 const ASTEROID_WAVE_SPAWN_DELAY = 760;
-const TRAVEL_ASTEROID_CHANCE = 0.075;
-const CAPPED_SPEED_TRAVEL_ASTEROID_CHANCE = 0.08;
-const TRAVEL_PLASMA_CHANCE = 0.035;
-const CAPPED_SPEED_TRAVEL_PLASMA_CHANCE = 0.04;
+const TRAVEL_ASTEROID_CHANCE = 0.095;
+const CAPPED_SPEED_TRAVEL_ASTEROID_CHANCE = 0.1;
+const TRAVEL_PLASMA_CHANCE = 0.045;
+const CAPPED_SPEED_TRAVEL_PLASMA_CHANCE = 0.05;
 const PLASMA_WAVE_DURATION = 15000;
 const PLASMA_WAVE_SPAWN_DELAY = 2100;
 const PLASMA_BAR_HEIGHT = 18;
@@ -223,13 +223,13 @@ function updateHud(scene = gameScene) {
   updateUpgradeStatusIcons(scene);
 }
 
-function setHudBoosterVisible(visible, color = '#76ffe8', label = 'BOOSTER') {
+function setHudBoosterVisible(visible, color = '#76ffe8', label = null) {
   const currentHud = initHud();
   if (!currentHud.booster || !currentHud.boosterFill) return;
   currentHud.booster.classList.toggle('is-active', visible);
   currentHud.boosterFill.style.background = 'linear-gradient(90deg, ' + color + ', #ecf7ff)';
   currentHud.boosterFill.style.boxShadow = '0 0 14px ' + color;
-  if (currentHud.boosterLabel) currentHud.boosterLabel.textContent = label;
+  if (currentHud.boosterLabel && label) currentHud.boosterLabel.textContent = label;
 }
 
 function getLevelRequirement(level) {
@@ -1856,6 +1856,10 @@ function scheduleNextSpawn(scene, delayOverride = null) {
     return;
   }
 
+  if (scene.activePlasmaWave) {
+    return;
+  }
+
   if (isBlockingBossWave(scene)) {
     return;
   }
@@ -1900,8 +1904,28 @@ function resumeGame() {
   resumeFallingObjects(this);
   resumeTimedGameplay(this);
 
-  scheduleNextSpawn(this, this.resumeSpawnDelay || null);
+  resumeGameplaySpawning(this, this.resumeSpawnDelay || null);
   this.resumeSpawnDelay = null;
+}
+
+function resumeGameplaySpawning(scene, delayOverride = null) {
+  if (state !== 'playing') return;
+  if (scene.waveStartEvent || scene.bossCueTween) return;
+
+  if (scene.activePlasmaWave) {
+    if (scene.activePlasmaWave.isSpawningPlasma && !scene.plasmaSpawnEvent) {
+      schedulePlasmaSpawn(scene);
+    }
+    return;
+  }
+
+  if (scene.activeRedWave && !scene.activeRedWave.isSpawningDamageBoosters) return;
+  if (scene.activeAsteroidWave && !scene.activeAsteroidWave.isSpawningAsteroids) return;
+  if (isBlockingBossWave(scene)) return;
+
+  if (!spawnEvent) {
+    scheduleNextSpawn(scene, delayOverride);
+  }
 }
 
 function pauseTimedGameplay(scene) {
@@ -1914,6 +1938,8 @@ function pauseTimedGameplay(scene) {
   });
   if (scene.bossEnterTween) scene.bossEnterTween.pause();
   if (scene.bossExitTween) scene.bossExitTween.pause();
+  if (scene.bossCueMoveTween) scene.bossCueMoveTween.pause();
+  if (scene.bossCueExitTween) scene.bossCueExitTween.pause();
 
   if (scene.redWaveAudio && !scene.redWaveAudio.paused) {
     scene.wasRedWaveAudioPausedByGame = true;
@@ -1935,6 +1961,8 @@ function resumeTimedGameplay(scene) {
   });
   if (scene.bossEnterTween) scene.bossEnterTween.resume();
   if (scene.bossExitTween) scene.bossExitTween.resume();
+  if (scene.bossCueMoveTween) scene.bossCueMoveTween.resume();
+  if (scene.bossCueExitTween) scene.bossCueExitTween.resume();
 
   if (scene.wasRedWaveAudioPausedByGame && scene.redWaveAudio) {
     scene.redWaveAudio.play().catch(() => {});
@@ -2238,7 +2266,7 @@ function activateScoreBooster(scene) {
   applyScoreBoosterBallColor(scene);
   playPurpleBoosterMusic(scene);
 
-  setHudBoosterVisible(true, '#9b5cff', 'BONUS x2');
+  setHudBoosterVisible(true, '#9b5cff', 'Catalizador de energía');
   updateBoosterBar(scene, 1);
 }
 
@@ -2255,7 +2283,7 @@ function activateShieldBooster(scene) {
   updateShieldBubble(scene);
   updateLivesText(scene);
 
-  setHudBoosterVisible(true, '#4da3ff', 'ESCUDO');
+  setHudBoosterVisible(true, '#4da3ff', 'Barrera protectora');
   updateBoosterBar(scene, 1);
 }
 
@@ -2803,13 +2831,15 @@ function showBossCueBand(scene, waveKind, cueKind, onCross) {
   });
 
   scene.bossCueTween = scene.time.delayedCall(crossDelay, () => {
-      if (cueKind === 'warning') {
-        playRedWaveSound(scene);
-      }
-      if (onCross) onCross();
+    scene.bossCueTween = null;
+    if (cueKind === 'warning') {
+      playRedWaveSound(scene);
+    }
+    if (onCross) onCross();
   });
 
   scene.bossCueClearEvent = scene.time.delayedCall(cueDuration, () => {
+    scene.bossCueClearEvent = null;
     if (scene.bossCueMoveTween) {
       scene.bossCueMoveTween.remove();
       scene.bossCueMoveTween = null;
@@ -3422,9 +3452,11 @@ function resumeFallingObjects(scene) {
   if (scene.plasmaBars) {
     scene.plasmaBars.forEach((bar) => {
       if (!bar || !bar.active) return;
-      bar.pausedVelocityY = PLASMA_BAR_VERTICAL_SPEED;
-      bar.pausedGapVelocity = bar.gapVelocity;
-      bar.gapVelocity = 0;
+      if (bar.pausedGapVelocity !== undefined) {
+        bar.gapVelocity = bar.pausedGapVelocity;
+        delete bar.pausedGapVelocity;
+      }
+      delete bar.pausedVelocityY;
     });
   }
 }
@@ -3679,8 +3711,8 @@ function getNextAsteroidKind(scene) {
   if (hasFallingAsteroid(scene) || countActiveHostileFallingObjects(scene) >= 3) return null;
 
   const chance = currentGravity >= MAX_BALL_GRAVITY
-    ? CAPPED_SPEED_TRAVEL_PLASMA_CHANCE
-    : TRAVEL_PLASMA_CHANCE;
+    ? CAPPED_SPEED_TRAVEL_ASTEROID_CHANCE
+    : TRAVEL_ASTEROID_CHANCE;
   if (Math.random() >= chance) return null;
   return Math.random() < 0.24 ? 'bigAsteroid' : 'asteroid';
 }
@@ -3691,8 +3723,8 @@ function getNextPlasmaKind(scene) {
   if (countActiveHostileFallingObjects(scene) >= 3) return null;
 
   const chance = currentGravity >= MAX_BALL_GRAVITY
-    ? CAPPED_SPEED_TRAVEL_ASTEROID_CHANCE
-    : TRAVEL_ASTEROID_CHANCE;
+    ? CAPPED_SPEED_TRAVEL_PLASMA_CHANCE
+    : TRAVEL_PLASMA_CHANCE;
   return Math.random() < chance ? 'plasmaBar' : null;
 }
 
