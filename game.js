@@ -34,18 +34,15 @@ const SHIELD_BUBBLE_DIAMETER = SHIELD_BUBBLE_RADIUS * 2;
 const MIN_TIMED_BOOSTER_DURATION = 5000;
 const MAX_TIMED_BOOSTER_DURATION = 15000;
 const RED_WAVE_DURATION = 15000;
-const RED_WAVE_SPAWN_DELAY = 480;
+const RED_WAVE_SPAWN_DELAY = 400;
 const RED_WAVE_ENEMY_GRAVITY_RATIO = 0.72;
 const RED_WAVE_MIN_ENEMY_SPACING = SHIP_WIDTH + 56;
 const RED_WAVE_RECENT_ENEMY_HEIGHT = 230;
-const OBRERA_SPAWN_CHANCE = 0.17;
-const CAPPED_SPEED_OBRERA_SPAWN_CHANCE = 0.16;
+const OBRERA_SPAWN_CHANCE = 0.16;
 const ASTEROID_WAVE_DURATION = 15000;
 const ASTEROID_WAVE_SPAWN_DELAY = 760;
-const TRAVEL_ASTEROID_CHANCE = 0.095;
-const CAPPED_SPEED_TRAVEL_ASTEROID_CHANCE = 0.1;
-const TRAVEL_PLASMA_CHANCE = 0.045;
-const CAPPED_SPEED_TRAVEL_PLASMA_CHANCE = 0.05;
+const TRAVEL_ASTEROID_CHANCE = 0.1;
+const TRAVEL_PLASMA_CHANCE = 0.05;
 const PLASMA_WAVE_DURATION = 15000;
 const PLASMA_WAVE_SPAWN_DELAY = 2100;
 const PLASMA_BAR_HEIGHT = 18;
@@ -93,8 +90,8 @@ const MAGNET_BASE_RADIUS_RATIO = 0.14;
 const MAGNET_PULL_RATIO = 0.75;
 const UPGRADE_BAR_TWEEN_DURATION = 260;
 const SCORE_BOOSTER_CHANCE = 0.07;
-const SHIELD_BOOSTER_CHANCE = 0.07;
-const LIFE_BOOSTER_CHANCE = 0.025;
+const SHIELD_BOOSTER_CHANCE = 0.05;
+const LIFE_BOOSTER_CHANCE = 0.03;
 const FONT_FAMILY = '"Orbitron", "Rajdhani", "Trebuchet MS", Arial, sans-serif';
 const FALLING_OBJECT_DEPTH = 4;
 const SHIP_DEPTH = 12;
@@ -172,6 +169,7 @@ let hud = null;
 let supabaseClient = null;
 let pendingScoreSave = null;
 let lastScoreSaved = false;
+let currentGameMode = 'normal';
 let soundEffectsEnabled = true;
 let musicEnabled = true;
 
@@ -245,21 +243,29 @@ function getBossConfigForLevel(level) {
   const bossIndex = getBossIndexForLevel(level);
   if (bossIndex === -1) return null;
 
-  if (bossIndex % 4 === 0) {
+  const bossKinds = ['red', 'asteroid', 'boss', 'plasma'];
+  const bossKind = currentGameMode === 'infinite'
+    ? bossKinds[Math.floor(Math.random() * bossKinds.length)]
+    : bossKinds[bossIndex % bossKinds.length];
+  return createBossConfig(bossKind);
+}
+
+function createBossConfig(kind) {
+  if (kind === 'red') {
     return {
       kind: 'red',
       name: 'Enjambre',
       duration: RED_WAVE_DURATION,
     };
   }
-  if (bossIndex % 4 === 1) {
+  if (kind === 'asteroid') {
     return {
       kind: 'asteroid',
       name: 'Cinturón',
       duration: ASTEROID_WAVE_DURATION,
     };
   }
-  if (bossIndex % 4 === 2) {
+  if (kind === 'boss') {
     return {
       kind: 'boss',
       name: 'Centinela',
@@ -391,19 +397,55 @@ function create() {
   });
   createShipTexture(this, 'purpleShip', {
     hull: 0xb8bec8,
-    wing: 0x8f55ff,
+    wing: 0x6f7784,
+    wingAccent: 0x8f55ff,
+    cockpit: 0xf1f4f8,
+    engine: 0xd8a8ff,
+  });
+  createShipTexture(this, 'greenShip', {
+    hull: 0xb8bec8,
+    hullSideAccent: 0x4dff88,
+    wing: 0x6f7784,
+    cockpit: 0xf1f4f8,
+    engine: 0xd6dbe3,
+  });
+  createShipTexture(this, 'greenPurpleShip', {
+    hull: 0xb8bec8,
+    hullSideAccent: 0x4dff88,
+    wing: 0x6f7784,
+    wingAccent: 0x8f55ff,
     cockpit: 0xf1f4f8,
     engine: 0xd8a8ff,
   });
   createShipTexture(this, 'blueShip', {
-    hull: 0x66bfff,
+    hull: 0xb8bec8,
+    hullAccent: 0x66bfff,
+    wing: 0x6f7784,
+    cockpit: 0xe7f7ff,
+    engine: 0xd6dbe3,
+  });
+  createShipTexture(this, 'blueGreenShip', {
+    hull: 0xb8bec8,
+    hullAccent: 0x66bfff,
+    hullSideAccent: 0x4dff88,
     wing: 0x6f7784,
     cockpit: 0xe7f7ff,
     engine: 0xd6dbe3,
   });
   createShipTexture(this, 'bluePurpleShip', {
-    hull: 0x66bfff,
-    wing: 0x8f55ff,
+    hull: 0xb8bec8,
+    hullAccent: 0x66bfff,
+    wing: 0x6f7784,
+    wingAccent: 0x8f55ff,
+    cockpit: 0xe7f7ff,
+    engine: 0xd8a8ff,
+  });
+  createShipTexture(this, 'blueGreenPurpleShip', {
+    hull: 0xb8bec8,
+    hullAccent: 0x66bfff,
+    hullSideAccent: 0x4dff88,
+    wing: 0x6f7784,
+    wingAccent: 0x8f55ff,
     cockpit: 0xe7f7ff,
     engine: 0xd8a8ff,
   });
@@ -575,6 +617,22 @@ function createShipTexture(scene, key, colors, textureWidth = SHIP_WIDTH) {
     { x: innerRight + 8, y: 33 },
   ], true);
 
+  if (colors.wingAccent) {
+    graphics.fillStyle(colors.wingAccent, 0.9);
+    graphics.fillPoints([
+      { x: left + 11, y: 27 },
+      { x: innerLeft + 1, y: 13 },
+      { x: centerX - 16, y: 20 },
+      { x: innerLeft - 5, y: 28 },
+    ], true);
+    graphics.fillPoints([
+      { x: right - 11, y: 27 },
+      { x: innerRight - 1, y: 13 },
+      { x: centerX + 16, y: 20 },
+      { x: innerRight + 5, y: 28 },
+    ], true);
+  }
+
   graphics.fillStyle(colors.hull, 1);
   graphics.fillPoints([
     { x: centerX, y: 2 },
@@ -584,6 +642,24 @@ function createShipTexture(scene, key, colors, textureWidth = SHIP_WIDTH) {
     { x: centerX - 24, y: 28 },
     { x: centerX - 34, y: 13 },
   ], true);
+
+  if (colors.hullAccent) {
+    graphics.fillStyle(colors.hullAccent, 0.82);
+    graphics.fillPoints([
+      { x: centerX, y: 5 },
+      { x: centerX + 14, y: 13 },
+      { x: centerX + 11, y: 28 },
+      { x: centerX, y: 31 },
+      { x: centerX - 11, y: 28 },
+      { x: centerX - 14, y: 13 },
+    ], true);
+  }
+
+  if (colors.hullSideAccent) {
+    graphics.fillStyle(colors.hullSideAccent, 0.72);
+    graphics.fillRoundedRect(centerX - 31, 16, 17, 6, 2);
+    graphics.fillRoundedRect(centerX + 14, 16, 17, 6, 2);
+  }
 
   graphics.fillStyle(colors.cockpit, 0.82);
   graphics.fillEllipse(centerX, 15, 24, 12);
@@ -1015,14 +1091,18 @@ function refreshShipSize(scene) {
 function setShipTextureForCurrentState(scene) {
   if (!scene.ship) return;
 
-  if (shieldBoosterLevel > 0 && scoreBoosterLevel > 0) {
-    scene.ship.setTexture('bluePurpleShip');
-  } else if (scoreBoosterLevel > 0) {
-    scene.ship.setTexture('purpleShip');
-  } else if (shieldBoosterLevel > 0) {
-    scene.ship.setTexture('blueShip');
+  const hasLifeBooster = lifeBoosterLevel > 0;
+  const hasShieldBooster = shieldBoosterLevel > 0;
+  const hasScoreBooster = scoreBoosterLevel > 0;
+
+  if (hasShieldBooster && hasScoreBooster) {
+    scene.ship.setTexture(hasLifeBooster ? 'blueGreenPurpleShip' : 'bluePurpleShip');
+  } else if (hasScoreBooster) {
+    scene.ship.setTexture(hasLifeBooster ? 'greenPurpleShip' : 'purpleShip');
+  } else if (hasShieldBooster) {
+    scene.ship.setTexture(hasLifeBooster ? 'blueGreenShip' : 'blueShip');
   } else {
-    scene.ship.setTexture('ship');
+    scene.ship.setTexture(hasLifeBooster ? 'greenShip' : 'ship');
   }
 }
 
@@ -1043,11 +1123,11 @@ function updateEnergyRefinerModule(scene) {
   const y = scene.ship.y;
   scene.energyRefinerModule.setVisible(true);
   scene.energyRefinerModule.fillStyle(0xffd84d, 0.95);
-  scene.energyRefinerModule.fillRoundedRect(x - 24, y - 5, 48, 10, 5);
+  scene.energyRefinerModule.fillRoundedRect(x - 18, y - 4, 36, 8, 4);
   scene.energyRefinerModule.fillStyle(0xffffff, 0.92);
-  scene.energyRefinerModule.fillCircle(x, y, 5 + energyRefinerLevel);
+  scene.energyRefinerModule.fillCircle(x, y, 3 + energyRefinerLevel);
   scene.energyRefinerModule.lineStyle(2, 0xfff0a8, 0.75);
-  scene.energyRefinerModule.strokeCircle(x, y, 8 + energyRefinerLevel * 2);
+  scene.energyRefinerModule.strokeCircle(x, y, 6 + energyRefinerLevel * 1.5);
 }
 
 function getGameWidth(scene) {
@@ -1217,6 +1297,10 @@ function createMenu(scene) {
     playButtonSound(scene);
     startGame.call(scene);
   });
+  bindScreenClick('menu', 'infinite-mode-button', () => {
+    playButtonSound(scene);
+    startGame.call(scene, { mode: 'infinite' });
+  });
   bindScreenClick('menu', 'ranking-button', () => {
     playButtonSound(scene);
     showRanking.call(scene);
@@ -1238,6 +1322,7 @@ function createGameOver(scene) {
   const saveScoreButton = document.getElementById('save-score-button');
   const scoreStatus = document.getElementById('score-status');
   const topRankingList = document.getElementById('gameover-ranking-list');
+  const rankingBlock = topRankingList ? topRankingList.closest('.ranking-block') : null;
   const retryButton = document.getElementById('retry-button');
   const menuButton = document.getElementById('menu-button');
 
@@ -1250,7 +1335,7 @@ function createGameOver(scene) {
   if (retryButton) {
     retryButton.addEventListener('click', () => {
       playButtonSound(scene);
-      startGame.call(scene);
+      startGame.call(scene, { mode: currentGameMode });
     });
   }
   if (menuButton) {
@@ -1270,6 +1355,7 @@ function createGameOver(scene) {
   overlay.saveScoreButton = saveScoreButton;
   overlay.scoreStatus = scoreStatus;
   overlay.topRankingList = topRankingList;
+  overlay.rankingBlock = rankingBlock;
   return overlay;
 }
 
@@ -1358,6 +1444,7 @@ function prepareGameOverScore(scene) {
   const overlay = scene.gameOverContainer;
   if (!overlay) return;
   if (overlay.scoreForm) overlay.scoreForm.hidden = false;
+  if (overlay.rankingBlock) overlay.rankingBlock.hidden = false;
   if (overlay.playerNameInput) {
     overlay.playerNameInput.value = '';
     overlay.playerNameInput.disabled = false;
@@ -1688,6 +1775,7 @@ function setUiDepth(scene) {
 
 function showMenu() {
   state = 'menu';
+  currentGameMode = 'normal';
   isDraggingShip = false;
   if (this) this.optionsReturnScreen = null;
   pendingScoreSave = null;
@@ -1723,8 +1811,9 @@ function showRanking() {
   loadRankingInto(this.rankingContainer && this.rankingContainer.list, this.rankingContainer && this.rankingContainer.status, 10);
 }
 
-function startGame() {
+function startGame(options = {}) {
   state = 'playing';
+  currentGameMode = options.mode === 'infinite' ? 'infinite' : 'normal';
   isDraggingShip = false;
   pendingScoreSave = null;
   lastScoreSaved = false;
@@ -1736,6 +1825,9 @@ function startGame() {
   showOverlayScreen(this, null);
   setHudVisible(this, true);
   resetCounters.call(this);
+  if (currentGameMode === 'infinite') {
+    enableInfiniteModeThreats(this);
+  }
   resetTimedBoosters(this);
   resetRedWave(this);
   resetAsteroidWave(this);
@@ -1774,9 +1866,35 @@ function endGame() {
   playBackgroundMusic(this);
   setHudVisible(this, false);
   showOverlayScreen(this, 'gameover');
-  this.gameOverContainer.finalScore.setText('Puntuación: ' + score);
-  prepareGameOverScore(this);
-  loadRankingInto(this.gameOverContainer.topRankingList, null, 3);
+  if (currentGameMode === 'infinite') {
+    this.gameOverContainer.finalScore.setText('Modo Infinito - Puntuación: ' + score);
+    prepareInfiniteModeGameOver(this);
+  } else {
+    this.gameOverContainer.finalScore.setText('Puntuación: ' + score);
+    prepareGameOverScore(this);
+    loadRankingInto(this.gameOverContainer.topRankingList, null, 3);
+  }
+}
+
+function enableInfiniteModeThreats(scene) {
+  scene.obreraSpawnsUnlocked = true;
+  scene.asteroidSpawnsUnlocked = true;
+  scene.plasmaSpawnsUnlocked = true;
+  scene.travelSentinelUnlocked = true;
+  scene.nextTravelSentinelEligibleAt = 0;
+}
+
+function prepareInfiniteModeGameOver(scene) {
+  pendingScoreSave = null;
+  lastScoreSaved = false;
+
+  const overlay = scene.gameOverContainer;
+  if (!overlay) return;
+  if (overlay.scoreForm) overlay.scoreForm.hidden = true;
+  if (overlay.rankingBlock) overlay.rankingBlock.hidden = true;
+  if (overlay.playerNameInput) overlay.playerNameInput.disabled = true;
+  if (overlay.saveScoreButton) overlay.saveScoreButton.disabled = true;
+  setStatus(overlay.scoreStatus, 'Modo Infinito: la puntuacion no se guarda en el ranking.');
 }
 
 function resetCounters() {
@@ -2625,12 +2743,48 @@ function updateBossWave(scene) {
   const bossWave = scene.activeBossWave;
   if (!bossWave || !bossWave.hasStarted) return;
 
+  recoverStalledBossWave(scene, bossWave);
+  if (scene.activeBossWave !== bossWave) return;
+
   if (scene.bossLaser && !scene.bossLaser.getData('hasDamagedShip') && isLaserTouchingShip(scene, scene.bossLaser)) {
     scene.bossLaser.setData('hasDamagedShip', true);
     if (!isShieldActive(scene)) {
       takeDirectDamage(scene);
     }
   }
+}
+
+function recoverStalledBossWave(scene, bossWave) {
+  if (state !== 'playing') return;
+
+  if (!scene.bossShip || !scene.bossShip.active) {
+    resetBossWave(scene);
+    scheduleNextSpawn(scene);
+    return;
+  }
+
+  if (
+    scene.bossEnterTween ||
+    scene.bossExitTween ||
+    scene.bossAttackEvent ||
+    scene.bossLaserEvent ||
+    scene.bossLaserClearEvent ||
+    scene.bossLaser
+  ) {
+    return;
+  }
+
+  if (bossWave.isRetreating) {
+    endWaveAfterPause(scene, 'boss');
+    return;
+  }
+
+  if (bossWave.attacksDone >= bossWave.attacksTotal) {
+    retreatBoss(scene);
+    return;
+  }
+
+  scheduleBossAttack(scene, BOSS_ATTACK_GAP);
 }
 
 function startBossWave(scene) {
@@ -2679,10 +2833,11 @@ function scheduleBossAttack(scene, delay = BOSS_ATTACK_GAP) {
 }
 
 function beginBossLaserCharge(scene) {
+  scene.bossAttackEvent = null;
+
   const bossWave = scene.activeBossWave;
   if (!bossWave || !scene.bossShip) return;
 
-  scene.bossAttackEvent = null;
   const laserX = getNextBossLaserX(scene, bossWave);
   bossWave.currentLaserX = laserX;
   showBossLaserWarning(scene, laserX);
@@ -3758,12 +3913,10 @@ function getNextSpawnKind(scene) {
 
 function getNextTravelThreatKind(scene) {
   if (!scene.obreraSpawnsUnlocked || scene.activeRedWave || scene.activeAsteroidWave || scene.activePlasmaWave) return null;
+  if (hasActivePlasmaBars(scene)) return null;
   if (countActiveHostileFallingObjects(scene) >= 3) return null;
 
-  const chance = currentGravity >= MAX_BALL_GRAVITY
-    ? CAPPED_SPEED_OBRERA_SPAWN_CHANCE
-    : OBRERA_SPAWN_CHANCE;
-  return Math.random() < chance ? 'damageBooster' : null;
+  return Math.random() < OBRERA_SPAWN_CHANCE ? 'damageBooster' : null;
 }
 
 function shouldStartTravelSentinel(scene) {
@@ -3777,24 +3930,19 @@ function shouldStartTravelSentinel(scene) {
 
 function getNextAsteroidKind(scene) {
   if (!scene.asteroidSpawnsUnlocked || scene.activeRedWave || scene.activeAsteroidWave || scene.activePlasmaWave) return null;
+  if (hasActivePlasmaBars(scene)) return null;
   if (hasFallingAsteroid(scene) || countActiveHostileFallingObjects(scene) >= 3) return null;
 
-  const chance = currentGravity >= MAX_BALL_GRAVITY
-    ? CAPPED_SPEED_TRAVEL_ASTEROID_CHANCE
-    : TRAVEL_ASTEROID_CHANCE;
-  if (Math.random() >= chance) return null;
+  if (Math.random() >= TRAVEL_ASTEROID_CHANCE) return null;
   return Math.random() < 0.24 ? 'bigAsteroid' : 'asteroid';
 }
 
 function getNextPlasmaKind(scene) {
   if (!scene.plasmaSpawnsUnlocked || scene.activeRedWave || scene.activeAsteroidWave || scene.activePlasmaWave || scene.activeBossWave) return null;
   if (hasActivePlasmaBars(scene)) return null;
-  if (countActiveHostileFallingObjects(scene) >= 3) return null;
+  if (countActiveHostileFallingObjects(scene) > 0) return null;
 
-  const chance = currentGravity >= MAX_BALL_GRAVITY
-    ? CAPPED_SPEED_TRAVEL_PLASMA_CHANCE
-    : TRAVEL_PLASMA_CHANCE;
-  return Math.random() < chance ? 'plasmaBar' : null;
+  return Math.random() < TRAVEL_PLASMA_CHANCE ? 'plasmaBar' : null;
 }
 
 function getNextBoosterKind(scene) {
