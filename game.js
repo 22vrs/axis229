@@ -2222,6 +2222,24 @@ function resetTimedBoosters(scene) {
   updateBoosterBar(scene, 0);
 }
 
+function syncActiveTimedBoosterBar(scene) {
+  const scoreBooster = scene.activeScoreBooster;
+  const shieldBooster = scene.activeShieldBooster;
+  const booster = scoreBooster || shieldBooster;
+  if (!booster) return false;
+
+  const remaining = Math.max(0, booster.endsAt - scene.time.now);
+  if (remaining <= 0) return false;
+
+  if (scoreBooster) {
+    setHudBoosterVisible(true, '#9b5cff', 'Catalizador de energía');
+  } else {
+    setHudBoosterVisible(true, '#4da3ff', 'Barrera protectora');
+  }
+  updateBoosterBar(scene, remaining / booster.duration);
+  return true;
+}
+
 function resetRedWave(scene) {
   scene.activeRedWave = null;
   clearWaveTimers(scene);
@@ -2658,6 +2676,7 @@ function activatePlasmaWave(scene, bossConfig = getBossConfigForLevel(12)) {
 }
 
 function hideWaveBar(scene) {
+  if (syncActiveTimedBoosterBar(scene)) return;
   setHudBoosterVisible(false);
   updateBoosterBar(scene, 0);
 }
@@ -3156,8 +3175,7 @@ function endWaveAfterPause(scene, waveKind) {
         : scene.activeBossWave;
   if (!currentWave) return;
 
-  setHudBoosterVisible(false);
-  updateBoosterBar(scene, 0);
+  hideWaveBar(scene);
 
   if (waveKind === 'red') {
     scene.obreraSpawnsUnlocked = true;
