@@ -10,14 +10,14 @@ Hay un jefe cada 3 niveles. La rotacion normal es:
 
 | Nivel | Jefe | Ataque principal | Desbloquea despues |
 | ---: | --- | --- | --- |
-| 3 | Drones | Drones de pinchos que alternan estados y se expanden | Drones en el viaje |
-| 6 | Enjambre | Obreras / enemigos rojos con caida frecuente | Obreras en el viaje |
+| 3 | Enjambre | Obreras / enemigos rojos con caida frecuente | Obreras en el viaje |
+| 6 | Centinela | Laser vertical con aviso previo | Centinela viajero |
 | 9 | Cinturon | Asteroides normales y grandes | Asteroides en el viaje |
-| 12 | Centinela | Laser vertical con aviso previo | Centinela viajero |
-| 15 | Marea de Plasma | Barras horizontales con hueco movil | Barras de plasma en el viaje |
+| 12 | Marea de Plasma | Barras horizontales con hueco movil | Barras de plasma en el viaje |
+| 15 | Drones | Drones de pinchos que alternan estados y se expanden | Drones en el viaje |
 | 18 | Aguja Roja | 6 pasadas horizontales con patrones de laser | Aguja Roja en el viaje |
 
-Despues del nivel 18 la rotacion se repite cada 18 niveles: nivel 21 Drones, nivel 24 Enjambre, nivel 27 Cinturon, etc.
+Despues del nivel 18 la rotacion se repite cada 18 niveles: nivel 21 Enjambre, nivel 24 Centinela, nivel 27 Cinturon, etc.
 
 En modo infinito, el primer jefe es `Aguja Roja` para facilitar pruebas. A partir de ahi los jefes se eligen aleatoriamente entre la rotacion disponible.
 

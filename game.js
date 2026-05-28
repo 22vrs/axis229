@@ -269,7 +269,7 @@ function getBossConfigForLevel(level) {
   const bossIndex = getBossIndexForLevel(level);
   if (bossIndex === -1) return null;
 
-  const bossKinds = ['drones', 'red', 'asteroid', 'boss', 'plasma', 'redNeedleBoss'];
+  const bossKinds = ['red', 'boss', 'asteroid', 'plasma', 'drones', 'redNeedleBoss'];
   const bossKind = currentGameMode === 'infinite'
     ? (bossIndex === 0 ? 'redNeedleBoss' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
     : bossKinds[bossIndex % bossKinds.length];
