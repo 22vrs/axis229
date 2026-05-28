@@ -21,13 +21,21 @@ Despues del nivel 18 la rotacion se repite cada 18 niveles: nivel 21 Enjambre, n
 
 En modo infinito, el primer jefe es `Aguja Roja` para facilitar pruebas. A partir de ahi los jefes se eligen aleatoriamente entre la rotacion disponible.
 
+## Modos de juego
+
+| Modo | Movimiento | Ranking |
+| --- | --- | --- |
+| Normal | Nave limitada al eje horizontal clasico. | Guarda puntuacion. |
+| X-Y | Nave libre en ambos ejes dentro de la pantalla. | No guarda puntuacion en el ranking normal. |
+| Infinito | Nave limitada al eje horizontal clasico, con amenazas desbloqueadas. | No guarda puntuacion. |
+
 ## Enemigos y amenazas
 
 | Amenaza | Probabilidad | Cuando puede aparecer | Notas |
 | --- | ---: | --- | --- |
 | Obrera / enemigo rojo (`damageBooster`) | 16% | Viaje normal, despues de desbloquear obreras | No aparece si ya hay una barra de plasma o 3 amenazas activas. |
 | Drone de pinchos (`spikeDrone`) | 5% | Viaje normal, despues de desbloquear drones | Solo hace dano cuando esta expandido, salvo que choque con el escudo. |
-| Aguja Roja (`redNeedle`) | 5% | Viaje normal, despues de vencer al jefe Aguja Roja | Nave horizontal. No puede aparecer si ya hay otra Aguja Roja en pantalla. |
+| Aguja Roja (`redNeedle`) | 5% | Viaje normal, despues de vencer al jefe Aguja Roja | Amenaza horizontal. No puede aparecer si ya hay otra Aguja Roja en pantalla. |
 | Asteroide | 10% | Viaje normal, despues de desbloquear asteroides | No aparece si ya hay una barra de plasma, otro asteroide o 3 amenazas activas. |
 | Asteroide grande | 24% de los asteroides | Viaje normal | En probabilidad total equivale aprox. a 2,4% por intento, si se llega a tirar asteroide. |
 | Barra de plasma | 5% | Viaje normal, despues de desbloquear plasma | No aparece durante jefes, si ya hay una barra activa ni si hay amenazas hostiles activas. |

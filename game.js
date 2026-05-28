@@ -296,7 +296,7 @@ function getBossConfigForLevel(level) {
   if (bossIndex === -1) return null;
 
   const bossKinds = ['red', 'boss', 'asteroid', 'plasma', 'drones', 'redNeedleBoss'];
-  const bossKind = currentGameMode === 'infinite'
+  const bossKind = isInfiniteGameMode()
     ? (bossIndex === 0 ? 'redNeedleBoss' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
     : bossKinds[bossIndex % bossKinds.length];
   return createBossConfig(bossKind);
@@ -350,6 +350,18 @@ function createBossConfig(kind) {
 function getBossIndexForLevel(level) {
   if (level < 3 || level % 3 !== 0) return -1;
   return Math.floor(level / 3) - 1;
+}
+
+function getValidGameMode(mode) {
+  return ['normal', 'infinite', 'xy'].includes(mode) ? mode : 'normal';
+}
+
+function isInfiniteGameMode() {
+  return currentGameMode === 'infinite';
+}
+
+function isXyGameMode() {
+  return currentGameMode === 'xy';
 }
 
 bootGame();
@@ -597,12 +609,12 @@ function create() {
       if (this.optionsOverlay && this.optionsOverlay.element && this.optionsOverlay.element.classList.contains('is-visible')) return;
       if (!canResumeFromShipPoint(this, pointer.x, pointer.y)) return;
       resumeGame.call(this);
-      startDraggingShipAt(this, pointer.x);
+      startDraggingShipAt(this, pointer.x, pointer.y);
       return;
     }
     if (state !== 'playing') return;
     if (!isPointerOverShip(this, pointer)) return;
-    startDraggingShipAt(this, pointer.x);
+    startDraggingShipAt(this, pointer.x, pointer.y);
   });
 
   this.input.on('pointermove', (pointer) => {
@@ -613,8 +625,8 @@ function create() {
     }
     if (state !== 'playing') return;
 
-    const newX = clampShipX(this, pointer.x);
-    moveShipTo(this, newX);
+    const position = getDraggedShipPosition(this, pointer.x, pointer.y);
+    moveShipTo(this, position.x, position.y);
   });
 
   this.input.on('pointerup', () => {
@@ -1170,11 +1182,12 @@ function canResumeFromShipPoint(scene, x, y) {
   return isGamePointOverShip(scene, x, y, SHIP_RESUME_TOUCH_PADDING_X, SHIP_RESUME_TOUCH_PADDING_Y);
 }
 
-function startDraggingShipAt(scene, x) {
+function startDraggingShipAt(scene, x, y) {
   if (state !== 'playing') return;
   isDraggingShip = true;
   scene.input.setDefaultCursor('grabbing');
-  moveShipTo(scene, clampShipX(scene, x));
+  const position = getDraggedShipPosition(scene, x, y);
+  moveShipTo(scene, position.x, position.y);
 }
 
 function isGamePointOverShip(scene, x, y, paddingX = 0, paddingY = 0) {
@@ -1207,7 +1220,7 @@ function bindPausedShipResumeFallback(scene) {
 
     event.preventDefault();
     resumeGame.call(scene);
-    startDraggingShipAt(scene, point.x);
+    startDraggingShipAt(scene, point.x, point.y);
   };
 
   container.addEventListener('pointerdown', resumeFromEvent, { capture: true });
@@ -1215,7 +1228,8 @@ function bindPausedShipResumeFallback(scene) {
     if (!isDraggingShip || state !== 'playing') return;
     const point = getGamePointFromClient(scene, event.clientX, event.clientY);
     if (!point) return;
-    moveShipTo(scene, clampShipX(scene, point.x));
+    const position = getDraggedShipPosition(scene, point.x, point.y);
+    moveShipTo(scene, position.x, position.y);
   }, { capture: true });
 
   window.addEventListener('pointerup', () => pauseIfDraggingShip(scene));
@@ -1289,8 +1303,7 @@ function update(time, delta) {
   });
 }
 
-function moveShipTo(scene, x) {
-  const y = getShipY(scene);
+function moveShipTo(scene, x, y = scene.ship ? scene.ship.y : getShipY(scene)) {
   const previousX = scene.ship.x;
   const deltaX = x - previousX;
   scene.ship.setPosition(x, y);
@@ -1436,6 +1449,33 @@ function clampShipX(scene, x) {
   return Phaser.Math.Clamp(x, minX, maxX);
 }
 
+function clampShipY(scene, y) {
+  const halfShipHeight = SHIP_HEIGHT / 2;
+  const centerY = getGameHeight(scene) / 2;
+  const minY = halfShipHeight;
+  const maxY = getGameHeight(scene) - halfShipHeight;
+  if (minY >= maxY) return centerY;
+  return Phaser.Math.Clamp(y, minY, maxY);
+}
+
+function clampShipPosition(scene, x, y) {
+  return {
+    x: clampShipX(scene, x),
+    y: clampShipY(scene, y),
+  };
+}
+
+function getDraggedShipPosition(scene, x, y) {
+  if (isXyGameMode()) {
+    return clampShipPosition(scene, x, y);
+  }
+
+  return {
+    x: clampShipX(scene, x),
+    y: getShipY(scene),
+  };
+}
+
 function createBackground(scene) {
   const width = getGameWidth(scene);
   const height = getGameHeight(scene);
@@ -1516,9 +1556,9 @@ function layoutScene(scene) {
   updateHud(scene);
 
   if (scene.ship) {
-    const x = clampShipX(scene, scene.ship.x || centerX);
     refreshShipSize(scene);
-    moveShipTo(scene, x);
+    const position = clampShipPosition(scene, scene.ship.x || centerX, scene.ship.y || getShipY(scene));
+    moveShipTo(scene, position.x, position.y);
   }
 
   if (scene.pauseOverlay) {
@@ -1538,6 +1578,10 @@ function createMenu(scene) {
   bindScreenClick('menu', 'play-button', () => {
     playButtonSound(scene);
     startGame.call(scene);
+  });
+  bindScreenClick('menu', 'xy-mode-button', () => {
+    playButtonSound(scene);
+    startGame.call(scene, { mode: 'xy' });
   });
   bindScreenClick('menu', 'infinite-mode-button', () => {
     playButtonSound(scene);
@@ -2056,7 +2100,7 @@ function showRanking() {
 
 function startGame(options = {}) {
   state = 'playing';
-  currentGameMode = options.mode === 'infinite' ? 'infinite' : 'normal';
+  currentGameMode = getValidGameMode(options.mode);
   isDraggingShip = false;
   pendingScoreSave = null;
   lastScoreSaved = false;
@@ -2068,7 +2112,7 @@ function startGame(options = {}) {
   showOverlayScreen(this, null);
   setHudVisible(this, true);
   resetCounters.call(this);
-  if (currentGameMode === 'infinite') {
+  if (isInfiniteGameMode()) {
     enableInfiniteModeThreats(this);
   }
   resetTimedBoosters(this);
@@ -2086,7 +2130,7 @@ function startGame(options = {}) {
 
   // Reposicionar nave al centro
   const shipX = getGameWidth(this) / 2;
-  moveShipTo(this, shipX);
+  moveShipTo(this, shipX, getShipY(this));
 
   // Primera bola inmediata, luego spawn periodico
   spawnBall(this);
@@ -2121,9 +2165,12 @@ function endGame() {
   playBackgroundMusic(this);
   setHudVisible(this, false);
   showOverlayScreen(this, 'gameover');
-  if (currentGameMode === 'infinite') {
+  if (isInfiniteGameMode()) {
     this.gameOverContainer.finalScore.setText('Modo Infinito - Puntuación: ' + score);
-    prepareInfiniteModeGameOver(this);
+    prepareUnrankedGameOver(this, 'Modo Infinito: la puntuacion no se guarda en el ranking.');
+  } else if (isXyGameMode()) {
+    this.gameOverContainer.finalScore.setText('Modo X-Y - Puntuación: ' + score);
+    prepareUnrankedGameOver(this, 'Modo X-Y: la puntuacion no se guarda en el ranking normal.');
   } else {
     this.gameOverContainer.finalScore.setText('Puntuación: ' + score);
     prepareGameOverScore(this);
@@ -2141,7 +2188,7 @@ function enableInfiniteModeThreats(scene) {
   scene.nextTravelSentinelEligibleAt = 0;
 }
 
-function prepareInfiniteModeGameOver(scene) {
+function prepareUnrankedGameOver(scene, message) {
   pendingScoreSave = null;
   lastScoreSaved = false;
 
@@ -2151,7 +2198,7 @@ function prepareInfiniteModeGameOver(scene) {
   if (overlay.rankingBlock) overlay.rankingBlock.hidden = true;
   if (overlay.playerNameInput) overlay.playerNameInput.disabled = true;
   if (overlay.saveScoreButton) overlay.saveScoreButton.disabled = true;
-  setStatus(overlay.scoreStatus, 'Modo Infinito: la puntuacion no se guarda en el ranking.');
+  setStatus(overlay.scoreStatus, message);
 }
 
 function resetCounters() {
@@ -2231,7 +2278,7 @@ function clearGameplayVisuals(scene) {
     scene.ship.setAlpha(1);
     setShipTextureForCurrentState(scene);
     refreshShipSize(scene);
-    moveShipTo(scene, getGameWidth(scene) / 2);
+    moveShipTo(scene, getGameWidth(scene) / 2, getShipY(scene));
   }
 
   if (scene.shieldBubble) scene.shieldBubble.setVisible(false);
