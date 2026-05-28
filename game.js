@@ -108,6 +108,57 @@ const HUD_TOP = 20;
 const HUD_HEIGHT = 70;
 const BOOSTER_BAR_Y = HUD_TOP + HUD_HEIGHT + 12;
 const UPGRADE_ICON_Y = BOOSTER_BAR_Y + 18;
+const GAME_STATE = {
+  MENU: 'menu',
+  PLAYING: 'playing',
+  PAUSED: 'paused',
+  UPGRADING: 'upgrading',
+  OPTIONS: 'options',
+  RANKING: 'ranking',
+  GAME_OVER: 'gameover',
+};
+const GAME_MODE = {
+  NORMAL: 'normal',
+  INFINITE: 'infinite',
+};
+const OBJECT_KIND = {
+  ENERGY: 'ball',
+  ENEMY: 'damageBooster',
+  LIFE_BOOSTER: 'lifeBooster',
+  SCORE_BOOSTER: 'scoreBooster',
+  SHIELD_BOOSTER: 'shieldBooster',
+  ASTEROID: 'asteroid',
+  BIG_ASTEROID: 'bigAsteroid',
+  PLASMA_BAR: 'plasmaBar',
+};
+const WAVE_KIND = {
+  RED: 'red',
+  ASTEROID: 'asteroid',
+  BOSS: 'boss',
+  PLASMA: 'plasma',
+};
+const UPGRADE_KIND = {
+  LIFE_BOOSTER: 'lifeBooster',
+  SHIELD_BOOSTER: 'shieldBooster',
+  SCORE_BOOSTER: 'scoreBooster',
+  ENERGY_REFINER: 'energyRefiner',
+};
+const AUDIO_KEY = {
+  CATCH: 'catchAudio',
+  BOOSTER: 'boosterAudio',
+  BAD: 'badAudio',
+  BUTTON: 'buttonAudio',
+  LEVEL_UP: 'levelUpAudio',
+  RED_WAVE: 'redWaveAudio',
+  BOSS_LASER: 'bossLaserAudio',
+  SHIELD_BLOCK: 'shieldBlockAudio',
+  BACKGROUND_MUSIC: 'backgroundMusic',
+  PURPLE_BOOSTER_MUSIC: 'purpleBoosterMusic',
+};
+const STORAGE_KEY = {
+  SFX_ENABLED: 'jueguito_sfx_enabled',
+  MUSIC_ENABLED: 'jueguito_music_enabled',
+};
 
 const config = {
   type: Phaser.AUTO,
@@ -129,7 +180,7 @@ const config = {
   physics: {
     default: 'arcade',
     arcade: {
-      gravity: { y: 0 }, // CORRECCION: gravedad global a 0, cada bola tiene la suya propia
+      gravity: { y: 0 },
       debug: false,
     },
   },
@@ -156,7 +207,7 @@ let lifeBoosterLevel = 0;
 let shieldBoosterLevel = 0;
 let scoreBoosterLevel = 0;
 let energyRefinerLevel = 0;
-let state = 'menu';
+let state = GAME_STATE.MENU;
 let spawnEvent = null;
 let gameScene = null;
 let scoreMultiplier = 1;
@@ -169,7 +220,7 @@ let hud = null;
 let supabaseClient = null;
 let pendingScoreSave = null;
 let lastScoreSaved = false;
-let currentGameMode = 'normal';
+let currentGameMode = GAME_MODE.NORMAL;
 let soundEffectsEnabled = true;
 let musicEnabled = true;
 
@@ -243,38 +294,38 @@ function getBossConfigForLevel(level) {
   const bossIndex = getBossIndexForLevel(level);
   if (bossIndex === -1) return null;
 
-  const bossKinds = ['red', 'asteroid', 'boss', 'plasma'];
-  const bossKind = currentGameMode === 'infinite'
+  const bossKinds = [WAVE_KIND.RED, WAVE_KIND.ASTEROID, WAVE_KIND.BOSS, WAVE_KIND.PLASMA];
+  const bossKind = currentGameMode === GAME_MODE.INFINITE
     ? bossKinds[Math.floor(Math.random() * bossKinds.length)]
     : bossKinds[bossIndex % bossKinds.length];
   return createBossConfig(bossKind);
 }
 
 function createBossConfig(kind) {
-  if (kind === 'red') {
+  if (kind === WAVE_KIND.RED) {
     return {
-      kind: 'red',
+      kind: WAVE_KIND.RED,
       name: 'Enjambre',
       duration: RED_WAVE_DURATION,
     };
   }
-  if (kind === 'asteroid') {
+  if (kind === WAVE_KIND.ASTEROID) {
     return {
-      kind: 'asteroid',
+      kind: WAVE_KIND.ASTEROID,
       name: 'Cinturón',
       duration: ASTEROID_WAVE_DURATION,
     };
   }
-  if (kind === 'boss') {
+  if (kind === WAVE_KIND.BOSS) {
     return {
-      kind: 'boss',
+      kind: WAVE_KIND.BOSS,
       name: 'Centinela',
       duration: BOSS_WAVE_DURATION,
       attacks: BOSS_WAVE_ATTACKS,
     };
   }
   return {
-    kind: 'plasma',
+    kind: WAVE_KIND.PLASMA,
     name: 'Marea de Plasma',
     duration: PLASMA_WAVE_DURATION,
   };
@@ -348,7 +399,7 @@ function create() {
     { x: 25, y: 8 },
     { x: 11, y: 8 },
   ], true);
-  damageGraphics.generateTexture('damageBooster', 36, 36);
+  damageGraphics.generateTexture(OBJECT_KIND.ENEMY, 36, 36);
   damageGraphics.destroy();
   createEnemyShipTexture(this);
   createBossShipTexture(this);
@@ -367,7 +418,7 @@ function create() {
   lifeGraphics.fillStyle(0xffffff, 0.85);
   lifeGraphics.fillRect(15, 9, 6, 18);
   lifeGraphics.fillRect(9, 15, 18, 6);
-  lifeGraphics.generateTexture('lifeBooster', 36, 36);
+  lifeGraphics.generateTexture(OBJECT_KIND.LIFE_BOOSTER, 36, 36);
   lifeGraphics.destroy();
 
   // Textura del booster de puntuacion
@@ -386,7 +437,7 @@ function create() {
     { x: 18, y: 29 },
     { x: 11, y: 18 },
   ], true);
-  scoreGraphics.generateTexture('scoreBooster', 36, 36);
+  scoreGraphics.generateTexture(OBJECT_KIND.SCORE_BOOSTER, 36, 36);
   scoreGraphics.destroy();
 
   createShipTexture(this, 'ship', {
@@ -466,13 +517,12 @@ function create() {
   ], true);
   shieldGraphics.fillStyle(0xffffff, 0.8);
   shieldGraphics.fillCircle(18, 18, 8);
-  shieldGraphics.generateTexture('shieldBooster', 36, 36);
+  shieldGraphics.generateTexture(OBJECT_KIND.SHIELD_BOOSTER, 36, 36);
   shieldGraphics.destroy();
 
   initHud();
   updateHud();
 
-  // CORRECCION: usar sprite con fisica para la nave, no rectangle
   this.ship = this.physics.add.image(getGameWidth(this) / 2, getShipY(this), 'ship').setOrigin(0.5, 0.5);
   this.ship.setDepth(SHIP_DEPTH);
   this.ship.body.setImmovable(true);
@@ -491,14 +541,13 @@ function create() {
 
   setUiDepth(this);
 
-  // Grupo de bolas
   this.balls = this.physics.add.group();
+  this.fallingObjects = this.balls;
 
-  // Overlap entre bolas y nave
   this.physics.add.overlap(
-    this.balls,
+    getFallingObjects(this),
     this.ship,
-    (objectA, objectB) => catchBall(getCaughtObject(this, objectA, objectB), this),
+    (objectA, objectB) => collectFallingObject(getCaughtObject(this, objectA, objectB), this),
     (objectA, objectB) => isPreciseShipOverlap(this, objectA, objectB),
     this
   );
@@ -524,25 +573,25 @@ function create() {
 
   // Movimiento del ratón
   this.input.on('pointerdown', (pointer) => {
-    if (state === 'paused') {
+    if (state === GAME_STATE.PAUSED) {
       if (this.optionsOverlay && this.optionsOverlay.element && this.optionsOverlay.element.classList.contains('is-visible')) return;
       if (!canResumeFromShipPoint(this, pointer.x, pointer.y)) return;
       resumeGame.call(this);
       startDraggingShipAt(this, pointer.x);
       return;
     }
-    if (state !== 'playing') return;
+    if (state !== GAME_STATE.PLAYING) return;
     if (!isPointerOverShip(this, pointer)) return;
     startDraggingShipAt(this, pointer.x);
   });
 
   this.input.on('pointermove', (pointer) => {
-    if (state !== 'playing' && state !== 'paused') return;
+    if (state !== GAME_STATE.PLAYING && state !== GAME_STATE.PAUSED) return;
     if (!isDraggingShip) {
       this.input.setDefaultCursor(isPointerOverShip(this, pointer) ? 'grab' : 'default');
       return;
     }
-    if (state !== 'playing') return;
+    if (state !== GAME_STATE.PLAYING) return;
 
     const newX = clampShipX(this, pointer.x);
     moveShipTo(this, newX);
@@ -551,7 +600,7 @@ function create() {
   this.input.on('pointerup', () => {
     const wasDragging = isDraggingShip;
     isDraggingShip = false;
-    if (state === 'playing') {
+    if (state === GAME_STATE.PLAYING) {
       this.input.setDefaultCursor('default');
       if (wasDragging) {
         pauseGame.call(this);
@@ -562,13 +611,17 @@ function create() {
   this.input.on('pointerout', () => {
     const wasDragging = isDraggingShip;
     isDraggingShip = false;
-    if (state === 'playing') {
+    if (state === GAME_STATE.PLAYING) {
       this.input.setDefaultCursor('default');
       if (wasDragging) {
         pauseGame.call(this);
       }
     }
   });
+}
+
+function getFallingObjects(scene) {
+  return scene && (scene.fallingObjects || scene.balls);
 }
 
 function createEnergyBallTexture(scene, ballKey, colors) {
@@ -866,7 +919,7 @@ function createAsteroidTexture(scene) {
     { x: 7, y: 13 },
   ], true);
 
-  graphics.generateTexture('asteroid', 48, 48);
+  graphics.generateTexture(OBJECT_KIND.ASTEROID, 48, 48);
   graphics.destroy();
 }
 
@@ -923,7 +976,7 @@ function createBigAsteroidTexture(scene) {
   graphics.strokeCircle(28, 38, 9);
   graphics.strokeCircle(61, 54, 12);
 
-  graphics.generateTexture('bigAsteroid', 96, 96);
+  graphics.generateTexture(OBJECT_KIND.BIG_ASTEROID, 96, 96);
   graphics.destroy();
 }
 
@@ -936,7 +989,7 @@ function canResumeFromShipPoint(scene, x, y) {
 }
 
 function startDraggingShipAt(scene, x) {
-  if (state !== 'playing') return;
+  if (state !== GAME_STATE.PLAYING) return;
   isDraggingShip = true;
   scene.input.setDefaultCursor('grabbing');
   moveShipTo(scene, clampShipX(scene, x));
@@ -962,7 +1015,7 @@ function bindPausedShipResumeFallback(scene) {
   container.dataset.resumeFallbackBound = '1';
 
   const resumeFromEvent = (event) => {
-    if (state !== 'paused') return;
+    if (state !== GAME_STATE.PAUSED) return;
     if (event.target && event.target.closest && event.target.closest('.ui-panel')) return;
     if (scene.optionsOverlay && scene.optionsOverlay.element && scene.optionsOverlay.element.classList.contains('is-visible')) return;
 
@@ -977,7 +1030,7 @@ function bindPausedShipResumeFallback(scene) {
 
   container.addEventListener('pointerdown', resumeFromEvent, { capture: true });
   container.addEventListener('pointermove', (event) => {
-    if (!isDraggingShip || state !== 'playing') return;
+    if (!isDraggingShip || state !== GAME_STATE.PLAYING) return;
     const point = getGamePointFromClient(scene, event.clientX, event.clientY);
     if (!point) return;
     moveShipTo(scene, clampShipX(scene, point.x));
@@ -990,7 +1043,7 @@ function bindPausedShipResumeFallback(scene) {
 function pauseIfDraggingShip(scene) {
   const wasDragging = isDraggingShip;
   isDraggingShip = false;
-  if (state !== 'playing') return;
+  if (state !== GAME_STATE.PLAYING) return;
   scene.input.setDefaultCursor('default');
   if (wasDragging) {
     pauseGame.call(scene);
@@ -1011,7 +1064,7 @@ function getGamePointFromClient(scene, clientX, clientY) {
 }
 
 function update(time, delta) {
-  if (state !== 'playing') return;
+  if (state !== GAME_STATE.PLAYING) return;
 
   updateSpaceBackground(this, delta, time);
   updateShipPropulsion(this, delta);
@@ -1028,15 +1081,14 @@ function update(time, delta) {
   updateBossWave(this);
   updateMagnetPull(this);
 
-  // Comprobar si alguna bola ha llegado al fondo
-  this.balls.getChildren().forEach((ball) => {
+  getFallingObjects(this).getChildren().forEach((ball) => {
     if (ball.active && ball.y > getGameHeight(this) + 32) {
       if (isCollectibleBallKind(ball.getData('kind'))) {
         ball.destroy();
         if (!isShieldActive(this)) {
           loseLife(this);
         }
-        if (state === 'playing') {
+        if (state === GAME_STATE.PLAYING) {
           playBadSound(this);
         }
       } else {
@@ -1054,7 +1106,7 @@ function moveShipTo(scene, x) {
   const deltaX = x - previousX;
   scene.ship.setPosition(x, y);
   scene.ship.body.reset(x, y);
-  if (Math.abs(deltaX) > 0.4 && state === 'playing') {
+  if (Math.abs(deltaX) > 0.4 && state === GAME_STATE.PLAYING) {
     scene.shipTargetAngle = Phaser.Math.Clamp(deltaX * 0.75, -SHIP_MAX_TILT, SHIP_MAX_TILT);
     scene.lastShipMoveAt = scene.time ? scene.time.now : 0;
   }
@@ -1299,7 +1351,7 @@ function createMenu(scene) {
   });
   bindScreenClick('menu', 'infinite-mode-button', () => {
     playButtonSound(scene);
-    startGame.call(scene, { mode: 'infinite' });
+    startGame.call(scene, { mode: GAME_MODE.INFINITE });
   });
   bindScreenClick('menu', 'ranking-button', () => {
     playButtonSound(scene);
@@ -1307,7 +1359,7 @@ function createMenu(scene) {
   });
   bindScreenClick('menu', 'menu-options-button', () => {
     playButtonSound(scene);
-    showOptionsOverlay(scene, 'menu');
+    showOptionsOverlay(scene, GAME_STATE.MENU);
   });
   return overlay;
 }
@@ -1616,7 +1668,7 @@ function createOptionsOverlay(scene) {
     updateAudioOptionButtons(scene);
     if (!musicEnabled) {
       stopCurrentMusic(scene);
-    } else if (scene.optionsReturnScreen === 'pause' || state === 'playing' || state === 'paused') {
+    } else if (scene.optionsReturnScreen === 'pause' || state === GAME_STATE.PLAYING || state === GAME_STATE.PAUSED) {
       resumeCurrentMusic(scene);
     } else {
       playBackgroundMusic(scene);
@@ -1774,8 +1826,8 @@ function setUiDepth(scene) {
 // --- Control de estados ---
 
 function showMenu() {
-  state = 'menu';
-  currentGameMode = 'normal';
+  state = GAME_STATE.MENU;
+  currentGameMode = GAME_MODE.NORMAL;
   isDraggingShip = false;
   if (this) this.optionsReturnScreen = null;
   pendingScoreSave = null;
@@ -1801,7 +1853,7 @@ function showMenu() {
 }
 
 function showRanking() {
-  state = 'ranking';
+  state = GAME_STATE.RANKING;
   isDraggingShip = false;
   this.optionsReturnScreen = null;
   this.input.setDefaultCursor('default');
@@ -1812,8 +1864,8 @@ function showRanking() {
 }
 
 function startGame(options = {}) {
-  state = 'playing';
-  currentGameMode = options.mode === 'infinite' ? 'infinite' : 'normal';
+  state = GAME_STATE.PLAYING;
+  currentGameMode = options.mode === GAME_MODE.INFINITE ? GAME_MODE.INFINITE : GAME_MODE.NORMAL;
   isDraggingShip = false;
   pendingScoreSave = null;
   lastScoreSaved = false;
@@ -1825,7 +1877,7 @@ function startGame(options = {}) {
   showOverlayScreen(this, null);
   setHudVisible(this, true);
   resetCounters.call(this);
-  if (currentGameMode === 'infinite') {
+  if (currentGameMode === GAME_MODE.INFINITE) {
     enableInfiniteModeThreats(this);
   }
   resetTimedBoosters(this);
@@ -1835,19 +1887,17 @@ function startGame(options = {}) {
   resetBossWave(this);
   this.resumeSpawnDelay = null;
 
-  // Reposicionar nave al centro
   const shipX = getGameWidth(this) / 2;
   moveShipTo(this, shipX);
 
-  // Primera bola inmediata, luego spawn periodico
   spawnBall(this);
   scheduleNextSpawn(this);
   restartBackgroundMusic(this);
 }
 
 function endGame() {
-  if (state !== 'playing') return; // Evitar llamadas dobles
-  state = 'gameover';
+  if (state !== GAME_STATE.PLAYING) return;
+  state = GAME_STATE.GAME_OVER;
   isDraggingShip = false;
   this.input.setDefaultCursor('default');
 
@@ -1866,7 +1916,7 @@ function endGame() {
   playBackgroundMusic(this);
   setHudVisible(this, false);
   showOverlayScreen(this, 'gameover');
-  if (currentGameMode === 'infinite') {
+  if (currentGameMode === GAME_MODE.INFINITE) {
     this.gameOverContainer.finalScore.setText('Modo Infinito - Puntuación: ' + score);
     prepareInfiniteModeGameOver(this);
   } else {
@@ -2075,7 +2125,7 @@ function scheduleNextSpawn(scene, delayOverride = null) {
   spawnEvent = scene.time.addEvent({
     delay: delayOverride !== null ? delayOverride : getCurrentSpawnDelay(scene),
     callback: () => {
-      if (state !== 'playing') return;
+      if (state !== GAME_STATE.PLAYING) return;
       spawnBall(scene);
       scheduleNextSpawn(scene);
     },
@@ -2087,8 +2137,8 @@ function isBlockingBossWave(scene) {
 }
 
 function pauseGame() {
-  if (state !== 'playing') return;
-  state = 'paused';
+  if (state !== GAME_STATE.PLAYING) return;
+  state = GAME_STATE.PAUSED;
   isDraggingShip = false;
   setPauseOverlayMode(this, 'normal');
 
@@ -2103,8 +2153,8 @@ function pauseGame() {
 }
 
 function resumeGame() {
-  if (state !== 'paused') return;
-  state = 'playing';
+  if (state !== GAME_STATE.PAUSED) return;
+  state = GAME_STATE.PLAYING;
   isDraggingShip = false;
   setPauseOverlayMode(this, 'normal');
   showOverlayScreen(this, null);
@@ -2117,7 +2167,7 @@ function resumeGame() {
 }
 
 function resumeGameplaySpawning(scene, delayOverride = null) {
-  if (state !== 'playing') return;
+  if (state !== GAME_STATE.PLAYING) return;
   if (scene.waveStartEvent || scene.bossCueTween) return;
 
   if (scene.activePlasmaWave) {
@@ -2429,14 +2479,14 @@ function updateShipPropulsion(scene, delta) {
 }
 
 function updateEnemyPropulsion(scene, delta) {
-  if (!scene.balls) return;
+  if (!getFallingObjects(scene)) return;
 
   enemyTrailTimer += delta;
   if (enemyTrailTimer < 90) return;
   enemyTrailTimer = 0;
 
-  scene.balls.getChildren().forEach((enemy) => {
-    if (!enemy.active || enemy.getData('kind') !== 'damageBooster') return;
+  getFallingObjects(scene).getChildren().forEach((enemy) => {
+    if (!enemy.active || enemy.getData('kind') !== OBJECT_KIND.ENEMY) return;
 
     const particle = trackGameplayVisual(scene, scene.add.image(
       enemy.x + Phaser.Math.Between(-4, 4),
@@ -2519,16 +2569,16 @@ function updateScoreBooster(scene) {
 }
 
 function applyScoreBoosterBallColor(scene) {
-  if (!scene.balls) return;
-  scene.balls.getChildren().forEach((ball) => {
-    if (ball.active && ball.getData('kind') === 'ball') setBallEnergyColor(ball, true);
+  if (!getFallingObjects(scene)) return;
+  getFallingObjects(scene).getChildren().forEach((ball) => {
+    if (ball.active && ball.getData('kind') === OBJECT_KIND.ENERGY) setBallEnergyColor(ball, true);
   });
 }
 
 function clearScoreBoosterBallColor(scene) {
-  if (!scene.balls) return;
-  scene.balls.getChildren().forEach((ball) => {
-    if (ball.active && ball.getData('kind') === 'ball') setBallEnergyColor(ball, false);
+  if (!getFallingObjects(scene)) return;
+  getFallingObjects(scene).getChildren().forEach((ball) => {
+    if (ball.active && ball.getData('kind') === OBJECT_KIND.ENERGY) setBallEnergyColor(ball, false);
   });
 }
 
@@ -2576,12 +2626,12 @@ function activateRedWave(scene, bossConfig = getBossConfigForLevel(3)) {
     spawnEvent = null;
   }
 
-  scheduleWaveStart(scene, 'red');
+  scheduleWaveStart(scene, WAVE_KIND.RED);
 }
 
 function clearFallingBoosters(scene) {
-  if (!scene.balls) return;
-  scene.balls.getChildren().forEach((ball) => {
+  if (!getFallingObjects(scene)) return;
+  getFallingObjects(scene).getChildren().forEach((ball) => {
     if (ball.active && isBoosterKind(ball.getData('kind'))) {
       ball.destroy();
     }
@@ -2589,8 +2639,8 @@ function clearFallingBoosters(scene) {
 }
 
 function clearAllFallingObjects(scene) {
-  if (!scene.balls) return;
-  scene.balls.clear(true, true);
+  if (!getFallingObjects(scene)) return;
+  getFallingObjects(scene).clear(true, true);
   clearPlasmaBars(scene);
 }
 
@@ -2602,7 +2652,7 @@ function updateRedWave(scene) {
   const remaining = Math.max(0, redWave.endsAt - scene.time.now);
   if (remaining > 0) return;
 
-  finishWaveSpawning(scene, redWave, 'red');
+  finishWaveSpawning(scene, redWave, WAVE_KIND.RED);
 }
 
 function activateAsteroidWave(scene, bossConfig = getBossConfigForLevel(6)) {
@@ -2628,7 +2678,7 @@ function activateAsteroidWave(scene, bossConfig = getBossConfigForLevel(6)) {
     spawnEvent = null;
   }
 
-  scheduleWaveStart(scene, 'asteroid');
+  scheduleWaveStart(scene, WAVE_KIND.ASTEROID);
 }
 
 function activatePlasmaWave(scene, bossConfig = getBossConfigForLevel(12)) {
@@ -2654,7 +2704,7 @@ function activatePlasmaWave(scene, bossConfig = getBossConfigForLevel(12)) {
     spawnEvent = null;
   }
 
-  scheduleWaveStart(scene, 'plasma');
+  scheduleWaveStart(scene, WAVE_KIND.PLASMA);
 }
 
 function hideWaveBar(scene) {
@@ -2670,7 +2720,7 @@ function updateAsteroidWave(scene) {
   const remaining = Math.max(0, asteroidWave.endsAt - scene.time.now);
   if (remaining > 0) return;
 
-  finishWaveSpawning(scene, asteroidWave, 'asteroid');
+  finishWaveSpawning(scene, asteroidWave, WAVE_KIND.ASTEROID);
 }
 
 function updatePlasmaWave(scene) {
@@ -2681,7 +2731,7 @@ function updatePlasmaWave(scene) {
   const remaining = Math.max(0, plasmaWave.endsAt - scene.time.now);
   if (remaining > 0) return;
 
-  finishWaveSpawning(scene, plasmaWave, 'plasma');
+  finishWaveSpawning(scene, plasmaWave, WAVE_KIND.PLASMA);
 }
 
 function activateBossWave(scene, bossConfig = getBossConfigForLevel(9)) {
@@ -2705,11 +2755,11 @@ function activateBossWave(scene, bossConfig = getBossConfigForLevel(9)) {
     spawnEvent = null;
   }
 
-  scheduleWaveStart(scene, 'boss');
+  scheduleWaveStart(scene, WAVE_KIND.BOSS);
 }
 
 function activateTravelSentinel(scene) {
-  if (scene.activeBossWave || state !== 'playing') return;
+  if (scene.activeBossWave || state !== GAME_STATE.PLAYING) return;
 
   playBackgroundMusic(scene);
   scene.activeBossWave = {
@@ -2728,13 +2778,13 @@ function activateTravelSentinel(scene) {
 
 function activateLevelBoss(scene, bossConfig) {
   if (!bossConfig) return;
-  if (bossConfig.kind === 'red') {
+  if (bossConfig.kind === WAVE_KIND.RED) {
     activateRedWave(scene, bossConfig);
-  } else if (bossConfig.kind === 'asteroid') {
+  } else if (bossConfig.kind === WAVE_KIND.ASTEROID) {
     activateAsteroidWave(scene, bossConfig);
-  } else if (bossConfig.kind === 'plasma') {
+  } else if (bossConfig.kind === WAVE_KIND.PLASMA) {
     activatePlasmaWave(scene, bossConfig);
-  } else if (bossConfig.kind === 'boss') {
+  } else if (bossConfig.kind === WAVE_KIND.BOSS) {
     activateBossWave(scene, bossConfig);
   }
 }
@@ -2755,7 +2805,7 @@ function updateBossWave(scene) {
 }
 
 function recoverStalledBossWave(scene, bossWave) {
-  if (state !== 'playing') return;
+  if (state !== GAME_STATE.PLAYING) return;
 
   if (!scene.bossShip || !scene.bossShip.active) {
     resetBossWave(scene);
@@ -2824,7 +2874,7 @@ function stopBossEnemySpawns(scene) {
 }
 
 function scheduleBossAttack(scene, delay = BOSS_ATTACK_GAP) {
-  if (!scene.activeBossWave || state !== 'playing') return;
+  if (!scene.activeBossWave || state !== GAME_STATE.PLAYING) return;
 
   scene.bossAttackEvent = scene.time.addEvent({
     delay,
@@ -2971,7 +3021,7 @@ function scheduleWaveStart(scene, waveKind) {
 }
 
 function waitForWaveObjectsToClear(scene, waveKind) {
-  if (state !== 'playing' || hasFallingObjects(scene)) {
+  if (state !== GAME_STATE.PLAYING || hasFallingObjects(scene)) {
     scene.waveStartEvent = scene.time.addEvent({
       delay: 250,
       callback: () => waitForWaveObjectsToClear(scene, waveKind),
@@ -2986,7 +3036,7 @@ function waitForWaveObjectsToClear(scene, waveKind) {
 }
 
 function startWaveCountdown(scene, waveKind) {
-  if (state !== 'playing') {
+  if (state !== GAME_STATE.PLAYING) {
     scene.waveStartEvent = scene.time.addEvent({
       delay: 250,
       callback: () => startWaveCountdown(scene, waveKind),
@@ -2999,26 +3049,26 @@ function startWaveCountdown(scene, waveKind) {
 }
 
 function startWaveAfterCue(scene, waveKind) {
-  if (state !== 'playing') return;
+  if (state !== GAME_STATE.PLAYING) return;
 
-  if (waveKind === 'boss') {
+  if (waveKind === WAVE_KIND.BOSS) {
     startBossWave(scene);
     return;
   }
-  const wave = waveKind === 'red'
+  const wave = waveKind === WAVE_KIND.RED
     ? scene.activeRedWave
-    : waveKind === 'asteroid'
+    : waveKind === WAVE_KIND.ASTEROID
       ? scene.activeAsteroidWave
       : scene.activePlasmaWave;
   if (!wave || wave.hasStarted) return;
 
   wave.hasStarted = true;
   wave.endsAt = scene.time.now + wave.duration;
-  if (waveKind === 'red') {
+  if (waveKind === WAVE_KIND.RED) {
     wave.isSpawningDamageBoosters = true;
-  } else if (waveKind === 'asteroid') {
+  } else if (waveKind === WAVE_KIND.ASTEROID) {
     wave.isSpawningAsteroids = true;
-  } else if (waveKind === 'plasma') {
+  } else if (waveKind === WAVE_KIND.PLASMA) {
     wave.isSpawningPlasma = true;
   }
 
@@ -3028,7 +3078,7 @@ function startWaveAfterCue(scene, waveKind) {
 
   hideWaveBar(scene);
 
-  if (waveKind === 'plasma') {
+  if (waveKind === WAVE_KIND.PLASMA) {
     spawnPlasmaBar(scene);
     schedulePlasmaSpawn(scene);
     return;
@@ -3081,10 +3131,10 @@ function showBossCueBand(scene, waveKind, cueKind, onCross) {
 }
 
 function getWaveBossName(scene, waveKind) {
-  if (waveKind === 'red' && scene.activeRedWave) return scene.activeRedWave.bossName || 'Enjambre';
-  if (waveKind === 'asteroid' && scene.activeAsteroidWave) return scene.activeAsteroidWave.bossName || 'Cinturón';
-  if (waveKind === 'plasma' && scene.activePlasmaWave) return scene.activePlasmaWave.bossName || 'Marea de Plasma';
-  if (waveKind === 'boss' && scene.activeBossWave) return scene.activeBossWave.bossName || 'Centinela';
+  if (waveKind === WAVE_KIND.RED && scene.activeRedWave) return scene.activeRedWave.bossName || 'Enjambre';
+  if (waveKind === WAVE_KIND.ASTEROID && scene.activeAsteroidWave) return scene.activeAsteroidWave.bossName || 'Cinturón';
+  if (waveKind === WAVE_KIND.PLASMA && scene.activePlasmaWave) return scene.activePlasmaWave.bossName || 'Marea de Plasma';
+  if (waveKind === WAVE_KIND.BOSS && scene.activeBossWave) return scene.activeBossWave.bossName || 'Centinela';
   return 'Jefe';
 }
 
@@ -3124,11 +3174,11 @@ function finishWaveSpawning(scene, wave, waveKind) {
   }
 
   wave.isDraining = true;
-  if (waveKind === 'red') {
+  if (waveKind === WAVE_KIND.RED) {
     wave.isSpawningDamageBoosters = false;
-  } else if (waveKind === 'asteroid') {
+  } else if (waveKind === WAVE_KIND.ASTEROID) {
     wave.isSpawningAsteroids = false;
-  } else if (waveKind === 'plasma') {
+  } else if (waveKind === WAVE_KIND.PLASMA) {
     wave.isSpawningPlasma = false;
     if (scene.plasmaSpawnEvent) {
       scene.plasmaSpawnEvent.remove(false);
@@ -3147,11 +3197,11 @@ function finishWaveSpawning(scene, wave, waveKind) {
 }
 
 function endWaveAfterPause(scene, waveKind) {
-  const currentWave = waveKind === 'red'
+  const currentWave = waveKind === WAVE_KIND.RED
     ? scene.activeRedWave
-    : waveKind === 'asteroid'
+    : waveKind === WAVE_KIND.ASTEROID
       ? scene.activeAsteroidWave
-      : waveKind === 'plasma'
+      : waveKind === WAVE_KIND.PLASMA
         ? scene.activePlasmaWave
         : scene.activeBossWave;
   if (!currentWave) return;
@@ -3159,19 +3209,19 @@ function endWaveAfterPause(scene, waveKind) {
   setHudBoosterVisible(false);
   updateBoosterBar(scene, 0);
 
-  if (waveKind === 'red') {
+  if (waveKind === WAVE_KIND.RED) {
     scene.obreraSpawnsUnlocked = true;
     scene.activeRedWave = null;
-  } else if (waveKind === 'asteroid') {
+  } else if (waveKind === WAVE_KIND.ASTEROID) {
     scene.asteroidSpawnsUnlocked = true;
     scene.activeAsteroidWave = null;
-  } else if (waveKind === 'plasma') {
+  } else if (waveKind === WAVE_KIND.PLASMA) {
     scene.plasmaSpawnsUnlocked = true;
     scene.activePlasmaWave = null;
-  } else if (waveKind === 'boss') {
+  } else if (waveKind === WAVE_KIND.BOSS) {
     if (currentWave.isTravelEncounter) {
       resetBossWave(scene);
-      if (state === 'playing') scheduleNextSpawn(scene);
+      if (state === GAME_STATE.PLAYING) scheduleNextSpawn(scene);
       return;
     }
     scene.travelSentinelUnlocked = true;
@@ -3188,16 +3238,16 @@ function endWaveAfterPause(scene, waveKind) {
     delay: WAVE_POST_DELAY,
     callback: () => {
       scene.waveResumeEvent = null;
-      if (state !== 'playing') return;
+      if (state !== GAME_STATE.PLAYING) return;
       showBossCueBand(scene, waveKind, 'safe', () => {
-        if (state === 'playing') scheduleNextSpawn(scene);
+        if (state === GAME_STATE.PLAYING) scheduleNextSpawn(scene);
       });
     },
   });
 }
 
 function hasFallingObjects(scene) {
-  return hasActivePlasmaBars(scene) || scene.balls
+  return hasActivePlasmaBars(scene) || getFallingObjects(scene)
     .getChildren()
     .some((ball) => ball.active && ball.y <= getGameHeight(scene) + 32);
 }
@@ -3219,13 +3269,13 @@ function clearPlasmaBars(scene) {
 }
 
 function schedulePlasmaSpawn(scene) {
-  if (!scene.activePlasmaWave || !scene.activePlasmaWave.isSpawningPlasma || state !== 'playing') return;
+  if (!scene.activePlasmaWave || !scene.activePlasmaWave.isSpawningPlasma || state !== GAME_STATE.PLAYING) return;
 
   scene.plasmaSpawnEvent = scene.time.addEvent({
     delay: PLASMA_WAVE_SPAWN_DELAY,
     callback: () => {
       scene.plasmaSpawnEvent = null;
-      if (!scene.activePlasmaWave || !scene.activePlasmaWave.isSpawningPlasma || state !== 'playing') return;
+      if (!scene.activePlasmaWave || !scene.activePlasmaWave.isSpawningPlasma || state !== GAME_STATE.PLAYING) return;
       spawnPlasmaBar(scene);
       schedulePlasmaSpawn(scene);
     },
@@ -3424,7 +3474,7 @@ function updateUpgradeProgressText(scene, pointsTowardUpgrade = null) {
 }
 
 function maybeOpenUpgradeChoice(scene) {
-  if (levelProgressScore < nextUpgradeScore || state !== 'playing') return;
+  if (levelProgressScore < nextUpgradeScore || state !== GAME_STATE.PLAYING) return;
 
   playLevelUpSound(scene);
   advancePlayerLevel(scene);
@@ -3436,7 +3486,7 @@ function maybeOpenUpgradeChoice(scene) {
 
   if (!hasAvailableUpgrades()) return;
 
-  state = 'upgrading';
+  state = GAME_STATE.UPGRADING;
   isDraggingShip = false;
   scene.input.setDefaultCursor('default');
 
@@ -3452,7 +3502,7 @@ function maybeOpenUpgradeChoice(scene) {
   scene.availableUpgradeChoices = getRandomUpgradeChoices();
   updateUpgradeButtons(scene);
   updateUpgradeBar(scene, true, () => {
-    if (state === 'upgrading') {
+    if (state === GAME_STATE.UPGRADING) {
       showOverlayScreen(scene, 'upgrade');
     }
   });
@@ -3469,7 +3519,12 @@ function advancePlayerLevel(scene) {
 }
 
 function getAvailableUpgradeKinds() {
-  return ['lifeBooster', 'shieldBooster', 'scoreBooster', 'energyRefiner']
+  return [
+    UPGRADE_KIND.LIFE_BOOSTER,
+    UPGRADE_KIND.SHIELD_BOOSTER,
+    UPGRADE_KIND.SCORE_BOOSTER,
+    UPGRADE_KIND.ENERGY_REFINER,
+  ]
     .filter((upgradeKind) => getUpgradeLevel(upgradeKind) < MAX_UPGRADE_LEVEL);
 }
 
@@ -3480,7 +3535,7 @@ function getRandomUpgradeChoices() {
 }
 
 function getUpgradeConfig(upgradeKind) {
-  if (upgradeKind === 'lifeBooster') {
+  if (upgradeKind === UPGRADE_KIND.LIFE_BOOSTER) {
     return {
       label: 'Kit de reparación',
       getDescription: (level) => level === 1
@@ -3489,7 +3544,7 @@ function getUpgradeConfig(upgradeKind) {
       color: '#4dff88',
     };
   }
-  if (upgradeKind === 'shieldBooster') {
+  if (upgradeKind === UPGRADE_KIND.SHIELD_BOOSTER) {
     return {
       label: 'Barrera protectora',
       getDescription: (level) => (level === 1
@@ -3498,7 +3553,7 @@ function getUpgradeConfig(upgradeKind) {
       color: '#4da3ff',
     };
   }
-  if (upgradeKind === 'scoreBooster') {
+  if (upgradeKind === UPGRADE_KIND.SCORE_BOOSTER) {
     return {
       label: 'Catalizador de energía',
       getDescription: (level) => (level === 1
@@ -3507,7 +3562,7 @@ function getUpgradeConfig(upgradeKind) {
       color: '#9b5cff',
     };
   }
-  if (upgradeKind === 'energyRefiner') {
+  if (upgradeKind === UPGRADE_KIND.ENERGY_REFINER) {
     return {
       label: 'Refinador de energía',
       getDescription: (level) => level < MAX_UPGRADE_LEVEL
@@ -3528,18 +3583,18 @@ function hasAvailableUpgrades() {
 }
 
 function chooseUpgrade(scene, upgradeKind) {
-  if (state !== 'upgrading') return;
+  if (state !== GAME_STATE.UPGRADING) return;
   if (!upgradeKind) return;
   if (getUpgradeLevel(upgradeKind) >= MAX_UPGRADE_LEVEL) return;
 
-  if (upgradeKind === 'lifeBooster') {
+  if (upgradeKind === UPGRADE_KIND.LIFE_BOOSTER) {
     lifeBoosterLevel += 1;
     updateLivesText(scene);
-  } else if (upgradeKind === 'shieldBooster') {
+  } else if (upgradeKind === UPGRADE_KIND.SHIELD_BOOSTER) {
     shieldBoosterLevel += 1;
-  } else if (upgradeKind === 'scoreBooster') {
+  } else if (upgradeKind === UPGRADE_KIND.SCORE_BOOSTER) {
     scoreBoosterLevel += 1;
-  } else if (upgradeKind === 'energyRefiner') {
+  } else if (upgradeKind === UPGRADE_KIND.ENERGY_REFINER) {
     energyRefinerLevel += 1;
   }
 
@@ -3553,28 +3608,28 @@ function chooseUpgrade(scene, upgradeKind) {
   if (scene.pendingBossWave) {
     const bossConfig = scene.pendingBossWave;
     scene.pendingBossWave = false;
-    state = 'playing';
+    state = GAME_STATE.PLAYING;
     activateLevelBoss(scene, bossConfig);
     return;
   }
 
   if (levelProgressScore >= nextUpgradeScore) {
-    state = 'playing';
+    state = GAME_STATE.PLAYING;
     maybeOpenUpgradeChoice(scene);
     return;
   }
 
-  state = 'paused';
+  state = GAME_STATE.PAUSED;
   scene.resumeSpawnDelay = UPGRADE_RESUME_DELAY;
   setPauseOverlayMode(scene, 'upgrade');
   showOverlayScreen(scene, 'pause');
 }
 
 function getUpgradeLevel(upgradeKind) {
-  if (upgradeKind === 'lifeBooster') return lifeBoosterLevel;
-  if (upgradeKind === 'shieldBooster') return shieldBoosterLevel;
-  if (upgradeKind === 'scoreBooster') return scoreBoosterLevel;
-  if (upgradeKind === 'energyRefiner') return energyRefinerLevel;
+  if (upgradeKind === UPGRADE_KIND.LIFE_BOOSTER) return lifeBoosterLevel;
+  if (upgradeKind === UPGRADE_KIND.SHIELD_BOOSTER) return shieldBoosterLevel;
+  if (upgradeKind === UPGRADE_KIND.SCORE_BOOSTER) return scoreBoosterLevel;
+  if (upgradeKind === UPGRADE_KIND.ENERGY_REFINER) return energyRefinerLevel;
   return 0;
 }
 
@@ -3658,7 +3713,7 @@ function setUpgradeButtonState(button, config, level) {
 }
 
 function pauseFallingObjects(scene) {
-  scene.balls.getChildren().forEach((ball) => {
+  getFallingObjects(scene).getChildren().forEach((ball) => {
     if (!ball.active) return;
     ball.body.setVelocityX(0);
     ball.body.setVelocityY(0);
@@ -3666,7 +3721,7 @@ function pauseFallingObjects(scene) {
 }
 
 function resumeFallingObjects(scene) {
-  scene.balls.getChildren().forEach((ball) => {
+  getFallingObjects(scene).getChildren().forEach((ball) => {
     if (!ball.active) return;
     const kind = ball.getData('kind');
     ball.body.setVelocityX(getHorizontalVelocity(kind, scene, ball));
@@ -3690,8 +3745,8 @@ function updateMagnetPull(scene) {
 
   const pullRadius = getGameWidth(scene) * MAGNET_BASE_RADIUS_RATIO * magnetLevel;
   const pullRatio = MAGNET_PULL_RATIO + magnetLevel * 0.08;
-  scene.balls.getChildren().forEach((ball) => {
-    if (state !== 'playing') return;
+  getFallingObjects(scene).getChildren().forEach((ball) => {
+    if (state !== GAME_STATE.PLAYING) return;
     if (!ball.active || ball.getData('kind') !== 'ball') return;
 
     const hitboxDistance = getDistanceToShipHitbox(scene, ball);
@@ -3743,9 +3798,9 @@ function getDistanceToShieldCenter(scene, object) {
 
 function getObjectCollisionRadius(object) {
   const kind = object.getData('kind');
-  if (kind === 'damageBooster') return 11;
-  if (kind === 'bigAsteroid') return 34;
-  if (kind === 'asteroid') return 18;
+  if (kind === OBJECT_KIND.ENEMY) return 11;
+  if (kind === OBJECT_KIND.BIG_ASTEROID) return 34;
+  if (kind === OBJECT_KIND.ASTEROID) return 18;
   if (isCollectibleBallKind(kind)) return 16;
   return 15;
 }
@@ -3798,23 +3853,22 @@ function spawnBall(scene) {
 
   const kind = getNextSpawnKind(scene);
   if (!kind) return;
-  if (kind === 'plasmaBar') {
+  if (kind === OBJECT_KIND.PLASMA_BAR) {
     spawnPlasmaBar(scene);
     return;
   }
   const isBooster = isBoosterKind(kind);
   const x = isAsteroidKind(kind)
     ? findAsteroidSpawnX(scene)
-    : kind === 'damageBooster'
+    : kind === OBJECT_KIND.ENEMY
     ? findRedWaveEnemySpawnX(scene)
     : isBooster
       ? findBoosterSpawnX(scene)
       : findSpawnX(scene);
   const texture = getTextureForKind(kind);
-  const spawnY = kind === 'bigAsteroid' ? -54 : -20;
+  const spawnY = kind === OBJECT_KIND.BIG_ASTEROID ? -54 : -20;
 
-  // Crear desde el grupo para evitar conflictos
-  const ball = scene.balls.create(x, spawnY, texture);
+  const ball = getFallingObjects(scene).create(x, spawnY, texture);
 
   ball.setData('kind', kind);
   ball.setOrigin(0.5);
@@ -3826,11 +3880,11 @@ function spawnBall(scene) {
   ball.body.setVelocityX(getHorizontalVelocity(kind, scene, ball));
   ball.body.setVelocityY(getFallingVelocity(kind, scene, ball));
 
-  if (kind === 'ball') {
+  if (kind === OBJECT_KIND.ENERGY) {
     setBallEnergyColor(ball, Boolean(scene.activeScoreBooster));
   } else if (isAsteroidKind(kind)) {
     ball.setAngularVelocity(Phaser.Math.Between(-110, 110));
-  } else if (kind === 'damageBooster') {
+  } else if (kind === OBJECT_KIND.ENEMY) {
     setupRedEnemySway(ball);
   }
 }
@@ -3844,8 +3898,8 @@ function setupRedEnemySway(enemy) {
 function updateRedEnemySway(scene, time) {
   const min = 34;
   const max = Math.max(min, getGameWidth(scene) - 34);
-  scene.balls.getChildren().forEach((enemy) => {
-    if (!enemy.active || enemy.getData('kind') !== 'damageBooster') return;
+  getFallingObjects(scene).getChildren().forEach((enemy) => {
+    if (!enemy.active || enemy.getData('kind') !== OBJECT_KIND.ENEMY) return;
     if (!enemy.body) return;
 
     const phase = enemy.getData('swayPhase') || 0;
@@ -3860,7 +3914,7 @@ function updateRedEnemySway(scene, time) {
     }
 
     enemy.body.setVelocityX(velocityX);
-    enemy.body.setVelocityY(getFallingVelocity('damageBooster', scene, enemy));
+    enemy.body.setVelocityY(getFallingVelocity(OBJECT_KIND.ENEMY, scene, enemy));
   });
 }
 
@@ -3871,17 +3925,17 @@ function setBallEnergyColor(ball, isPurple) {
 }
 
 function setFallingObjectBody(object, kind) {
-  if (kind === 'damageBooster') {
+  if (kind === OBJECT_KIND.ENEMY) {
     object.body.setCircle(11, 13, 13);
     return;
   }
 
-  if (kind === 'bigAsteroid') {
+  if (kind === OBJECT_KIND.BIG_ASTEROID) {
     object.body.setCircle(34, 14, 14);
     return;
   }
 
-  if (kind === 'asteroid') {
+  if (kind === OBJECT_KIND.ASTEROID) {
     object.body.setCircle(18, 6, 6);
     return;
   }
@@ -3894,10 +3948,10 @@ function getNextSpawnKind(scene) {
   // Las barras de plasma se gestionan con su propio scheduler.
   if (scene.activePlasmaWave && scene.activePlasmaWave.isSpawningPlasma) return null;
 
-  if (scene.activeRedWave && scene.activeRedWave.isSpawningDamageBoosters) return 'damageBooster';
-  if (scene.activeBossWave && scene.activeBossWave.isSpawningEnemies) return 'damageBooster';
+  if (scene.activeRedWave && scene.activeRedWave.isSpawningDamageBoosters) return OBJECT_KIND.ENEMY;
+  if (scene.activeBossWave && scene.activeBossWave.isSpawningEnemies) return OBJECT_KIND.ENEMY;
   if (scene.activeAsteroidWave && scene.activeAsteroidWave.isSpawningAsteroids) {
-    return Math.random() < ASTEROID_WAVE_BIG_ASTEROID_CHANCE ? 'bigAsteroid' : 'asteroid';
+    return Math.random() < ASTEROID_WAVE_BIG_ASTEROID_CHANCE ? OBJECT_KIND.BIG_ASTEROID : OBJECT_KIND.ASTEROID;
   }
 
   const threatKind = getNextTravelThreatKind(scene);
@@ -3908,7 +3962,7 @@ function getNextSpawnKind(scene) {
   if (asteroidKind) return asteroidKind;
   const boosterKind = getNextBoosterKind(scene);
   if (scene.activeBossWave && scene.activeBossWave.isTravelEncounter) return boosterKind;
-  return boosterKind || 'ball';
+  return boosterKind || OBJECT_KIND.ENERGY;
 }
 
 function getNextTravelThreatKind(scene) {
@@ -3916,7 +3970,7 @@ function getNextTravelThreatKind(scene) {
   if (hasActivePlasmaBars(scene)) return null;
   if (countActiveHostileFallingObjects(scene) >= 3) return null;
 
-  return Math.random() < OBRERA_SPAWN_CHANCE ? 'damageBooster' : null;
+  return Math.random() < OBRERA_SPAWN_CHANCE ? OBJECT_KIND.ENEMY : null;
 }
 
 function shouldStartTravelSentinel(scene) {
@@ -3934,7 +3988,7 @@ function getNextAsteroidKind(scene) {
   if (hasFallingAsteroid(scene) || countActiveHostileFallingObjects(scene) >= 3) return null;
 
   if (Math.random() >= TRAVEL_ASTEROID_CHANCE) return null;
-  return Math.random() < 0.24 ? 'bigAsteroid' : 'asteroid';
+  return Math.random() < 0.24 ? OBJECT_KIND.BIG_ASTEROID : OBJECT_KIND.ASTEROID;
 }
 
 function getNextPlasmaKind(scene) {
@@ -3942,7 +3996,7 @@ function getNextPlasmaKind(scene) {
   if (hasActivePlasmaBars(scene)) return null;
   if (countActiveHostileFallingObjects(scene) > 0) return null;
 
-  return Math.random() < TRAVEL_PLASMA_CHANCE ? 'plasmaBar' : null;
+  return Math.random() < TRAVEL_PLASMA_CHANCE ? OBJECT_KIND.PLASMA_BAR : null;
 }
 
 function getNextBoosterKind(scene) {
@@ -3950,9 +4004,9 @@ function getNextBoosterKind(scene) {
 
   const timedBoosterActive = getActiveTimedBooster(scene);
   const options = [
-    { kind: 'scoreBooster', chance: timedBoosterActive || scoreBoosterLevel <= 0 ? 0 : SCORE_BOOSTER_CHANCE },
-    { kind: 'shieldBooster', chance: timedBoosterActive || shieldBoosterLevel <= 0 ? 0 : SHIELD_BOOSTER_CHANCE },
-    { kind: 'lifeBooster', chance: lifeBoosterLevel > 0 && lives < maxLives ? LIFE_BOOSTER_CHANCE : 0 },
+    { kind: OBJECT_KIND.SCORE_BOOSTER, chance: timedBoosterActive || scoreBoosterLevel <= 0 ? 0 : SCORE_BOOSTER_CHANCE },
+    { kind: OBJECT_KIND.SHIELD_BOOSTER, chance: timedBoosterActive || shieldBoosterLevel <= 0 ? 0 : SHIELD_BOOSTER_CHANCE },
+    { kind: OBJECT_KIND.LIFE_BOOSTER, chance: lifeBoosterLevel > 0 && lives < maxLives ? LIFE_BOOSTER_CHANCE : 0 },
   ];
   const totalChance = options.reduce((sum, option) => sum + option.chance, 0);
   let roll = Math.random();
@@ -3968,52 +4022,61 @@ function getNextBoosterKind(scene) {
 }
 
 function hasFallingBooster(scene) {
-  return scene.balls
+  return getFallingObjects(scene)
     .getChildren()
     .some((ball) => ball.active && isHelpfulBoosterKind(ball.getData('kind')));
 }
 
 function hasFallingAsteroid(scene) {
-  return scene.balls
+  return getFallingObjects(scene)
     .getChildren()
     .some((ball) => ball.active && isAsteroidKind(ball.getData('kind')));
 }
 
 function countActiveHostileFallingObjects(scene) {
-  return scene.balls
+  return getFallingObjects(scene)
     .getChildren()
-    .filter((ball) => ball.active && (ball.getData('kind') === 'damageBooster' || isAsteroidKind(ball.getData('kind'))))
+    .filter((ball) => ball.active && (ball.getData('kind') === OBJECT_KIND.ENEMY || isAsteroidKind(ball.getData('kind'))))
     .length;
 }
 
 function getTextureForKind(kind) {
-  if (kind === 'bigAsteroid') return 'bigAsteroid';
-  if (isAsteroidKind(kind)) return 'asteroid';
-  if (kind === 'damageBooster') return 'enemyShipSmall';
-  if (kind === 'lifeBooster') return 'lifeBooster';
-  if (kind === 'scoreBooster') return 'scoreBooster';
-  if (kind === 'shieldBooster') return 'shieldBooster';
+  if (kind === OBJECT_KIND.BIG_ASTEROID) return OBJECT_KIND.BIG_ASTEROID;
+  if (isAsteroidKind(kind)) return OBJECT_KIND.ASTEROID;
+  if (kind === OBJECT_KIND.ENEMY) return 'enemyShipSmall';
+  if (kind === OBJECT_KIND.LIFE_BOOSTER) return OBJECT_KIND.LIFE_BOOSTER;
+  if (kind === OBJECT_KIND.SCORE_BOOSTER) return OBJECT_KIND.SCORE_BOOSTER;
+  if (kind === OBJECT_KIND.SHIELD_BOOSTER) return OBJECT_KIND.SHIELD_BOOSTER;
   return 'goldBall';
 }
 
 function isBoosterKind(kind) {
-  return kind === 'damageBooster' || kind === 'lifeBooster' || kind === 'scoreBooster' || kind === 'shieldBooster';
+  return [
+    OBJECT_KIND.ENEMY,
+    OBJECT_KIND.LIFE_BOOSTER,
+    OBJECT_KIND.SCORE_BOOSTER,
+    OBJECT_KIND.SHIELD_BOOSTER,
+  ].includes(kind);
 }
 
 function isHelpfulBoosterKind(kind) {
-  return kind === 'lifeBooster' || kind === 'scoreBooster' || kind === 'shieldBooster';
+  return [
+    OBJECT_KIND.LIFE_BOOSTER,
+    OBJECT_KIND.SCORE_BOOSTER,
+    OBJECT_KIND.SHIELD_BOOSTER,
+  ].includes(kind);
 }
 
 function isCollectibleBallKind(kind) {
-  return kind === 'ball';
+  return kind === OBJECT_KIND.ENERGY;
 }
 
 function isAsteroidKind(kind) {
-  return kind === 'asteroid' || kind === 'bigAsteroid';
+  return kind === OBJECT_KIND.ASTEROID || kind === OBJECT_KIND.BIG_ASTEROID;
 }
 
 function isShieldBlockedKind(kind) {
-  return kind === 'damageBooster' || isAsteroidKind(kind);
+  return kind === OBJECT_KIND.ENEMY || isAsteroidKind(kind);
 }
 
 function findSpawnX(scene) {
@@ -4051,11 +4114,11 @@ function findRedWaveEnemySpawnX(scene) {
   const min = 34;
   const max = Math.max(min, getGameWidth(scene) - 34);
   const center = getGameWidth(scene) / 2;
-  const recentEnemies = scene.balls
+  const recentEnemies = getFallingObjects(scene)
     .getChildren()
     .filter((ball) => (
       ball.active &&
-      ball.getData('kind') === 'damageBooster' &&
+      ball.getData('kind') === OBJECT_KIND.ENEMY &&
       ball.y < RED_WAVE_RECENT_ENEMY_HEIGHT
     ));
 
@@ -4145,7 +4208,7 @@ function updatePlayerLevelText(scene) {
 }
 
 function updateFallingObjectSpeeds(scene) {
-  scene.balls.getChildren().forEach((ball) => {
+  getFallingObjects(scene).getChildren().forEach((ball) => {
     if (!ball.active) return;
     const kind = ball.getData('kind');
     ball.body.setVelocityX(getHorizontalVelocity(kind, scene, ball));
@@ -4167,13 +4230,13 @@ function getFallingVelocity(kind, scene, object = null) {
     return object.getData('fallVelocity');
   }
 
-  if (kind === 'damageBooster' && scene.activeRedWave) {
+  if (kind === OBJECT_KIND.ENEMY && scene.activeRedWave) {
     return Math.round(currentGravity * RED_WAVE_ENEMY_GRAVITY_RATIO);
   }
 
   if (isAsteroidKind(kind)) {
     const normalRatio = scene.activeAsteroidWave ? ASTEROID_WAVE_GRAVITY_RATIO : ASTEROID_GRAVITY_RATIO;
-    const ratio = kind === 'bigAsteroid' ? BIG_ASTEROID_GRAVITY_RATIO : normalRatio;
+    const ratio = kind === OBJECT_KIND.BIG_ASTEROID ? BIG_ASTEROID_GRAVITY_RATIO : normalRatio;
     return Math.round(BASE_GRAVITY * ratio);
   }
 
@@ -4189,7 +4252,7 @@ function getHorizontalVelocity(kind, scene, object = null) {
 
   const direction = Math.random() < 0.5 ? -1 : 1;
   const normalRatio = scene.activeAsteroidWave ? ASTEROID_WAVE_HORIZONTAL_SPEED_RATIO : ASTEROID_HORIZONTAL_SPEED_RATIO;
-  const ratio = kind === 'bigAsteroid' ? BIG_ASTEROID_HORIZONTAL_SPEED_RATIO : normalRatio;
+  const ratio = kind === OBJECT_KIND.BIG_ASTEROID ? BIG_ASTEROID_HORIZONTAL_SPEED_RATIO : normalRatio;
   const velocity = Math.round(BASE_GRAVITY * ratio) * direction;
   if (object) object.setData('horizontalVelocity', velocity);
   return velocity;
@@ -4211,8 +4274,8 @@ function getSpawnDelayForGravity(gravity) {
   return Math.round(MIN_SPAWN_DELAY + (INITIAL_SPAWN_DELAY - MIN_SPAWN_DELAY) * easedRemaining);
 }
 
-function catchBall(ball, scene) {
-  if (state !== 'playing' || !ball || !ball.active || ball === scene.ship) return;
+function collectFallingObject(ball, scene) {
+  if (state !== GAME_STATE.PLAYING || !ball || !ball.active || ball === scene.ship) return;
 
   const x = ball.x;
   const y = ball.y;
@@ -4221,7 +4284,7 @@ function catchBall(ball, scene) {
   let hitFeedbackShown = false;
   ball.destroy();
 
-  if (kind === 'damageBooster') {
+  if (isShieldBlockedKind(kind)) {
     showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
     hitFeedbackShown = true;
     if (!isShieldActive(scene)) {
@@ -4231,21 +4294,11 @@ function catchBall(ball, scene) {
       flashPlayerShip(scene);
       addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#4da3ff' });
     }
-  } else if (isAsteroidKind(kind)) {
-    showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
-    hitFeedbackShown = true;
-    if (!isShieldActive(scene)) {
-      takeDirectDamage(scene);
-    } else {
-      playShieldBlockSound(scene);
-      flashPlayerShip(scene);
-      addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#4da3ff' });
-    }
-  } else if (kind === 'lifeBooster') {
+  } else if (kind === OBJECT_KIND.LIFE_BOOSTER) {
     gainLife(scene);
-  } else if (kind === 'scoreBooster') {
+  } else if (kind === OBJECT_KIND.SCORE_BOOSTER) {
     activateScoreBooster(scene);
-  } else if (kind === 'shieldBooster') {
+  } else if (kind === OBJECT_KIND.SHIELD_BOOSTER) {
     activateShieldBooster(scene);
   } else {
     const points = getEnergyBallValue() * scoreMultiplier;
@@ -4253,10 +4306,10 @@ function catchBall(ball, scene) {
     ballsCaught += 1;
   }
 
-  if (state !== 'playing') return;
+  if (state !== GAME_STATE.PLAYING) return;
 
   if (!hitFeedbackShown) {
-    if (kind === 'damageBooster' || isAsteroidKind(kind)) {
+    if (isShieldBlockedKind(kind)) {
       playBadSound(scene);
     } else if (isBoosterKind(kind)) {
       playBoosterSound(scene);
@@ -4268,57 +4321,61 @@ function catchBall(ball, scene) {
     showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
   }
 
-  if (kind === 'ball') {
+  if (kind === OBJECT_KIND.ENERGY) {
     maybeOpenUpgradeChoice(scene);
   }
 }
 
+function catchBall(ball, scene) {
+  collectFallingObject(ball, scene);
+}
+
 function playCatchSound(scene) {
   if (!soundEffectsEnabled) return;
-  if (!scene.catchAudio) {
-    scene.catchAudio = new Audio(CATCH_SOUND_PATH);
-    scene.catchAudio.volume = 0.45;
+  if (!scene[AUDIO_KEY.CATCH]) {
+    scene[AUDIO_KEY.CATCH] = new Audio(CATCH_SOUND_PATH);
+    scene[AUDIO_KEY.CATCH].volume = 0.45;
   }
 
-  scene.catchAudio.currentTime = 0;
-  scene.catchAudio.play().catch(() => {});
+  scene[AUDIO_KEY.CATCH].currentTime = 0;
+  scene[AUDIO_KEY.CATCH].play().catch(() => {});
 }
 
 function playBoosterSound(scene) {
-  playAudioFile(scene, 'boosterAudio', BOOSTER_SOUND_PATH, 0.45);
+  playAudioFile(scene, AUDIO_KEY.BOOSTER, BOOSTER_SOUND_PATH, 0.45);
 }
 
 function playBadSound(scene) {
-  playAudioFile(scene, 'badAudio', BAD_SOUND_PATH, 0.5);
+  playAudioFile(scene, AUDIO_KEY.BAD, BAD_SOUND_PATH, 0.5);
 }
 
 function playButtonSound(scene) {
-  playAudioFile(scene, 'buttonAudio', BUTTON_SOUND_PATH, 0.45);
+  playAudioFile(scene, AUDIO_KEY.BUTTON, BUTTON_SOUND_PATH, 0.45);
 }
 
 function playLevelUpSound(scene) {
-  playAudioFile(scene, 'levelUpAudio', LEVEL_UP_SOUND_PATH, 0.55);
+  playAudioFile(scene, AUDIO_KEY.LEVEL_UP, LEVEL_UP_SOUND_PATH, 0.55);
 }
 
 function playRedWaveSound(scene) {
-  playAudioFile(scene, 'redWaveAudio', RED_WAVE_SOUND_PATH, 0.6);
+  playAudioFile(scene, AUDIO_KEY.RED_WAVE, RED_WAVE_SOUND_PATH, 0.6);
 }
 
 function playBossLaserSound(scene) {
-  playLoopingAudioFile(scene, 'bossLaserAudio', BOSS_LASER_SOUND_PATH, 0.5);
+  playLoopingAudioFile(scene, AUDIO_KEY.BOSS_LASER, BOSS_LASER_SOUND_PATH, 0.5);
 }
 
 function stopBossLaserSound(scene) {
-  stopAudioFile(scene, 'bossLaserAudio');
+  stopAudioFile(scene, AUDIO_KEY.BOSS_LASER);
 }
 
 function playShieldBlockSound(scene) {
-  playAudioFile(scene, 'shieldBlockAudio', SHIELD_BLOCK_SOUND_PATH, 0.5);
+  playAudioFile(scene, AUDIO_KEY.SHIELD_BLOCK, SHIELD_BLOCK_SOUND_PATH, 0.5);
 }
 
 function playBackgroundMusic(scene) {
   if (!musicEnabled) return;
-  playMusicTrack(scene, 'backgroundMusic', BACKGROUND_MUSIC_PATH, 0.28);
+  playMusicTrack(scene, AUDIO_KEY.BACKGROUND_MUSIC, BACKGROUND_MUSIC_PATH, 0.28);
 }
 
 function restartBackgroundMusic(scene) {
@@ -4330,7 +4387,7 @@ function restartBackgroundMusic(scene) {
 
 function playPurpleBoosterMusic(scene) {
   if (!musicEnabled) return;
-  playMusicTrack(scene, 'purpleBoosterMusic', PURPLE_BOOSTER_MUSIC_PATH, 0.32);
+  playMusicTrack(scene, AUDIO_KEY.PURPLE_BOOSTER_MUSIC, PURPLE_BOOSTER_MUSIC_PATH, 0.32);
 }
 
 function playMusicTrack(scene, audioKey, path, volume) {
@@ -4358,7 +4415,16 @@ function stopBackgroundMusic(scene) {
 }
 
 function stopNonMusicAudio(scene) {
-  ['catchAudio', 'boosterAudio', 'badAudio', 'buttonAudio', 'levelUpAudio', 'redWaveAudio', 'bossLaserAudio', 'shieldBlockAudio'].forEach((audioKey) => {
+  [
+    AUDIO_KEY.CATCH,
+    AUDIO_KEY.BOOSTER,
+    AUDIO_KEY.BAD,
+    AUDIO_KEY.BUTTON,
+    AUDIO_KEY.LEVEL_UP,
+    AUDIO_KEY.RED_WAVE,
+    AUDIO_KEY.BOSS_LASER,
+    AUDIO_KEY.SHIELD_BLOCK,
+  ].forEach((audioKey) => {
     const audio = scene[audioKey];
     if (!audio) return;
     audio.pause();
@@ -4386,7 +4452,7 @@ function resumeCurrentMusic(scene) {
   if (!musicEnabled) return;
   if (!scene.currentMusicKey) return;
   const currentKey = scene.currentMusicKey;
-  if (currentKey === 'purpleBoosterMusic') {
+  if (currentKey === AUDIO_KEY.PURPLE_BOOSTER_MUSIC) {
     playPurpleBoosterMusic(scene);
     return;
   }
@@ -4426,41 +4492,41 @@ function stopAudioFile(scene, audioKey) {
 function showOptionsOverlay(scene, returnState) {
   if (!scene.optionsOverlay) return;
   const fallbackScreen = getCurrentOverlayScreen(scene);
-  scene.optionsReturnScreen = returnState === 'paused' || returnState === 'pause'
+  scene.optionsReturnScreen = returnState === GAME_STATE.PAUSED || returnState === 'pause'
     ? 'pause'
-    : (returnState || fallbackScreen || 'menu');
-  state = 'options';
+    : (returnState || fallbackScreen || GAME_STATE.MENU);
+  state = GAME_STATE.OPTIONS;
   updateAudioOptionButtons(scene);
-  showOverlayScreen(scene, 'options');
+  showOverlayScreen(scene, GAME_STATE.OPTIONS);
 }
 
 function hideOptionsOverlay(scene) {
   if (!scene.optionsOverlay) return;
-  const returnScreen = scene.optionsReturnScreen || 'menu';
+  const returnScreen = scene.optionsReturnScreen || GAME_STATE.MENU;
   scene.optionsReturnScreen = null;
 
   if (returnScreen === 'pause') {
-    state = 'paused';
+    state = GAME_STATE.PAUSED;
     showOverlayScreen(scene, 'pause');
     return;
   }
 
-  if (returnScreen === 'ranking') {
-    state = 'ranking';
-    showOverlayScreen(scene, 'ranking');
+  if (returnScreen === GAME_STATE.RANKING) {
+    state = GAME_STATE.RANKING;
+    showOverlayScreen(scene, GAME_STATE.RANKING);
     return;
   }
 
-  if (returnScreen === 'gameover') {
-    state = 'gameover';
-    showOverlayScreen(scene, 'gameover');
+  if (returnScreen === GAME_STATE.GAME_OVER) {
+    state = GAME_STATE.GAME_OVER;
+    showOverlayScreen(scene, GAME_STATE.GAME_OVER);
     return;
   }
 
-  state = 'menu';
+  state = GAME_STATE.MENU;
   const currentHud = initHud();
   if (currentHud.root) currentHud.root.classList.remove('is-visible');
-  showOverlayScreen(scene, 'menu');
+  showOverlayScreen(scene, GAME_STATE.MENU);
 }
 
 function updateAudioOptionButtons(scene = gameScene) {
@@ -4476,8 +4542,8 @@ function updateAudioOptionButtons(scene = gameScene) {
 
 function loadAudioSettings() {
   try {
-    const sfx = window.localStorage.getItem('jueguito_sfx_enabled');
-    const music = window.localStorage.getItem('jueguito_music_enabled');
+    const sfx = window.localStorage.getItem(STORAGE_KEY.SFX_ENABLED);
+    const music = window.localStorage.getItem(STORAGE_KEY.MUSIC_ENABLED);
     if (sfx !== null) soundEffectsEnabled = sfx === '1';
     if (music !== null) musicEnabled = music === '1';
   } catch (error) {
@@ -4488,8 +4554,8 @@ function loadAudioSettings() {
 
 function saveAudioSettings() {
   try {
-    window.localStorage.setItem('jueguito_sfx_enabled', soundEffectsEnabled ? '1' : '0');
-    window.localStorage.setItem('jueguito_music_enabled', musicEnabled ? '1' : '0');
+    window.localStorage.setItem(STORAGE_KEY.SFX_ENABLED, soundEffectsEnabled ? '1' : '0');
+    window.localStorage.setItem(STORAGE_KEY.MUSIC_ENABLED, musicEnabled ? '1' : '0');
   } catch (error) {
     // Ignorar si el navegador no permite persistir.
   }
@@ -4499,7 +4565,8 @@ function showAbsorbEffect(scene, x, y, kind, isPurpleEnergy = false) {
   const targetX = scene.ship.x;
   const targetY = scene.ship.y - 4;
   const tint = getAbsorbParticleTint(kind, isPurpleEnergy);
-  const particleCount = kind === 'ball' ? 22 : 14;
+  const isEnergy = kind === OBJECT_KIND.ENERGY;
+  const particleCount = isEnergy ? 22 : 14;
 
   for (let i = 0; i < particleCount; i += 1) {
     const particle = trackGameplayVisual(scene, scene.add.image(
@@ -4507,7 +4574,7 @@ function showAbsorbEffect(scene, x, y, kind, isPurpleEnergy = false) {
       y + Phaser.Math.Between(-10, 10),
       'goldTrailParticle'
     ));
-    const scale = Phaser.Math.FloatBetween(kind === 'ball' ? 0.75 : 0.55, kind === 'ball' ? 1.55 : 1.1);
+    const scale = Phaser.Math.FloatBetween(isEnergy ? 0.75 : 0.55, isEnergy ? 1.55 : 1.1);
     const delay = Phaser.Math.Between(0, 80);
 
     particle
@@ -4550,11 +4617,11 @@ function showAbsorbEffect(scene, x, y, kind, isPurpleEnergy = false) {
 }
 
 function getAbsorbParticleTint(kind, isPurpleEnergy = false) {
-  if (kind === 'ball' && isPurpleEnergy) return 0x9b5cff;
+  if (kind === OBJECT_KIND.ENERGY && isPurpleEnergy) return 0x9b5cff;
   if (isAsteroidKind(kind)) return 0xaeb7c8;
-  if (kind === 'damageBooster') return 0xff3b4f;
-  if (kind === 'lifeBooster') return 0x4dff88;
-  if (kind === 'scoreBooster') return 0x9b5cff;
-  if (kind === 'shieldBooster') return 0x4da3ff;
+  if (kind === OBJECT_KIND.ENEMY) return 0xff3b4f;
+  if (kind === OBJECT_KIND.LIFE_BOOSTER) return 0x4dff88;
+  if (kind === OBJECT_KIND.SCORE_BOOSTER) return 0x9b5cff;
+  if (kind === OBJECT_KIND.SHIELD_BOOSTER) return 0x4da3ff;
   return 0xffc84d;
 }
