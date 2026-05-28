@@ -8,6 +8,7 @@ const LEVEL_UP_SOUND_PATH = 'assets/level-up.mp3';
 const RED_WAVE_SOUND_PATH = 'assets/red-wave.mp3';
 const BOSS_LASER_SOUND_PATH = 'assets/boss-laser.mp3';
 const SHIELD_BLOCK_SOUND_PATH = 'assets/shield-block.mp3';
+const SPIKE_DRONE_SOUND_PATH = 'assets/spike-drone.mp3';
 const BACKGROUND_MUSIC_PATH = 'assets/background.mp3';
 const PURPLE_BOOSTER_MUSIC_PATH = 'assets/purple-booster.mp3';
 const SUPABASE_URL = 'https://fqkpwigonxgnsynfdzyw.supabase.co';
@@ -39,10 +40,22 @@ const RED_WAVE_ENEMY_GRAVITY_RATIO = 0.72;
 const RED_WAVE_MIN_ENEMY_SPACING = SHIP_WIDTH + 56;
 const RED_WAVE_RECENT_ENEMY_HEIGHT = 230;
 const OBRERA_SPAWN_CHANCE = 0.16;
+const DRONE_WAVE_DURATION = 15000;
+const DRONE_WAVE_SPAWN_DELAY = 680;
 const ASTEROID_WAVE_DURATION = 15000;
 const ASTEROID_WAVE_SPAWN_DELAY = 760;
 const TRAVEL_ASTEROID_CHANCE = 0.1;
 const TRAVEL_PLASMA_CHANCE = 0.05;
+const SPIKE_DRONE_SPAWN_CHANCE = 0.05;
+const SPIKE_DRONE_FOLDED_RADIUS = 18;
+const SPIKE_DRONE_EXPANDED_RADIUS = SPIKE_DRONE_FOLDED_RADIUS * 3;
+const SPIKE_DRONE_FOLDED_DURATION = 1100;
+const SPIKE_DRONE_WARNING_GREEN_DURATION = 1500;
+const SPIKE_DRONE_WARNING_RED_DURATION = 500;
+const SPIKE_DRONE_WARNING_DURATION = SPIKE_DRONE_WARNING_GREEN_DURATION + SPIKE_DRONE_WARNING_RED_DURATION;
+const SPIKE_DRONE_EXPANDED_DURATION = 1000;
+const SPIKE_DRONE_GRAVITY_RATIO = 0.68;
+const SPIKE_DRONE_TEXTURE_SIZE = 120;
 const PLASMA_WAVE_DURATION = 15000;
 const PLASMA_WAVE_SPAWN_DELAY = 2100;
 const PLASMA_BAR_HEIGHT = 18;
@@ -243,9 +256,9 @@ function getBossConfigForLevel(level) {
   const bossIndex = getBossIndexForLevel(level);
   if (bossIndex === -1) return null;
 
-  const bossKinds = ['red', 'asteroid', 'boss', 'plasma'];
+  const bossKinds = ['drones', 'red', 'asteroid', 'boss', 'plasma'];
   const bossKind = currentGameMode === 'infinite'
-    ? bossKinds[Math.floor(Math.random() * bossKinds.length)]
+    ? (bossIndex === 0 ? 'drones' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
     : bossKinds[bossIndex % bossKinds.length];
   return createBossConfig(bossKind);
 }
@@ -263,6 +276,13 @@ function createBossConfig(kind) {
       kind: 'asteroid',
       name: 'Cinturón',
       duration: ASTEROID_WAVE_DURATION,
+    };
+  }
+  if (kind === 'drones') {
+    return {
+      kind: 'drones',
+      name: 'Drones',
+      duration: DRONE_WAVE_DURATION,
     };
   }
   if (kind === 'boss') {
@@ -351,6 +371,7 @@ function create() {
   damageGraphics.generateTexture('damageBooster', 36, 36);
   damageGraphics.destroy();
   createEnemyShipTexture(this);
+  createSpikeDroneTextures(this);
   createBossShipTexture(this);
   createAsteroidTexture(this);
   createBigAsteroidTexture(this);
@@ -737,6 +758,106 @@ function createEnemyShipTexture(scene) {
   graphics.destroy();
 }
 
+function createSpikeDroneTextures(scene) {
+  createSpikeDroneTexture(scene, 'spikeDrone', 'folded');
+  createSpikeDroneTexture(scene, 'spikeDroneWarningGreen', 'warningGreen');
+  createSpikeDroneTexture(scene, 'spikeDroneWarningRed', 'warningRed');
+  createSpikeDroneTexture(scene, 'spikeDroneExpanded', 'expanded');
+}
+
+function createSpikeDroneTexture(scene, key, mode) {
+  const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+  const center = SPIKE_DRONE_TEXTURE_SIZE / 2;
+  const expanded = mode === 'expanded';
+  const warningGreen = mode === 'warningGreen';
+  const warningRed = mode === 'warningRed';
+  const warning = warningGreen || warningRed;
+  const spikeInnerRadius = 24;
+  const spikeOuterRadius = 58;
+
+  if (expanded) {
+    for (let i = 0; i < 8; i += 1) {
+      const angle = -Math.PI / 2 + i * (Math.PI / 4);
+      const sideA = angle - 0.2;
+      const sideB = angle + 0.2;
+      graphics.fillStyle(0x57121b, 1);
+      graphics.fillPoints([
+        {
+          x: center + Math.cos(sideA) * spikeInnerRadius,
+          y: center + Math.sin(sideA) * spikeInnerRadius,
+        },
+        {
+          x: center + Math.cos(angle) * spikeOuterRadius,
+          y: center + Math.sin(angle) * spikeOuterRadius,
+        },
+        {
+          x: center + Math.cos(sideB) * spikeInnerRadius,
+          y: center + Math.sin(sideB) * spikeInnerRadius,
+        },
+      ], true);
+      graphics.fillStyle(0xff3045, 0.95);
+      graphics.fillPoints([
+        {
+          x: center + Math.cos(angle - 0.13) * (spikeInnerRadius + 3),
+          y: center + Math.sin(angle - 0.13) * (spikeInnerRadius + 3),
+        },
+        {
+          x: center + Math.cos(angle) * (spikeOuterRadius - 3),
+          y: center + Math.sin(angle) * (spikeOuterRadius - 3),
+        },
+        {
+          x: center + Math.cos(angle + 0.13) * (spikeInnerRadius + 3),
+          y: center + Math.sin(angle + 0.13) * (spikeInnerRadius + 3),
+        },
+      ], true);
+    }
+  }
+
+  graphics.fillStyle(0x141b2a, 1);
+  graphics.fillCircle(center, center, 20);
+  graphics.fillStyle(0x596272, 1);
+  graphics.fillCircle(center, center, 17);
+  graphics.fillStyle(0x252d3d, 1);
+  graphics.fillCircle(center, center, 13);
+  graphics.lineStyle(2, 0xaeb8c9, 0.62);
+  graphics.strokeCircle(center, center, 18);
+
+  graphics.lineStyle(1, 0x111827, 0.55);
+  graphics.beginPath();
+  graphics.moveTo(center - 14, center);
+  graphics.lineTo(center + 14, center);
+  graphics.moveTo(center, center - 14);
+  graphics.lineTo(center, center + 14);
+  graphics.strokePath();
+
+  const safeLight = !warning && !expanded;
+  const activeLightColor = warningGreen || safeLight ? 0x4dff88 : 0xff1f32;
+  const lightColor = warning || expanded || safeLight ? activeLightColor : 0x263142;
+  const lightAlpha = warning || expanded || safeLight ? 1 : 0.86;
+  const lightGlowRadius = safeLight || expanded ? 14 : warning ? 10 : 10;
+  const lightCoreRadius = safeLight || expanded ? 7 : warning ? 5 : 5;
+  if (warningGreen) {
+    graphics.fillStyle(0x263142, 0.82);
+    graphics.fillCircle(center, center, 7);
+  }
+  if (warning || expanded || safeLight) {
+    graphics.fillStyle(activeLightColor, warningGreen || safeLight ? 0.16 : 0.18);
+    graphics.fillCircle(center, center, lightGlowRadius);
+  }
+  graphics.fillStyle(lightColor, lightAlpha);
+  graphics.fillCircle(center, center, lightCoreRadius);
+  graphics.fillStyle(0xffffff, warning || expanded || safeLight ? 0.78 : 0.18);
+  graphics.fillCircle(center - 2, center - 2, warning ? 1.5 : 2);
+
+  if (expanded) {
+    graphics.lineStyle(2, 0xef4455, 0.5);
+    graphics.strokeCircle(center, center, 25);
+  }
+
+  graphics.generateTexture(key, SPIKE_DRONE_TEXTURE_SIZE, SPIKE_DRONE_TEXTURE_SIZE);
+  graphics.destroy();
+}
+
 function createBossShipTexture(scene) {
   const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
   const centerX = BOSS_WIDTH / 2;
@@ -1018,10 +1139,12 @@ function update(time, delta) {
   updateShipTilt(this);
   updateEnemyPropulsion(this, delta);
   updateRedEnemySway(this, time);
+  updateSpikeDrones(this);
   updateEnergyRefinerPassive(this, delta);
   updateScoreBooster(this);
   updateShieldBooster(this);
   updateRedWave(this);
+  updateDroneWave(this);
   updateAsteroidWave(this);
   updatePlasmaWave(this);
   updatePlasmaBars(this, delta);
@@ -1789,6 +1912,7 @@ function showMenu() {
   }
   resetTimedBoosters(this);
   resetRedWave(this);
+  resetDroneWave(this);
   resetAsteroidWave(this);
   resetPlasmaWave(this);
   resetBossWave(this);
@@ -1830,6 +1954,7 @@ function startGame(options = {}) {
   }
   resetTimedBoosters(this);
   resetRedWave(this);
+  resetDroneWave(this);
   resetAsteroidWave(this);
   resetPlasmaWave(this);
   resetBossWave(this);
@@ -1857,6 +1982,7 @@ function endGame() {
   }
   resetTimedBoosters(this);
   resetRedWave(this);
+  resetDroneWave(this);
   resetAsteroidWave(this);
   resetPlasmaWave(this);
   resetBossWave(this);
@@ -1878,6 +2004,7 @@ function endGame() {
 
 function enableInfiniteModeThreats(scene) {
   scene.obreraSpawnsUnlocked = true;
+  scene.droneSpawnsUnlocked = true;
   scene.asteroidSpawnsUnlocked = true;
   scene.plasmaSpawnsUnlocked = true;
   scene.travelSentinelUnlocked = true;
@@ -1919,6 +2046,7 @@ function resetCounters() {
   this.nextRedWaveEligibleAt = 0;
   this.nextAsteroidWaveEligibleAt = 0;
   this.obreraSpawnsUnlocked = false;
+  this.droneSpawnsUnlocked = false;
   this.asteroidSpawnsUnlocked = false;
   this.plasmaSpawnsUnlocked = false;
   this.travelSentinelUnlocked = false;
@@ -2060,6 +2188,10 @@ function scheduleNextSpawn(scene, delayOverride = null) {
     return;
   }
 
+  if (scene.activeDroneWave && !scene.activeDroneWave.isSpawningDrones) {
+    return;
+  }
+
   if (scene.activeAsteroidWave && !scene.activeAsteroidWave.isSpawningAsteroids) {
     return;
   }
@@ -2128,6 +2260,7 @@ function resumeGameplaySpawning(scene, delayOverride = null) {
   }
 
   if (scene.activeRedWave && !scene.activeRedWave.isSpawningDamageBoosters) return;
+  if (scene.activeDroneWave && !scene.activeDroneWave.isSpawningDrones) return;
   if (scene.activeAsteroidWave && !scene.activeAsteroidWave.isSpawningAsteroids) return;
   if (isBlockingBossWave(scene)) return;
 
@@ -2138,7 +2271,8 @@ function resumeGameplaySpawning(scene, delayOverride = null) {
 
 function pauseTimedGameplay(scene) {
   scene.tweens.pauseAll();
-  [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeAsteroidWave, scene.activePlasmaWave, scene.activeBossWave]
+  pauseSpikeDrones(scene);
+  [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activePlasmaWave, scene.activeBossWave]
     .forEach((countdown) => pauseCountdown(scene, countdown));
 
   [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
@@ -2161,7 +2295,8 @@ function pauseTimedGameplay(scene) {
 
 function resumeTimedGameplay(scene) {
   scene.tweens.resumeAll();
-  [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeAsteroidWave, scene.activePlasmaWave, scene.activeBossWave]
+  resumeSpikeDrones(scene);
+  [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activePlasmaWave, scene.activeBossWave]
     .forEach((countdown) => resumeCountdown(scene, countdown));
 
   [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
@@ -2252,6 +2387,18 @@ function resetRedWave(scene) {
   }
 }
 
+function resetDroneWave(scene) {
+  scene.activeDroneWave = null;
+  clearWaveTimers(scene);
+  clearBossCue(scene);
+
+  if (scene.ship) {
+    setShipTextureForCurrentState(scene);
+    refreshShipSize(scene);
+    moveShipTo(scene, clampShipX(scene, scene.ship.x));
+  }
+}
+
 function resetAsteroidWave(scene) {
   scene.activeAsteroidWave = null;
   clearWaveTimers(scene);
@@ -2328,6 +2475,7 @@ function getActiveCountdown(scene) {
 
 function getActiveWaveCountdown(scene) {
   if (scene.activeRedWave && scene.activeRedWave.hasStarted) return scene.activeRedWave;
+  if (scene.activeDroneWave && scene.activeDroneWave.hasStarted) return scene.activeDroneWave;
   if (scene.activeAsteroidWave && scene.activeAsteroidWave.hasStarted) return scene.activeAsteroidWave;
   if (scene.activePlasmaWave && scene.activePlasmaWave.hasStarted) return scene.activePlasmaWave;
   if (scene.activeBossWave && scene.activeBossWave.hasStarted) return scene.activeBossWave;
@@ -2623,6 +2771,43 @@ function updateRedWave(scene) {
   finishWaveSpawning(scene, redWave, 'red');
 }
 
+function activateDroneWave(scene, bossConfig = createBossConfig('drones')) {
+  resetTimedBoosters(scene);
+  playBackgroundMusic(scene);
+  scene.activeDroneWave = {
+    endsAt: null,
+    duration: bossConfig.duration || DRONE_WAVE_DURATION,
+    isSpawningDrones: false,
+    hasStarted: false,
+    isDraining: false,
+    bossName: bossConfig.name || 'Drones',
+  };
+
+  setShipTextureForCurrentState(scene);
+  refreshShipSize(scene);
+  moveShipTo(scene, clampShipX(scene, scene.ship.x));
+
+  hideWaveBar(scene);
+
+  if (spawnEvent) {
+    spawnEvent.remove(false);
+    spawnEvent = null;
+  }
+
+  scheduleWaveStart(scene, 'drones');
+}
+
+function updateDroneWave(scene) {
+  const droneWave = scene.activeDroneWave;
+  if (!droneWave) return;
+  if (!droneWave.hasStarted) return;
+
+  const remaining = Math.max(0, droneWave.endsAt - scene.time.now);
+  if (remaining > 0) return;
+
+  finishWaveSpawning(scene, droneWave, 'drones');
+}
+
 function activateAsteroidWave(scene, bossConfig = getBossConfigForLevel(6)) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
@@ -2749,6 +2934,8 @@ function activateLevelBoss(scene, bossConfig) {
   if (!bossConfig) return;
   if (bossConfig.kind === 'red') {
     activateRedWave(scene, bossConfig);
+  } else if (bossConfig.kind === 'drones') {
+    activateDroneWave(scene, bossConfig);
   } else if (bossConfig.kind === 'asteroid') {
     activateAsteroidWave(scene, bossConfig);
   } else if (bossConfig.kind === 'plasma') {
@@ -3026,15 +3213,19 @@ function startWaveAfterCue(scene, waveKind) {
   }
   const wave = waveKind === 'red'
     ? scene.activeRedWave
-    : waveKind === 'asteroid'
-      ? scene.activeAsteroidWave
-      : scene.activePlasmaWave;
+    : waveKind === 'drones'
+      ? scene.activeDroneWave
+      : waveKind === 'asteroid'
+        ? scene.activeAsteroidWave
+        : scene.activePlasmaWave;
   if (!wave || wave.hasStarted) return;
 
   wave.hasStarted = true;
   wave.endsAt = scene.time.now + wave.duration;
   if (waveKind === 'red') {
     wave.isSpawningDamageBoosters = true;
+  } else if (waveKind === 'drones') {
+    wave.isSpawningDrones = true;
   } else if (waveKind === 'asteroid') {
     wave.isSpawningAsteroids = true;
   } else if (waveKind === 'plasma') {
@@ -3101,6 +3292,7 @@ function showBossCueBand(scene, waveKind, cueKind, onCross) {
 
 function getWaveBossName(scene, waveKind) {
   if (waveKind === 'red' && scene.activeRedWave) return scene.activeRedWave.bossName || 'Enjambre';
+  if (waveKind === 'drones' && scene.activeDroneWave) return scene.activeDroneWave.bossName || 'Drones';
   if (waveKind === 'asteroid' && scene.activeAsteroidWave) return scene.activeAsteroidWave.bossName || 'Cinturón';
   if (waveKind === 'plasma' && scene.activePlasmaWave) return scene.activePlasmaWave.bossName || 'Marea de Plasma';
   if (waveKind === 'boss' && scene.activeBossWave) return scene.activeBossWave.bossName || 'Centinela';
@@ -3145,6 +3337,8 @@ function finishWaveSpawning(scene, wave, waveKind) {
   wave.isDraining = true;
   if (waveKind === 'red') {
     wave.isSpawningDamageBoosters = false;
+  } else if (waveKind === 'drones') {
+    wave.isSpawningDrones = false;
   } else if (waveKind === 'asteroid') {
     wave.isSpawningAsteroids = false;
   } else if (waveKind === 'plasma') {
@@ -3168,11 +3362,13 @@ function finishWaveSpawning(scene, wave, waveKind) {
 function endWaveAfterPause(scene, waveKind) {
   const currentWave = waveKind === 'red'
     ? scene.activeRedWave
-    : waveKind === 'asteroid'
-      ? scene.activeAsteroidWave
-      : waveKind === 'plasma'
-        ? scene.activePlasmaWave
-        : scene.activeBossWave;
+    : waveKind === 'drones'
+      ? scene.activeDroneWave
+      : waveKind === 'asteroid'
+        ? scene.activeAsteroidWave
+        : waveKind === 'plasma'
+          ? scene.activePlasmaWave
+          : scene.activeBossWave;
   if (!currentWave) return;
 
   hideWaveBar(scene);
@@ -3180,6 +3376,9 @@ function endWaveAfterPause(scene, waveKind) {
   if (waveKind === 'red') {
     scene.obreraSpawnsUnlocked = true;
     scene.activeRedWave = null;
+  } else if (waveKind === 'drones') {
+    scene.droneSpawnsUnlocked = true;
+    scene.activeDroneWave = null;
   } else if (waveKind === 'asteroid') {
     scene.asteroidSpawnsUnlocked = true;
     scene.activeAsteroidWave = null;
@@ -3465,6 +3664,7 @@ function maybeOpenUpgradeChoice(scene) {
 
   resetTimedBoosters(scene);
   resetRedWave(scene);
+  resetDroneWave(scene);
   resetAsteroidWave(scene);
   clearAllFallingObjects(scene);
   scene.availableUpgradeChoices = getRandomUpgradeChoices();
@@ -3745,6 +3945,7 @@ function getDistanceToShipHitbox(scene, object) {
 function isPreciseShipOverlap(scene, objectA, objectB) {
   const object = getCaughtObject(scene, objectA, objectB);
   if (!object) return false;
+  if (object.getData('kind') === 'spikeDrone' && object.getData('spikeState') !== 'expanded' && !isShieldActive(scene)) return false;
 
   if (isShieldActive(scene)) {
     return getDistanceToShieldCenter(scene, object) <= SHIELD_BUBBLE_RADIUS + getObjectCollisionRadius(object);
@@ -3762,6 +3963,7 @@ function getDistanceToShieldCenter(scene, object) {
 function getObjectCollisionRadius(object) {
   const kind = object.getData('kind');
   if (kind === 'damageBooster') return 11;
+  if (kind === 'spikeDrone') return object.getData('collisionRadius') || SPIKE_DRONE_FOLDED_RADIUS;
   if (kind === 'bigAsteroid') return 34;
   if (kind === 'asteroid') return 18;
   if (isCollectibleBallKind(kind)) return 16;
@@ -3850,6 +4052,8 @@ function spawnBall(scene) {
     ball.setAngularVelocity(Phaser.Math.Between(-110, 110));
   } else if (kind === 'damageBooster') {
     setupRedEnemySway(ball);
+  } else if (kind === 'spikeDrone') {
+    setupSpikeDrone(scene, ball);
   }
 }
 
@@ -3882,6 +4086,117 @@ function updateRedEnemySway(scene, time) {
   });
 }
 
+function setupSpikeDrone(scene, drone) {
+  const phase = Phaser.Math.Between(0, SPIKE_DRONE_FOLDED_DURATION + SPIKE_DRONE_WARNING_DURATION + SPIKE_DRONE_EXPANDED_DURATION);
+  const stateConfig = getSpikeDroneStateFromPhase(phase);
+
+  drone.setAngularVelocity(Phaser.Math.Between(-45, 45));
+  applySpikeDroneState(drone, stateConfig.state, scene);
+  drone.setData('nextSpikeStateAt', scene.time.now + stateConfig.remaining);
+}
+
+function getSpikeDroneStateFromPhase(phase) {
+  if (phase < SPIKE_DRONE_FOLDED_DURATION) {
+    return {
+      state: 'folded',
+      remaining: SPIKE_DRONE_FOLDED_DURATION - phase,
+    };
+  }
+
+  const warningPhase = phase - SPIKE_DRONE_FOLDED_DURATION;
+  if (warningPhase < SPIKE_DRONE_WARNING_DURATION) {
+    if (warningPhase < SPIKE_DRONE_WARNING_GREEN_DURATION) {
+      return {
+        state: 'warningGreen',
+        remaining: SPIKE_DRONE_WARNING_GREEN_DURATION - warningPhase,
+      };
+    }
+
+    return {
+      state: 'warningRed',
+      remaining: SPIKE_DRONE_WARNING_DURATION - warningPhase,
+    };
+  }
+
+  const expandedPhase = warningPhase - SPIKE_DRONE_WARNING_DURATION;
+  return {
+    state: 'expanded',
+    remaining: SPIKE_DRONE_EXPANDED_DURATION - expandedPhase,
+  };
+}
+
+function updateSpikeDrones(scene) {
+  scene.balls.getChildren().forEach((drone) => {
+    if (!drone.active || drone.getData('kind') !== 'spikeDrone') return;
+    if (!drone.body) return;
+
+    drone.body.setVelocityX(0);
+    drone.body.setVelocityY(getFallingVelocity('spikeDrone', scene, drone));
+
+    const nextStateAt = drone.getData('nextSpikeStateAt') || 0;
+    if (scene.time.now < nextStateAt) return;
+
+    const stateName = drone.getData('spikeState') || 'folded';
+    if (stateName === 'folded') {
+      applySpikeDroneState(drone, 'warningGreen', scene);
+      drone.setData('nextSpikeStateAt', scene.time.now + SPIKE_DRONE_WARNING_GREEN_DURATION);
+    } else if (stateName === 'warningGreen') {
+      applySpikeDroneState(drone, 'warningRed', scene);
+      drone.setData('nextSpikeStateAt', scene.time.now + SPIKE_DRONE_WARNING_RED_DURATION);
+    } else if (stateName === 'warningRed') {
+      applySpikeDroneState(drone, 'expanded', scene);
+      playSpikeDroneSound(scene);
+      drone.setData('nextSpikeStateAt', scene.time.now + SPIKE_DRONE_EXPANDED_DURATION);
+    } else {
+      applySpikeDroneState(drone, 'folded', scene);
+      drone.setData('nextSpikeStateAt', scene.time.now + SPIKE_DRONE_FOLDED_DURATION);
+    }
+  });
+}
+
+function applySpikeDroneState(drone, stateName, scene) {
+  drone.setData('spikeState', stateName);
+  if (stateName === 'warningGreen') {
+    drone.setTexture('spikeDroneWarningGreen');
+    drone.setData('collisionRadius', SPIKE_DRONE_FOLDED_RADIUS);
+  } else if (stateName === 'warningRed') {
+    drone.setTexture('spikeDroneWarningRed');
+    drone.setData('collisionRadius', SPIKE_DRONE_FOLDED_RADIUS);
+  } else if (stateName === 'expanded') {
+    drone.setTexture('spikeDroneExpanded');
+    drone.setData('collisionRadius', SPIKE_DRONE_EXPANDED_RADIUS);
+  } else {
+    drone.setTexture('spikeDrone');
+    drone.setData('collisionRadius', SPIKE_DRONE_FOLDED_RADIUS);
+  }
+  setFallingObjectBody(drone, 'spikeDrone');
+  if (drone.body && scene) {
+    drone.body.setVelocityX(0);
+    drone.body.setVelocityY(getFallingVelocity('spikeDrone', scene, drone));
+  }
+}
+
+function pauseSpikeDrones(scene) {
+  if (!scene.balls) return;
+  scene.balls.getChildren().forEach((drone) => {
+    if (!drone.active || drone.getData('kind') !== 'spikeDrone') return;
+    const nextStateAt = drone.getData('nextSpikeStateAt');
+    if (nextStateAt === undefined) return;
+    drone.setData('pausedSpikeRemaining', Math.max(0, nextStateAt - scene.time.now));
+  });
+}
+
+function resumeSpikeDrones(scene) {
+  if (!scene.balls) return;
+  scene.balls.getChildren().forEach((drone) => {
+    if (!drone.active || drone.getData('kind') !== 'spikeDrone') return;
+    const remaining = drone.getData('pausedSpikeRemaining');
+    if (remaining === undefined) return;
+    drone.setData('nextSpikeStateAt', scene.time.now + remaining);
+    drone.setData('pausedSpikeRemaining', undefined);
+  });
+}
+
 function setBallEnergyColor(ball, isPurple) {
   ball.clearTint();
   ball.setTexture(isPurple ? 'purpleBall' : 'goldBall');
@@ -3891,6 +4206,13 @@ function setBallEnergyColor(ball, isPurple) {
 function setFallingObjectBody(object, kind) {
   if (kind === 'damageBooster') {
     object.body.setCircle(11, 13, 13);
+    return;
+  }
+
+  if (kind === 'spikeDrone') {
+    const radius = object.getData('collisionRadius') || SPIKE_DRONE_FOLDED_RADIUS;
+    const offset = SPIKE_DRONE_TEXTURE_SIZE / 2 - radius;
+    object.body.setCircle(radius, offset, offset);
     return;
   }
 
@@ -3913,6 +4235,7 @@ function getNextSpawnKind(scene) {
   if (scene.activePlasmaWave && scene.activePlasmaWave.isSpawningPlasma) return null;
 
   if (scene.activeRedWave && scene.activeRedWave.isSpawningDamageBoosters) return 'damageBooster';
+  if (scene.activeDroneWave && scene.activeDroneWave.isSpawningDrones) return 'spikeDrone';
   if (scene.activeBossWave && scene.activeBossWave.isSpawningEnemies) return 'damageBooster';
   if (scene.activeAsteroidWave && scene.activeAsteroidWave.isSpawningAsteroids) {
     return Math.random() < ASTEROID_WAVE_BIG_ASTEROID_CHANCE ? 'bigAsteroid' : 'asteroid';
@@ -3930,15 +4253,17 @@ function getNextSpawnKind(scene) {
 }
 
 function getNextTravelThreatKind(scene) {
-  if (!scene.obreraSpawnsUnlocked || scene.activeRedWave || scene.activeAsteroidWave || scene.activePlasmaWave) return null;
+  if ((!scene.obreraSpawnsUnlocked && !scene.droneSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave) return null;
   if (hasActivePlasmaBars(scene)) return null;
   if (countActiveHostileFallingObjects(scene) >= 3) return null;
 
-  return Math.random() < OBRERA_SPAWN_CHANCE ? 'damageBooster' : null;
+  if (scene.droneSpawnsUnlocked && Math.random() < SPIKE_DRONE_SPAWN_CHANCE) return 'spikeDrone';
+  if (scene.obreraSpawnsUnlocked && Math.random() < OBRERA_SPAWN_CHANCE) return 'damageBooster';
+  return null;
 }
 
 function shouldStartTravelSentinel(scene) {
-  if (!scene.travelSentinelUnlocked || scene.activeBossWave || scene.activeRedWave || scene.activeAsteroidWave || scene.activePlasmaWave) return false;
+  if (!scene.travelSentinelUnlocked || scene.activeBossWave || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave) return false;
   if (scene.pendingBossWave || getActiveTimedBooster(scene) || hasActivePlasmaBars(scene)) return false;
   if (scene.time.now < scene.nextTravelSentinelEligibleAt) return false;
   if (Math.random() >= TRAVEL_SENTINEL_CHANCE) return false;
@@ -3947,7 +4272,7 @@ function shouldStartTravelSentinel(scene) {
 }
 
 function getNextAsteroidKind(scene) {
-  if (!scene.asteroidSpawnsUnlocked || scene.activeRedWave || scene.activeAsteroidWave || scene.activePlasmaWave) return null;
+  if (!scene.asteroidSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave) return null;
   if (hasActivePlasmaBars(scene)) return null;
   if (hasFallingAsteroid(scene) || countActiveHostileFallingObjects(scene) >= 3) return null;
 
@@ -3956,7 +4281,7 @@ function getNextAsteroidKind(scene) {
 }
 
 function getNextPlasmaKind(scene) {
-  if (!scene.plasmaSpawnsUnlocked || scene.activeRedWave || scene.activeAsteroidWave || scene.activePlasmaWave || scene.activeBossWave) return null;
+  if (!scene.plasmaSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || scene.activeBossWave) return null;
   if (hasActivePlasmaBars(scene)) return null;
   if (countActiveHostileFallingObjects(scene) > 0) return null;
 
@@ -4000,7 +4325,7 @@ function hasFallingAsteroid(scene) {
 function countActiveHostileFallingObjects(scene) {
   return scene.balls
     .getChildren()
-    .filter((ball) => ball.active && (ball.getData('kind') === 'damageBooster' || isAsteroidKind(ball.getData('kind'))))
+    .filter((ball) => ball.active && (ball.getData('kind') === 'damageBooster' || ball.getData('kind') === 'spikeDrone' || isAsteroidKind(ball.getData('kind'))))
     .length;
 }
 
@@ -4008,6 +4333,7 @@ function getTextureForKind(kind) {
   if (kind === 'bigAsteroid') return 'bigAsteroid';
   if (isAsteroidKind(kind)) return 'asteroid';
   if (kind === 'damageBooster') return 'enemyShipSmall';
+  if (kind === 'spikeDrone') return 'spikeDrone';
   if (kind === 'lifeBooster') return 'lifeBooster';
   if (kind === 'scoreBooster') return 'scoreBooster';
   if (kind === 'shieldBooster') return 'shieldBooster';
@@ -4031,7 +4357,7 @@ function isAsteroidKind(kind) {
 }
 
 function isShieldBlockedKind(kind) {
-  return kind === 'damageBooster' || isAsteroidKind(kind);
+  return kind === 'damageBooster' || kind === 'spikeDrone' || isAsteroidKind(kind);
 }
 
 function findSpawnX(scene) {
@@ -4185,6 +4511,10 @@ function getFallingVelocity(kind, scene, object = null) {
     return object.getData('fallVelocity');
   }
 
+  if (kind === 'spikeDrone') {
+    return Math.round(BASE_GRAVITY * SPIKE_DRONE_GRAVITY_RATIO);
+  }
+
   if (kind === 'damageBooster' && scene.activeRedWave) {
     return Math.round(currentGravity * RED_WAVE_ENEMY_GRAVITY_RATIO);
   }
@@ -4215,6 +4545,7 @@ function getHorizontalVelocity(kind, scene, object = null) {
 
 function getCurrentSpawnDelay(scene) {
   if (scene.activePlasmaWave) return PLASMA_WAVE_SPAWN_DELAY;
+  if (scene.activeDroneWave) return DRONE_WAVE_SPAWN_DELAY;
   if (scene.activeAsteroidWave) return ASTEROID_WAVE_SPAWN_DELAY;
   return scene.activeRedWave ? RED_WAVE_SPAWN_DELAY : currentSpawnDelay;
 }
@@ -4237,9 +4568,10 @@ function catchBall(ball, scene) {
   const kind = ball.getData('kind');
   const isPurpleEnergy = Boolean(ball.getData('isPurpleEnergy'));
   let hitFeedbackShown = false;
+  if (kind === 'spikeDrone' && ball.getData('spikeState') !== 'expanded' && !isShieldActive(scene)) return;
   ball.destroy();
 
-  if (kind === 'damageBooster') {
+  if (kind === 'damageBooster' || kind === 'spikeDrone') {
     showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
     hitFeedbackShown = true;
     if (!isShieldActive(scene)) {
@@ -4274,7 +4606,7 @@ function catchBall(ball, scene) {
   if (state !== 'playing') return;
 
   if (!hitFeedbackShown) {
-    if (kind === 'damageBooster' || isAsteroidKind(kind)) {
+    if (kind === 'damageBooster' || kind === 'spikeDrone' || isAsteroidKind(kind)) {
       playBadSound(scene);
     } else if (isBoosterKind(kind)) {
       playBoosterSound(scene);
@@ -4334,6 +4666,10 @@ function playShieldBlockSound(scene) {
   playAudioFile(scene, 'shieldBlockAudio', SHIELD_BLOCK_SOUND_PATH, 0.5);
 }
 
+function playSpikeDroneSound(scene) {
+  playOverlappingAudioFile(scene, 'spikeDroneAudios', SPIKE_DRONE_SOUND_PATH, 0.55);
+}
+
 function playBackgroundMusic(scene) {
   if (!musicEnabled) return;
   playMusicTrack(scene, 'backgroundMusic', BACKGROUND_MUSIC_PATH, 0.28);
@@ -4382,6 +4718,13 @@ function stopNonMusicAudio(scene) {
     audio.pause();
     audio.currentTime = 0;
   });
+  if (scene.spikeDroneAudios) {
+    scene.spikeDroneAudios.forEach((audio) => {
+      audio.pause();
+      audio.currentTime = 0;
+    });
+    scene.spikeDroneAudios = [];
+  }
 }
 
 function stopCurrentMusic(scene) {
@@ -4420,6 +4763,23 @@ function playAudioFile(scene, audioKey, path, volume) {
 
   scene[audioKey].currentTime = 0;
   scene[audioKey].play().catch(() => {});
+}
+
+function playOverlappingAudioFile(scene, audioCollectionKey, path, volume) {
+  if (!soundEffectsEnabled) return;
+  if (!scene[audioCollectionKey]) scene[audioCollectionKey] = [];
+
+  const audio = new Audio(path);
+  audio.volume = volume;
+  scene[audioCollectionKey].push(audio);
+
+  const removeAudio = () => {
+    scene[audioCollectionKey] = scene[audioCollectionKey].filter((item) => item !== audio);
+  };
+
+  audio.addEventListener('ended', removeAudio, { once: true });
+  audio.addEventListener('error', removeAudio, { once: true });
+  audio.play().catch(removeAudio);
 }
 
 function playLoopingAudioFile(scene, audioKey, path, volume) {
@@ -4571,6 +4931,7 @@ function getAbsorbParticleTint(kind, isPurpleEnergy = false) {
   if (kind === 'ball' && isPurpleEnergy) return 0x9b5cff;
   if (isAsteroidKind(kind)) return 0xaeb7c8;
   if (kind === 'damageBooster') return 0xff3b4f;
+  if (kind === 'spikeDrone') return 0xff3045;
   if (kind === 'lifeBooster') return 0x4dff88;
   if (kind === 'scoreBooster') return 0x9b5cff;
   if (kind === 'shieldBooster') return 0x4da3ff;
