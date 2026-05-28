@@ -10,8 +10,120 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="game-container"></div>
+  <div id="game-container">
+    <div id="hud" class="hud" aria-hidden="true">
+      <div class="hud-top-panel">
+        <div class="hud-main-row">
+          <div class="hud-stat hud-level">
+            <span class="hud-label">NIVEL</span>
+            <span id="hud-level" class="hud-value">0</span>
+          </div>
+          <div class="hud-stat hud-score">
+            <span class="hud-label">PUNTOS</span>
+            <span id="hud-score" class="hud-value">0</span>
+          </div>
+          <div class="hud-life" aria-label="Vida">
+            <div class="hud-life-head">
+              <span class="hud-label">VIDA</span>
+              <span id="hud-life-count" class="hud-mini-value">5/5</span>
+            </div>
+            <div id="hud-life-bar" class="hud-life-bar"></div>
+          </div>
+        </div>
+        <div class="hud-progress-block">
+          <div class="hud-progress-head">
+            <span class="hud-label">PROGRESO</span>
+            <span id="hud-progress-text" class="hud-mini-value">0/20</span>
+          </div>
+          <div class="hud-progress-track">
+            <div id="hud-progress-fill" class="hud-progress-fill"></div>
+          </div>
+        </div>
+        <div id="hud-upgrades" class="hud-upgrades"></div>
+      </div>
+      <div id="hud-booster" class="hud-booster">
+        <span id="hud-booster-label" class="hud-booster-label">BOOSTER</span>
+        <div class="hud-booster-track">
+          <div id="hud-booster-fill" class="hud-booster-fill"></div>
+        </div>
+      </div>
+      <div class="hud-debug">
+        <span id="hud-speed">VEL 1.00x</span>
+        <span id="hud-boost-speed">BOOST 0.80x</span>
+      </div>
+    </div>
+    <div id="ui-overlays" class="ui-overlays">
+      <section id="menu-overlay" class="ui-screen is-visible">
+        <div class="ui-panel ui-panel-menu">
+          <p class="ui-eyebrow">RECOLECTA Y SOBREVIVE</p>
+          <h1>HORIZONTE INFINITO</h1>
+          <p class="ui-copy">Arrastra la nave, recolecta orbes de energia, consigue mejoras y evita las amenazas.</p>
+          <button id="play-button" class="ui-button ui-button-primary" type="button">JUGAR</button>
+          <button id="infinite-mode-button" class="ui-button ui-button-secondary" type="button">MODO INFINITO</button>
+          <button id="ranking-button" class="ui-button ui-button-secondary" type="button">RANKING</button>
+          <button id="menu-options-button" class="ui-button ui-button-secondary" type="button">OPCIONES</button>
+        </div>
+      </section>
+      <section id="gameover-overlay" class="ui-screen">
+        <div class="ui-panel ui-panel-danger">
+          <h2>MISION FALLIDA</h2>
+          <p id="final-score" class="ui-score">Puntuacion: 0</p>
+          <form id="score-form" class="score-form">
+            <label class="ui-field-label" for="player-name">Nombre</label>
+            <input id="player-name" class="ui-input" name="player-name" type="text" maxlength="18" autocomplete="nickname" placeholder="Anónimo" />
+            <button id="save-score-button" class="ui-button ui-button-primary" type="submit">GUARDAR</button>
+            <p id="score-status" class="ui-status" aria-live="polite"></p>
+          </form>
+          <div class="ranking-block">
+            <h3>TOP 3</h3>
+            <ol id="gameover-ranking-list" class="ranking-list ranking-list-compact"></ol>
+          </div>
+          <button id="retry-button" class="ui-button ui-button-primary" type="button">REINTENTAR</button>
+          <button id="menu-button" class="ui-button ui-button-secondary" type="button">MENU</button>
+        </div>
+      </section>
+      <section id="ranking-overlay" class="ui-screen">
+        <div class="ui-panel ui-panel-ranking">
+          <h2>RANKING</h2>
+          <ol id="ranking-list" class="ranking-list"></ol>
+          <p id="ranking-status" class="ui-status" aria-live="polite"></p>
+          <button id="ranking-back-button" class="ui-button ui-button-secondary" type="button">VOLVER</button>
+        </div>
+      </section>
+      <section id="pause-overlay" class="ui-screen">
+        <div class="ui-panel ui-panel-compact">
+          <h2>PAUSA</h2>
+          <p class="ui-copy">Toca la nave para continuar</p>
+          <button id="pause-surrender-button" class="ui-button ui-button-danger" type="button">RENDIRSE</button>
+          <button id="pause-options-button" class="ui-button ui-button-secondary" type="button">OPCIONES</button>
+        </div>
+      </section>
+      <section id="options-overlay" class="ui-screen">
+        <div class="ui-panel ui-panel-compact ui-panel-options">
+          <h2>OPCIONES</h2>
+          <div class="ui-options-actions">
+            <button id="toggle-sfx-button" class="ui-button ui-button-secondary" type="button">EFECTOS: ON</button>
+            <button id="toggle-music-button" class="ui-button ui-button-secondary" type="button">MUSICA: ON</button>
+          </div>
+          <button id="options-back-button" class="ui-button ui-button-primary" type="button">VOLVER</button>
+        </div>
+      </section>
+      <section id="upgrade-overlay" class="ui-screen">
+        <div class="ui-panel ui-panel-upgrade">
+          <h2>MEJORA DISPONIBLE</h2>
+          <div class="ui-upgrade-actions">
+            <button id="upgrade-first" class="ui-upgrade-button" type="button"></button>
+            <button id="upgrade-second" class="ui-upgrade-button" type="button"></button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div id="boss-cue" class="boss-cue">
+      <span id="boss-cue-label" class="boss-cue-label"></span>
+    </div>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-  <script src="game.js?v=shield-bubble-collision"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="game.js?v=speed-levels-1"></script>
 </body>
 </html>
