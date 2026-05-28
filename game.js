@@ -9,6 +9,7 @@ const RED_WAVE_SOUND_PATH = 'assets/red-wave.mp3';
 const BOSS_LASER_SOUND_PATH = 'assets/boss-laser.mp3';
 const SHIELD_BLOCK_SOUND_PATH = 'assets/shield-block.mp3';
 const SPIKE_DRONE_SOUND_PATH = 'assets/spike-drone.mp3';
+const RED_NEEDLE_SHOT_SOUND_PATH = 'assets/red-needle-shot.mp3';
 const BACKGROUND_MUSIC_PATH = 'assets/background.mp3';
 const PURPLE_BOOSTER_MUSIC_PATH = 'assets/purple-booster.mp3';
 const SUPABASE_URL = 'https://fqkpwigonxgnsynfdzyw.supabase.co';
@@ -56,6 +57,14 @@ const SPIKE_DRONE_WARNING_DURATION = SPIKE_DRONE_WARNING_GREEN_DURATION + SPIKE_
 const SPIKE_DRONE_EXPANDED_DURATION = 1000;
 const SPIKE_DRONE_GRAVITY_RATIO = 0.68;
 const SPIKE_DRONE_TEXTURE_SIZE = 120;
+const RED_NEEDLE_SPAWN_CHANCE = 0.05;
+const RED_NEEDLE_WIDTH = 76;
+const RED_NEEDLE_HEIGHT = 28;
+const RED_NEEDLE_SPEED = 118;
+const RED_NEEDLE_MAX_SHOTS = 4;
+const RED_NEEDLE_LASER_SPEED = 285;
+const RED_NEEDLE_LASER_WIDTH = 10;
+const RED_NEEDLE_LASER_HEIGHT = 23;
 const PLASMA_WAVE_DURATION = 15000;
 const PLASMA_WAVE_SPAWN_DELAY = 2100;
 const PLASMA_BAR_HEIGHT = 18;
@@ -64,6 +73,9 @@ const PLASMA_BAR_VERTICAL_SPEED = 152;
 const PLASMA_BAR_GAP_SPEED = 42;
 const BOSS_WAVE_DURATION = 30000;
 const BOSS_WAVE_ATTACKS = 5;
+const RED_NEEDLE_BOSS_ATTACKS = 6;
+const RED_NEEDLE_BOSS_PASS_DURATION = 3400;
+const RED_NEEDLE_BOSS_PASS_GAP = 620;
 const TRAVEL_SENTINEL_ATTACKS = 2;
 const TRAVEL_SENTINEL_CHANCE = 0.018;
 const TRAVEL_SENTINEL_COOLDOWN = 26000;
@@ -120,6 +132,7 @@ const STARFIELD_LAYERS = [
 const HUD_TOP = 20;
 const HUD_HEIGHT = 70;
 const BOOSTER_BAR_Y = HUD_TOP + HUD_HEIGHT + 12;
+const RED_NEEDLE_Y = BOOSTER_BAR_Y + 70;
 const UPGRADE_ICON_Y = BOOSTER_BAR_Y + 18;
 
 const config = {
@@ -256,9 +269,9 @@ function getBossConfigForLevel(level) {
   const bossIndex = getBossIndexForLevel(level);
   if (bossIndex === -1) return null;
 
-  const bossKinds = ['drones', 'red', 'asteroid', 'boss', 'plasma'];
+  const bossKinds = ['drones', 'red', 'asteroid', 'boss', 'plasma', 'redNeedleBoss'];
   const bossKind = currentGameMode === 'infinite'
-    ? (bossIndex === 0 ? 'drones' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
+    ? (bossIndex === 0 ? 'redNeedleBoss' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
     : bossKinds[bossIndex % bossKinds.length];
   return createBossConfig(bossKind);
 }
@@ -291,6 +304,14 @@ function createBossConfig(kind) {
       name: 'Centinela',
       duration: BOSS_WAVE_DURATION,
       attacks: BOSS_WAVE_ATTACKS,
+    };
+  }
+  if (kind === 'redNeedleBoss') {
+    return {
+      kind: 'redNeedleBoss',
+      name: 'Aguja Roja',
+      duration: BOSS_WAVE_DURATION,
+      attacks: RED_NEEDLE_BOSS_ATTACKS,
     };
   }
   return {
@@ -371,6 +392,7 @@ function create() {
   damageGraphics.generateTexture('damageBooster', 36, 36);
   damageGraphics.destroy();
   createEnemyShipTexture(this);
+  createRedNeedleTextures(this);
   createSpikeDroneTextures(this);
   createBossShipTexture(this);
   createAsteroidTexture(this);
@@ -758,6 +780,72 @@ function createEnemyShipTexture(scene) {
   graphics.destroy();
 }
 
+function createRedNeedleTextures(scene) {
+  const shipGraphics = scene.make.graphics({ x: 0, y: 0, add: false });
+  const centerY = RED_NEEDLE_HEIGHT / 2;
+
+  shipGraphics.fillStyle(0x21030a, 1);
+  shipGraphics.fillPoints([
+    { x: 2, y: centerY },
+    { x: 14, y: 2 },
+    { x: 28, y: 7 },
+    { x: 38, y: 0 },
+    { x: 64, y: 6 },
+    { x: 75, y: centerY },
+    { x: 64, y: 22 },
+    { x: 38, y: 28 },
+    { x: 28, y: 21 },
+    { x: 14, y: 26 },
+  ], true);
+  shipGraphics.fillStyle(0x7d0918, 1);
+  shipGraphics.fillTriangle(0, centerY, 18, 7, 18, 21);
+  shipGraphics.fillStyle(0xf01e36, 1);
+  shipGraphics.fillPoints([
+    { x: 9, y: centerY },
+    { x: 28, y: 9 },
+    { x: 55, y: 8 },
+    { x: 69, y: centerY },
+    { x: 55, y: 20 },
+    { x: 28, y: 19 },
+  ], true);
+  shipGraphics.fillStyle(0x120107, 0.9);
+  shipGraphics.fillTriangle(23, 8, 37, centerY, 23, 20);
+  shipGraphics.fillTriangle(58, 7, 69, centerY, 58, 21);
+  shipGraphics.fillStyle(0xffccd4, 0.95);
+  shipGraphics.fillEllipse(44, centerY, 18, 8);
+  shipGraphics.fillStyle(0x0b0205, 0.62);
+  shipGraphics.fillEllipse(47, centerY, 10, 4);
+  shipGraphics.fillStyle(0xff263c, 0.9);
+  shipGraphics.fillRoundedRect(30, 12, 18, 4, 1);
+  shipGraphics.fillStyle(0xff6f31, 0.95);
+  shipGraphics.fillTriangle(68, 8, 76, centerY, 68, 20);
+  shipGraphics.lineStyle(2, 0xff8593, 0.5);
+  shipGraphics.strokePoints([
+    { x: 2, y: centerY },
+    { x: 14, y: 2 },
+    { x: 28, y: 7 },
+    { x: 38, y: 0 },
+    { x: 64, y: 6 },
+    { x: 75, y: centerY },
+    { x: 64, y: 22 },
+    { x: 38, y: 28 },
+    { x: 28, y: 21 },
+    { x: 14, y: 26 },
+  ], true);
+  shipGraphics.generateTexture('redNeedleShip', RED_NEEDLE_WIDTH, RED_NEEDLE_HEIGHT);
+  shipGraphics.destroy();
+
+  const laserGraphics = scene.make.graphics({ x: 0, y: 0, add: false });
+  laserGraphics.fillStyle(0xff263c, 0.28);
+  laserGraphics.fillRoundedRect(0, 0, RED_NEEDLE_LASER_WIDTH, RED_NEEDLE_LASER_HEIGHT, 4);
+  laserGraphics.fillStyle(0xff263c, 0.82);
+  laserGraphics.fillRoundedRect(2, 3, RED_NEEDLE_LASER_WIDTH - 4, RED_NEEDLE_LASER_HEIGHT - 6, 3);
+  laserGraphics.fillStyle(0xffedf0, 0.9);
+  laserGraphics.fillRoundedRect(4, 6, RED_NEEDLE_LASER_WIDTH - 8, RED_NEEDLE_LASER_HEIGHT - 12, 2);
+  laserGraphics.generateTexture('redNeedleLaser', RED_NEEDLE_LASER_WIDTH, RED_NEEDLE_LASER_HEIGHT);
+  laserGraphics.destroy();
+}
+
 function createSpikeDroneTextures(scene) {
   createSpikeDroneTexture(scene, 'spikeDrone', 'folded');
   createSpikeDroneTexture(scene, 'spikeDroneWarningGreen', 'warningGreen');
@@ -1138,6 +1226,7 @@ function update(time, delta) {
   updateShipPropulsion(this, delta);
   updateShipTilt(this);
   updateEnemyPropulsion(this, delta);
+  updateRedNeedles(this);
   updateRedEnemySway(this, time);
   updateSpikeDrones(this);
   updateEnergyRefinerPassive(this, delta);
@@ -2007,6 +2096,7 @@ function enableInfiniteModeThreats(scene) {
   scene.droneSpawnsUnlocked = true;
   scene.asteroidSpawnsUnlocked = true;
   scene.plasmaSpawnsUnlocked = true;
+  scene.redNeedleSpawnsUnlocked = true;
   scene.travelSentinelUnlocked = true;
   scene.nextTravelSentinelEligibleAt = 0;
 }
@@ -2049,6 +2139,7 @@ function resetCounters() {
   this.droneSpawnsUnlocked = false;
   this.asteroidSpawnsUnlocked = false;
   this.plasmaSpawnsUnlocked = false;
+  this.redNeedleSpawnsUnlocked = false;
   this.travelSentinelUnlocked = false;
   this.nextTravelSentinelEligibleAt = 0;
   this.pendingBossWave = null;
@@ -2275,7 +2366,7 @@ function pauseTimedGameplay(scene) {
   [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activePlasmaWave, scene.activeBossWave]
     .forEach((countdown) => pauseCountdown(scene, countdown));
 
-  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
+  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.redNeedleBossPassEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
     if (event) event.paused = true;
   });
   if (scene.bossEnterTween) scene.bossEnterTween.pause();
@@ -2299,7 +2390,7 @@ function resumeTimedGameplay(scene) {
   [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activePlasmaWave, scene.activeBossWave]
     .forEach((countdown) => resumeCountdown(scene, countdown));
 
-  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
+  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.redNeedleBossPassEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
     if (event) event.paused = false;
   });
   if (scene.bossEnterTween) scene.bossEnterTween.resume();
@@ -2445,6 +2536,10 @@ function resetBossWave(scene) {
   if (scene.bossLaserClearEvent) {
     scene.bossLaserClearEvent.remove(false);
     scene.bossLaserClearEvent = null;
+  }
+  if (scene.redNeedleBossPassEvent) {
+    scene.redNeedleBossPassEvent.remove(false);
+    scene.redNeedleBossPassEvent = null;
   }
   stopBossEnemySpawns(scene);
   if (scene.bossEnterTween) {
@@ -2892,6 +2987,7 @@ function activateBossWave(scene, bossConfig = getBossConfigForLevel(9)) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
   scene.activeBossWave = {
+    kind: 'boss',
     endsAt: null,
     duration: bossConfig.duration || BOSS_WAVE_DURATION,
     hasStarted: false,
@@ -2912,11 +3008,37 @@ function activateBossWave(scene, bossConfig = getBossConfigForLevel(9)) {
   scheduleWaveStart(scene, 'boss');
 }
 
+function activateRedNeedleBossWave(scene, bossConfig = createBossConfig('redNeedleBoss')) {
+  resetTimedBoosters(scene);
+  playBackgroundMusic(scene);
+  scene.activeBossWave = {
+    kind: 'redNeedleBoss',
+    endsAt: null,
+    duration: bossConfig.duration || BOSS_WAVE_DURATION,
+    hasStarted: false,
+    attacksDone: 0,
+    attacksTotal: bossConfig.attacks || RED_NEEDLE_BOSS_ATTACKS,
+    isRetreating: false,
+    bossName: bossConfig.name || 'Aguja Roja',
+    isTravelEncounter: false,
+  };
+
+  hideWaveBar(scene);
+
+  if (spawnEvent) {
+    spawnEvent.remove(false);
+    spawnEvent = null;
+  }
+
+  scheduleWaveStart(scene, 'boss');
+}
+
 function activateTravelSentinel(scene) {
   if (scene.activeBossWave || state !== 'playing') return;
 
   playBackgroundMusic(scene);
   scene.activeBossWave = {
+    kind: 'boss',
     endsAt: null,
     duration: 12000,
     hasStarted: false,
@@ -2940,6 +3062,8 @@ function activateLevelBoss(scene, bossConfig) {
     activateAsteroidWave(scene, bossConfig);
   } else if (bossConfig.kind === 'plasma') {
     activatePlasmaWave(scene, bossConfig);
+  } else if (bossConfig.kind === 'redNeedleBoss') {
+    activateRedNeedleBossWave(scene, bossConfig);
   } else if (bossConfig.kind === 'boss') {
     activateBossWave(scene, bossConfig);
   }
@@ -2948,6 +3072,11 @@ function activateLevelBoss(scene, bossConfig) {
 function updateBossWave(scene) {
   const bossWave = scene.activeBossWave;
   if (!bossWave || !bossWave.hasStarted) return;
+
+  if (bossWave.kind === 'redNeedleBoss') {
+    updateRedNeedleBossWave(scene, bossWave);
+    return;
+  }
 
   recoverStalledBossWave(scene, bossWave);
   if (scene.activeBossWave !== bossWave) return;
@@ -2962,6 +3091,22 @@ function updateBossWave(scene) {
 
 function recoverStalledBossWave(scene, bossWave) {
   if (state !== 'playing') return;
+
+  if (bossWave.kind === 'redNeedleBoss') {
+    if (!scene.bossShip || !scene.bossShip.active) {
+      resetBossWave(scene);
+      scheduleNextSpawn(scene);
+      return;
+    }
+    if (!bossWave.currentPass && !scene.bossEnterTween && !scene.redNeedleBossPassEvent && !bossWave.isRetreating) {
+      if (bossWave.attacksDone >= bossWave.attacksTotal) {
+        retreatRedNeedleBoss(scene);
+      } else {
+        launchRedNeedleBossPass(scene);
+      }
+    }
+    return;
+  }
 
   if (!scene.bossShip || !scene.bossShip.active) {
     resetBossWave(scene);
@@ -2997,6 +3142,11 @@ function startBossWave(scene) {
   const bossWave = scene.activeBossWave;
   if (!bossWave || bossWave.hasStarted) return;
 
+  if (bossWave.kind === 'redNeedleBoss') {
+    startRedNeedleBossWave(scene, bossWave);
+    return;
+  }
+
   scene.waveStartEvent = null;
   bossWave.hasStarted = true;
   bossWave.endsAt = scene.time.now + bossWave.duration;
@@ -3021,6 +3171,155 @@ function startBossWave(scene) {
       scheduleBossAttack(scene, BOSS_ATTACK_GAP);
     },
   });
+}
+
+function startRedNeedleBossWave(scene, bossWave) {
+  scene.waveStartEvent = null;
+  bossWave.hasStarted = true;
+  bossWave.endsAt = scene.time.now + bossWave.duration;
+  bossWave.attacksDone = 0;
+  bossWave.currentPass = null;
+
+  hideWaveBar(scene);
+  setShipTextureForCurrentState(scene);
+  refreshShipSize(scene);
+  moveShipTo(scene, clampShipX(scene, scene.ship.x));
+
+  scene.bossShip = scene.add.image(-RED_NEEDLE_WIDTH, RED_NEEDLE_Y, 'redNeedleShip')
+    .setOrigin(0.5, 0.5)
+    .setScale(1.35)
+    .setDepth(FX_DEPTH + 1);
+
+  launchRedNeedleBossPass(scene);
+}
+
+function updateRedNeedleBossWave(scene, bossWave) {
+  recoverStalledBossWave(scene, bossWave);
+  if (scene.activeBossWave !== bossWave || bossWave.isRetreating || !bossWave.currentPass || !scene.bossShip) return;
+
+  const pass = bossWave.currentPass;
+  while (pass.shotsFired < pass.shots.length) {
+    const shot = pass.shots[pass.shotsFired];
+    const reachedShot = pass.direction > 0 ? scene.bossShip.x >= shot.x : scene.bossShip.x <= shot.x;
+    if (!reachedShot) break;
+
+    fireRedNeedleBossShot(scene, shot);
+    pass.shotsFired += 1;
+  }
+}
+
+function launchRedNeedleBossPass(scene) {
+  const bossWave = scene.activeBossWave;
+  if (!bossWave || bossWave.kind !== 'redNeedleBoss' || !scene.bossShip || state !== 'playing') return;
+
+  if (bossWave.attacksDone >= bossWave.attacksTotal) {
+    retreatRedNeedleBoss(scene);
+    return;
+  }
+
+  const width = getGameWidth(scene);
+  const margin = RED_NEEDLE_WIDTH * 1.35;
+  const direction = bossWave.attacksDone % 2 === 0 ? 1 : -1;
+  const startX = direction > 0 ? -margin : width + margin;
+  const endX = direction > 0 ? width + margin : -margin;
+
+  scene.bossShip
+    .setPosition(startX, RED_NEEDLE_Y)
+    .setFlipX(direction < 0)
+    .setVisible(true);
+
+  bossWave.currentPass = {
+    direction,
+    shotsFired: 0,
+    shots: getRedNeedleBossShots(scene, bossWave.attacksDone, direction),
+  };
+
+  scene.bossEnterTween = scene.tweens.add({
+    targets: scene.bossShip,
+    x: endX,
+    duration: RED_NEEDLE_BOSS_PASS_DURATION,
+    ease: 'Linear',
+    onComplete: () => {
+      scene.bossEnterTween = null;
+      bossWave.currentPass = null;
+      bossWave.attacksDone += 1;
+
+      if (bossWave.attacksDone >= bossWave.attacksTotal) {
+        retreatRedNeedleBoss(scene);
+        return;
+      }
+
+      scene.redNeedleBossPassEvent = scene.time.addEvent({
+        delay: RED_NEEDLE_BOSS_PASS_GAP,
+        callback: () => {
+          scene.redNeedleBossPassEvent = null;
+          launchRedNeedleBossPass(scene);
+        },
+      });
+    },
+  });
+}
+
+function getRedNeedleBossShots(scene, passIndex, direction) {
+  const width = getGameWidth(scene);
+  const normal = [0.2, 0.4, 0.6, 0.8].map((ratio) => ({ x: width * ratio, offsets: [0] }));
+  const patterns = [
+    normal,
+    normal,
+    [0.25, 0.5, 0.75].map((ratio) => ({ x: width * ratio, offsets: [-22, 22] })),
+    [
+      { x: width * 0.16, offsets: [-26] },
+      { x: width * 0.32, offsets: [22] },
+      { x: width * 0.48, offsets: [-18] },
+      { x: width * 0.64, offsets: [18] },
+      { x: width * 0.8, offsets: [0] },
+    ],
+    [
+      { x: width * 0.14, offsets: [0] },
+      { x: width * 0.3, offsets: [0] },
+      { x: width * 0.5, offsets: [-34, 34] },
+      { x: width * 0.7, offsets: [0] },
+      { x: width * 0.86, offsets: [0] },
+    ],
+    [
+      { x: width * 0.18, offsets: [0] },
+      { x: width * 0.34, offsets: [-24, 24] },
+      { x: width * 0.5, offsets: [0] },
+      { x: width * 0.66, offsets: [-24, 24] },
+      { x: width * 0.82, offsets: [0] },
+    ],
+  ];
+
+  const shots = patterns[passIndex] || normal;
+  return direction > 0 ? shots : shots.slice().reverse();
+}
+
+function fireRedNeedleBossShot(scene, shot) {
+  const offsets = shot.offsets || [0];
+  offsets.forEach((offset) => {
+    const x = Phaser.Math.Clamp(shot.x + offset, RED_NEEDLE_LASER_WIDTH, getGameWidth(scene) - RED_NEEDLE_LASER_WIDTH);
+    spawnRedNeedleLaser(scene, x, RED_NEEDLE_Y + RED_NEEDLE_HEIGHT / 2 + 16);
+  });
+}
+
+function retreatRedNeedleBoss(scene) {
+  const bossWave = scene.activeBossWave;
+  if (!bossWave || bossWave.isRetreating) return;
+
+  bossWave.isRetreating = true;
+  bossWave.currentPass = null;
+  if (scene.redNeedleBossPassEvent) {
+    scene.redNeedleBossPassEvent.remove(false);
+    scene.redNeedleBossPassEvent = null;
+  }
+  if (scene.bossEnterTween) {
+    scene.bossEnterTween.stop();
+    scene.bossEnterTween = null;
+  }
+
+  if (scene.bossShip) scene.bossShip.destroy();
+  scene.bossShip = null;
+  endWaveAfterPause(scene, 'boss');
 }
 
 function stopBossEnemySpawns(scene) {
@@ -3390,6 +3689,9 @@ function endWaveAfterPause(scene, waveKind) {
       resetBossWave(scene);
       if (state === 'playing') scheduleNextSpawn(scene);
       return;
+    }
+    if (currentWave.kind === 'redNeedleBoss') {
+      scene.redNeedleSpawnsUnlocked = true;
     }
     scene.travelSentinelUnlocked = true;
     resetBossWave(scene);
@@ -3946,12 +4248,42 @@ function isPreciseShipOverlap(scene, objectA, objectB) {
   const object = getCaughtObject(scene, objectA, objectB);
   if (!object) return false;
   if (object.getData('kind') === 'spikeDrone' && object.getData('spikeState') !== 'expanded' && !isShieldActive(scene)) return false;
+  if (object.getData('kind') === 'redNeedleLaser') return isRedNeedleLaserOverlappingShip(scene, object);
 
   if (isShieldActive(scene)) {
     return getDistanceToShieldCenter(scene, object) <= SHIELD_BUBBLE_RADIUS + getObjectCollisionRadius(object);
   }
 
   return getDistanceToShipHitbox(scene, object) <= getObjectCollisionRadius(object);
+}
+
+function isRedNeedleLaserOverlappingShip(scene, laser) {
+  const halfWidth = RED_NEEDLE_LASER_WIDTH / 2;
+  const halfHeight = RED_NEEDLE_LASER_HEIGHT / 2;
+  const left = laser.x - halfWidth;
+  const right = laser.x + halfWidth;
+  const top = laser.y - halfHeight;
+  const bottom = laser.y + halfHeight;
+
+  if (isShieldActive(scene)) {
+    const closestX = Phaser.Math.Clamp(scene.ship.x, left, right);
+    const closestY = Phaser.Math.Clamp(scene.ship.y, top, bottom);
+    const distanceX = scene.ship.x - closestX;
+    const distanceY = scene.ship.y - closestY;
+    return distanceX * distanceX + distanceY * distanceY <= SHIELD_BUBBLE_RADIUS * SHIELD_BUBBLE_RADIUS;
+  }
+
+  return getShipHitboxPolygon(scene).some((point) => (
+    point.x >= left &&
+    point.x <= right &&
+    point.y >= top &&
+    point.y <= bottom
+  )) || (
+    laser.x >= scene.ship.x - getShipWidth(scene) / 2 &&
+    laser.x <= scene.ship.x + getShipWidth(scene) / 2 &&
+    bottom >= scene.ship.y - SHIP_HEIGHT / 2 &&
+    top <= scene.ship.y + SHIP_HEIGHT / 2
+  );
 }
 
 function getDistanceToShieldCenter(scene, object) {
@@ -3962,6 +4294,8 @@ function getDistanceToShieldCenter(scene, object) {
 
 function getObjectCollisionRadius(object) {
   const kind = object.getData('kind');
+  if (kind === 'redNeedle') return RED_NEEDLE_WIDTH / 2;
+  if (kind === 'redNeedleLaser') return RED_NEEDLE_LASER_WIDTH / 2;
   if (kind === 'damageBooster') return 11;
   if (kind === 'spikeDrone') return object.getData('collisionRadius') || SPIKE_DRONE_FOLDED_RADIUS;
   if (kind === 'bigAsteroid') return 34;
@@ -4022,6 +4356,10 @@ function spawnBall(scene) {
     spawnPlasmaBar(scene);
     return;
   }
+  if (kind === 'redNeedle') {
+    spawnRedNeedle(scene);
+    return;
+  }
   const isBooster = isBoosterKind(kind);
   const x = isAsteroidKind(kind)
     ? findAsteroidSpawnX(scene)
@@ -4055,6 +4393,81 @@ function spawnBall(scene) {
   } else if (kind === 'spikeDrone') {
     setupSpikeDrone(scene, ball);
   }
+}
+
+function spawnRedNeedle(scene) {
+  if (hasActiveRedNeedle(scene)) return;
+
+  const direction = Math.random() < 0.5 ? 1 : -1;
+  const startX = direction > 0 ? -RED_NEEDLE_WIDTH / 2 - 8 : getGameWidth(scene) + RED_NEEDLE_WIDTH / 2 + 8;
+  const needle = scene.balls.create(startX, RED_NEEDLE_Y, 'redNeedleShip');
+  needle.setData('kind', 'redNeedle');
+  needle.setData('displayName', 'Aguja Roja');
+  needle.setData('horizontalVelocity', RED_NEEDLE_SPEED * direction);
+  needle.setData('shotsFired', 0);
+  needle.setData('shotTargets', getRedNeedleShotTargets(scene, direction));
+  needle.setOrigin(0.5);
+  needle.setDepth(FALLING_OBJECT_DEPTH + 2);
+  needle.setFlipX(direction < 0);
+  setFallingObjectBody(needle, 'redNeedle');
+  needle.body.setAllowGravity(false);
+  needle.body.setCollideWorldBounds(false);
+  needle.body.setVelocityX(RED_NEEDLE_SPEED * direction);
+  needle.body.setVelocityY(0);
+}
+
+function updateRedNeedles(scene) {
+  if (!scene.balls) return;
+
+  scene.balls.getChildren().forEach((needle) => {
+    if (!needle.active || needle.getData('kind') !== 'redNeedle') return;
+    if (!needle.body) return;
+
+    const horizontalVelocity = needle.getData('horizontalVelocity') || RED_NEEDLE_SPEED;
+    needle.body.setVelocityX(horizontalVelocity);
+    needle.body.setVelocityY(0);
+
+    const shotsFired = needle.getData('shotsFired') || 0;
+    const shotTargets = needle.getData('shotTargets') || [];
+    const nextShotX = shotTargets[shotsFired];
+    const hasReachedShotX = horizontalVelocity > 0 ? needle.x >= nextShotX : needle.x <= nextShotX;
+    if (shotsFired < RED_NEEDLE_MAX_SHOTS && hasReachedShotX && isRedNeedleInsideScreen(scene, needle)) {
+      spawnRedNeedleLaser(scene, needle.x, needle.y + RED_NEEDLE_HEIGHT / 2 + 10);
+      needle.setData('shotsFired', shotsFired + 1);
+    }
+
+    const margin = RED_NEEDLE_WIDTH;
+    if ((horizontalVelocity > 0 && needle.x > getGameWidth(scene) + margin) || (horizontalVelocity < 0 && needle.x < -margin)) {
+      needle.destroy();
+    }
+  });
+}
+
+function getRedNeedleShotTargets(scene, direction) {
+  const width = getGameWidth(scene);
+  const targets = [];
+  for (let i = 1; i <= RED_NEEDLE_MAX_SHOTS; i += 1) {
+    targets.push(width * (i / (RED_NEEDLE_MAX_SHOTS + 1)));
+  }
+  return direction > 0 ? targets : targets.reverse();
+}
+
+function isRedNeedleInsideScreen(scene, needle) {
+  const halfWidth = RED_NEEDLE_WIDTH / 2;
+  return needle.x >= halfWidth && needle.x <= getGameWidth(scene) - halfWidth;
+}
+
+function spawnRedNeedleLaser(scene, x, y) {
+  const laser = scene.balls.create(x, y, 'redNeedleLaser');
+  laser.setData('kind', 'redNeedleLaser');
+  laser.setOrigin(0.5);
+  laser.setDepth(FALLING_OBJECT_DEPTH + 1);
+  setFallingObjectBody(laser, 'redNeedleLaser');
+  laser.body.setAllowGravity(false);
+  laser.body.setCollideWorldBounds(false);
+  laser.body.setVelocityX(0);
+  laser.body.setVelocityY(RED_NEEDLE_LASER_SPEED);
+  playRedNeedleShotSound(scene);
 }
 
 function setupRedEnemySway(enemy) {
@@ -4204,6 +4617,16 @@ function setBallEnergyColor(ball, isPurple) {
 }
 
 function setFallingObjectBody(object, kind) {
+  if (kind === 'redNeedle') {
+    object.body.setSize(RED_NEEDLE_WIDTH - 12, RED_NEEDLE_HEIGHT - 6, true);
+    return;
+  }
+
+  if (kind === 'redNeedleLaser') {
+    object.body.setSize(RED_NEEDLE_LASER_WIDTH, RED_NEEDLE_LASER_HEIGHT, true);
+    return;
+  }
+
   if (kind === 'damageBooster') {
     object.body.setCircle(11, 13, 13);
     return;
@@ -4253,10 +4676,11 @@ function getNextSpawnKind(scene) {
 }
 
 function getNextTravelThreatKind(scene) {
-  if ((!scene.obreraSpawnsUnlocked && !scene.droneSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave) return null;
+  if ((!scene.obreraSpawnsUnlocked && !scene.droneSpawnsUnlocked && !scene.redNeedleSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave) return null;
   if (hasActivePlasmaBars(scene)) return null;
   if (countActiveHostileFallingObjects(scene) >= 3) return null;
 
+  if (scene.redNeedleSpawnsUnlocked && !hasActiveRedNeedle(scene) && Math.random() < RED_NEEDLE_SPAWN_CHANCE) return 'redNeedle';
   if (scene.droneSpawnsUnlocked && Math.random() < SPIKE_DRONE_SPAWN_CHANCE) return 'spikeDrone';
   if (scene.obreraSpawnsUnlocked && Math.random() < OBRERA_SPAWN_CHANCE) return 'damageBooster';
   return null;
@@ -4325,11 +4749,19 @@ function hasFallingAsteroid(scene) {
 function countActiveHostileFallingObjects(scene) {
   return scene.balls
     .getChildren()
-    .filter((ball) => ball.active && (ball.getData('kind') === 'damageBooster' || ball.getData('kind') === 'spikeDrone' || isAsteroidKind(ball.getData('kind'))))
+    .filter((ball) => ball.active && (ball.getData('kind') === 'damageBooster' || ball.getData('kind') === 'spikeDrone' || ball.getData('kind') === 'redNeedleLaser' || isAsteroidKind(ball.getData('kind'))))
     .length;
 }
 
+function hasActiveRedNeedle(scene) {
+  return scene.balls
+    .getChildren()
+    .some((ball) => ball.active && ball.getData('kind') === 'redNeedle');
+}
+
 function getTextureForKind(kind) {
+  if (kind === 'redNeedle') return 'redNeedleShip';
+  if (kind === 'redNeedleLaser') return 'redNeedleLaser';
   if (kind === 'bigAsteroid') return 'bigAsteroid';
   if (isAsteroidKind(kind)) return 'asteroid';
   if (kind === 'damageBooster') return 'enemyShipSmall';
@@ -4357,7 +4789,7 @@ function isAsteroidKind(kind) {
 }
 
 function isShieldBlockedKind(kind) {
-  return kind === 'damageBooster' || kind === 'spikeDrone' || isAsteroidKind(kind);
+  return kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedleLaser' || isAsteroidKind(kind);
 }
 
 function findSpawnX(scene) {
@@ -4511,6 +4943,9 @@ function getFallingVelocity(kind, scene, object = null) {
     return object.getData('fallVelocity');
   }
 
+  if (kind === 'redNeedle') return 0;
+  if (kind === 'redNeedleLaser') return RED_NEEDLE_LASER_SPEED;
+
   if (kind === 'spikeDrone') {
     return Math.round(BASE_GRAVITY * SPIKE_DRONE_GRAVITY_RATIO);
   }
@@ -4529,6 +4964,12 @@ function getFallingVelocity(kind, scene, object = null) {
 }
 
 function getHorizontalVelocity(kind, scene, object = null) {
+  if (kind === 'redNeedle') {
+    return object && object.getData('horizontalVelocity') ? object.getData('horizontalVelocity') : RED_NEEDLE_SPEED;
+  }
+
+  if (kind === 'redNeedleLaser') return 0;
+
   if (!isAsteroidKind(kind)) return 0;
 
   if (object && object.getData('horizontalVelocity')) {
@@ -4571,7 +5012,9 @@ function catchBall(ball, scene) {
   if (kind === 'spikeDrone' && ball.getData('spikeState') !== 'expanded' && !isShieldActive(scene)) return;
   ball.destroy();
 
-  if (kind === 'damageBooster' || kind === 'spikeDrone') {
+  if (kind === 'redNeedle') return;
+
+  if (kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedleLaser') {
     showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
     hitFeedbackShown = true;
     if (!isShieldActive(scene)) {
@@ -4606,7 +5049,7 @@ function catchBall(ball, scene) {
   if (state !== 'playing') return;
 
   if (!hitFeedbackShown) {
-    if (kind === 'damageBooster' || kind === 'spikeDrone' || isAsteroidKind(kind)) {
+    if (kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedleLaser' || isAsteroidKind(kind)) {
       playBadSound(scene);
     } else if (isBoosterKind(kind)) {
       playBoosterSound(scene);
@@ -4670,6 +5113,10 @@ function playSpikeDroneSound(scene) {
   playOverlappingAudioFile(scene, 'spikeDroneAudios', SPIKE_DRONE_SOUND_PATH, 0.55);
 }
 
+function playRedNeedleShotSound(scene) {
+  playOverlappingAudioFile(scene, 'redNeedleShotAudios', RED_NEEDLE_SHOT_SOUND_PATH, 0.48);
+}
+
 function playBackgroundMusic(scene) {
   if (!musicEnabled) return;
   playMusicTrack(scene, 'backgroundMusic', BACKGROUND_MUSIC_PATH, 0.28);
@@ -4724,6 +5171,13 @@ function stopNonMusicAudio(scene) {
       audio.currentTime = 0;
     });
     scene.spikeDroneAudios = [];
+  }
+  if (scene.redNeedleShotAudios) {
+    scene.redNeedleShotAudios.forEach((audio) => {
+      audio.pause();
+      audio.currentTime = 0;
+    });
+    scene.redNeedleShotAudios = [];
   }
 }
 
@@ -4932,6 +5386,7 @@ function getAbsorbParticleTint(kind, isPurpleEnergy = false) {
   if (isAsteroidKind(kind)) return 0xaeb7c8;
   if (kind === 'damageBooster') return 0xff3b4f;
   if (kind === 'spikeDrone') return 0xff3045;
+  if (kind === 'redNeedleLaser') return 0xff263c;
   if (kind === 'lifeBooster') return 0x4dff88;
   if (kind === 'scoreBooster') return 0x9b5cff;
   if (kind === 'shieldBooster') return 0x4da3ff;
