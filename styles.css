@@ -107,7 +107,12 @@ canvas {
 
 .hud-score {
   flex: 1;
-  min-width: 92px;
+  min-width: 82px;
+}
+
+.hud-streak {
+  min-width: 48px;
+  text-align: center;
 }
 
 .hud-label {
@@ -137,8 +142,13 @@ canvas {
   text-shadow: 0 0 12px rgba(255, 216, 77, 0.66);
 }
 
+.hud-streak .hud-value {
+  color: #ffd84d;
+  text-shadow: 0 0 12px rgba(255, 216, 77, 0.62);
+}
+
 .hud-life {
-  width: 104px;
+  width: 96px;
 }
 
 .hud-life-head,
@@ -191,6 +201,25 @@ canvas {
   border-color: rgba(77, 163, 255, 0.9);
   background: linear-gradient(180deg, rgba(77, 163, 255, 0.9), rgba(24, 94, 206, 0.84));
   box-shadow: 0 0 12px rgba(77, 163, 255, 0.48), inset 0 0 8px rgba(255, 255, 255, 0.16);
+}
+
+.hud-life-cell.is-lost {
+  animation: hud-life-lost 560ms ease-in-out 2;
+}
+
+@keyframes hud-life-lost {
+  0%,
+  100% {
+    border-color: rgba(255, 79, 104, 0.4);
+    background: rgba(12, 24, 36, 0.78);
+    box-shadow: inset 0 0 8px rgba(255, 79, 104, 0.08);
+  }
+
+  45% {
+    border-color: rgba(255, 154, 170, 0.96);
+    background: linear-gradient(180deg, rgba(255, 79, 104, 0.94), rgba(176, 28, 55, 0.88));
+    box-shadow: 0 0 12px rgba(255, 79, 104, 0.62), inset 0 0 8px rgba(255, 255, 255, 0.18);
+  }
 }
 
 .hud-progress-block {
