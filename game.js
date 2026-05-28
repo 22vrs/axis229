@@ -108,12 +108,19 @@ const SHIP_LIFE_INDICATOR_VISIBLE_DURATION = 1150;
 const SHIP_LIFE_INDICATOR_FADE_DURATION = 260;
 const FINAL_DAMAGE_GAME_OVER_DELAY = 1450;
 const ENERGY_STREAK_REWARD_TARGET = 50;
-const ENERGY_STREAK_REWARD_SCORE = 100;
+const ENERGY_STREAK_REWARD_SCORE = 50;
 const ENERGY_STREAK_UPGRADE_DELAY = 900;
 const POINT_POPUP_STACK_WINDOW = 260;
 const POINT_POPUP_STACK_DISTANCE = 78;
 const POINT_POPUP_STACK_OFFSET = 24;
 const POINT_POPUP_LIFE_INDICATOR_MARGIN = 26;
+const POINT_POPUP_DURATION = 620;
+const POINT_POPUP_FADE_DELAY = 390;
+const STREAK_POINT_POPUP_DURATION = 1000;
+const STREAK_POINT_POPUP_FADE_DELAY = 620;
+const STREAK_POINT_POPUP_COLORS = ['#ff4f68', '#ffd84d', '#7dffae', '#76ffe8', '#4da3ff', '#d7a8ff'];
+let streakGradientTextureId = 0;
+let pointPopupTextureId = 0;
 const ASTEROID_WAVE_BIG_ASTEROID_CHANCE = 0.16;
 const ASTEROID_GRAVITY_RATIO = 0.9;
 const BIG_ASTEROID_GRAVITY_RATIO = 0.72;
@@ -1259,6 +1266,7 @@ function update(time, delta) {
   updatePlasmaBars(this, delta);
   updateBossWave(this);
   updateMagnetPull(this);
+  recoverGameplaySpawning(this);
 
   // Comprobar si alguna bola ha llegado al fondo
   this.balls.getChildren().forEach((ball) => {
@@ -2430,6 +2438,20 @@ function setShipLifeIndicatorCellEmpty(cell) {
   cell.fill.fillPoints(cell.geometry.fillPoints, true);
 }
 
+function setShipLifeIndicatorCellFilled(cell) {
+  if (!cell || !cell.frame || !cell.fill || !cell.geometry) return;
+  cell.setAlpha(1);
+  cell.setScale(1);
+  cell.frame.clear();
+  cell.frame.fillStyle(0x071121, 0.86);
+  cell.frame.fillPoints(cell.geometry.framePoints, true);
+  cell.frame.lineStyle(1, 0x8dffb2, 0.88);
+  cell.frame.strokePoints(cell.geometry.framePoints, true);
+  cell.fill.clear();
+  cell.fill.fillStyle(0x4dff88, 0.9);
+  cell.fill.fillPoints(cell.geometry.fillPoints, true);
+}
+
 function getShipLifeIndicatorCellGeometry(index, totalWidth) {
   const leftX = -totalWidth / 2 + index * (SHIP_LIFE_INDICATOR_CELL_WIDTH + SHIP_LIFE_INDICATOR_CELL_GAP);
   const rightX = leftX + SHIP_LIFE_INDICATOR_CELL_WIDTH;
@@ -2530,7 +2552,7 @@ function animateShipLifeIndicatorChange(scene, container, previousLives, nextLiv
       ease: 'Back.easeOut',
       onComplete: () => {
         if (!cell.active) return;
-        cell.setScale(1);
+        setShipLifeIndicatorCellFilled(cell);
       },
     });
   });
@@ -2602,6 +2624,26 @@ function scheduleNextSpawn(scene, delayOverride = null) {
       scheduleNextSpawn(scene);
     },
   });
+}
+
+function recoverGameplaySpawning(scene) {
+  if (state !== 'playing') return;
+
+  if (consumePendingBossWave(scene)) return;
+  if (spawnEvent || scene.waveStartEvent || scene.waveResumeEvent || scene.bossCueTween) return;
+  if (scene.activePlasmaWave) {
+    if (scene.activePlasmaWave.isSpawningPlasma && !scene.plasmaSpawnEvent) {
+      schedulePlasmaSpawn(scene);
+    }
+    return;
+  }
+
+  if (scene.activeRedWave && !scene.activeRedWave.isSpawningDamageBoosters) return;
+  if (scene.activeDroneWave && !scene.activeDroneWave.isSpawningDrones) return;
+  if (scene.activeAsteroidWave && !scene.activeAsteroidWave.isSpawningAsteroids) return;
+  if (isBlockingBossWave(scene)) return;
+
+  scheduleNextSpawn(scene);
 }
 
 function isBlockingBossWave(scene) {
@@ -2907,6 +2949,10 @@ function getLifeBoosterHealAmount() {
   return Math.max(1, lifeBoosterLevel);
 }
 
+function canDropLifeBooster() {
+  return lifeBoosterLevel > 0 && lives < maxLives;
+}
+
 function getEnergyBallValue() {
   if (energyRefinerLevel <= 0) return 1;
   return Math.min(5, energyRefinerLevel + 1);
@@ -2930,13 +2976,14 @@ function awardEnergyStreakReward(scene) {
   const shouldDelayUpgrade = state === 'playing'
     && levelProgressScore + ENERGY_STREAK_REWARD_SCORE >= nextUpgradeScore
     && hasAvailableUpgrades();
-  const shouldDropRepairKit = lifeBoosterLevel > 0;
+  const shouldDropRepairKit = canDropLifeBooster();
   playStreakSuccessSound(scene);
   addScore(scene, ENERGY_STREAK_REWARD_SCORE, true, {
     x: scene.ship.x,
     y: scene.ship.y - 28,
-    color: '#7dffae',
+    color: '#ffd84d',
   });
+  showStreakPointPopup(scene, scene.ship.x, scene.ship.y - 58, 'RACHA!');
 
   if (shouldDelayUpgrade) {
     scene.deferUpgradeChoiceUntil = Math.max(
@@ -2958,7 +3005,11 @@ function addScore(scene, points, animate = true, feedback = null) {
   const currentHud = initHud();
   if (currentHud.score) currentHud.score.textContent = score;
   updateUpgradeBar(scene, animate);
-  if (feedback) showPointPopup(scene, feedback.x, feedback.y, points, feedback.color);
+  if (feedback && feedback.style === 'streak') {
+    showStreakPointPopup(scene, feedback.x, feedback.y, feedback.label || 'RACHA!');
+  } else if (feedback) {
+    showPointPopup(scene, feedback.x, feedback.y, points, feedback.color, feedback.label, feedback.duration);
+  }
 }
 
 function updateEnergyRefinerPassive(scene, delta) {
@@ -2972,32 +3023,178 @@ function updateEnergyRefinerPassive(scene, delta) {
   maybeOpenUpgradeChoice(scene);
 }
 
-function showPointPopup(scene, x, y, points, color = '#ffd84d') {
+function showPointPopup(scene, x, y, points, color = '#ffd84d', label = null, duration = POINT_POPUP_DURATION) {
   if (!scene || !scene.add || points <= 0) return;
   const popupPosition = getPointPopupPosition(scene, x, y);
 
-  const text = trackGameplayVisual(scene, scene.add.text(popupPosition.x, popupPosition.y, '+' + points, {
-    fontFamily: FONT_FAMILY,
-    fontSize: '21px',
-    fill: color,
-    fontStyle: 'bold',
+  const text = trackGameplayVisual(scene, createCanvasTextImage(scene, label || '+' + points, {
+    fontSize: 18,
+    fill: getPointPopupGradientColors(color),
     stroke: '#050914',
     strokeThickness: 6,
-  }).setOrigin(0.5).setDepth(UI_DEPTH + 4));
+    texturePrefix: 'pointPopupText',
+  }).setPosition(popupPosition.x, popupPosition.y).setDepth(UI_DEPTH + 4));
 
-  text.setScale(0.82);
+  text.setScale(0.78);
   scene.tweens.add({
     targets: text,
     y: popupPosition.y - 50,
-    scale: 1.22,
-    alpha: 0,
-    duration: 860,
+    scale: 1.05,
+    duration,
     ease: 'Back.easeOut',
+  });
+  scene.tweens.add({
+    targets: text,
+    alpha: 0,
+    delay: Math.min(POINT_POPUP_FADE_DELAY, Math.max(0, duration - 180)),
+    duration: Math.max(180, duration - POINT_POPUP_FADE_DELAY),
+    ease: 'Sine.easeIn',
     onComplete: () => {
       removePointPopupSlot(scene, popupPosition.slot);
+      removeCanvasTextTexture(scene, text);
       text.destroy();
     },
   });
+}
+
+function showStreakPointPopup(scene, x, y, label) {
+  if (!scene || !scene.add) return;
+  const popupPosition = getPointPopupPosition(scene, x, y);
+  const container = trackGameplayVisual(scene, scene.add.container(popupPosition.x, popupPosition.y));
+  container.setDepth(UI_DEPTH + 5);
+  container.setScale(0.72);
+  container.setAlpha(1);
+
+  const streakText = createStreakGradientText(scene, label);
+  container.add(streakText);
+
+  scene.tweens.add({
+    targets: container,
+    y: popupPosition.y - 48,
+    scale: 1,
+    duration: STREAK_POINT_POPUP_DURATION,
+    ease: 'Sine.easeOut',
+  });
+
+  scene.tweens.add({
+    targets: streakText,
+    y: -6,
+    angle: 2.5,
+    scaleX: 1.08,
+    scaleY: 0.94,
+    duration: 170,
+    yoyo: true,
+    repeat: 3,
+    ease: 'Sine.easeInOut',
+  });
+
+  scene.tweens.add({
+    targets: container,
+    alpha: 0,
+    delay: STREAK_POINT_POPUP_FADE_DELAY,
+    duration: STREAK_POINT_POPUP_DURATION - STREAK_POINT_POPUP_FADE_DELAY,
+    ease: 'Sine.easeIn',
+    onComplete: () => {
+      removePointPopupSlot(scene, popupPosition.slot);
+      if (streakText.textureKey && scene.textures.exists(streakText.textureKey)) {
+        scene.textures.remove(streakText.textureKey);
+      }
+      container.destroy();
+    },
+  });
+}
+
+function createStreakGradientText(scene, label) {
+  const textureKey = 'streakGradientText-' + streakGradientTextureId;
+  streakGradientTextureId += 1;
+  return createCanvasTextImage(scene, label, {
+    fontSize: 22,
+    fill: STREAK_POINT_POPUP_COLORS,
+    stroke: '#050914',
+    strokeThickness: 6,
+    textureKey,
+  });
+}
+
+function createCanvasTextImage(scene, label, options = {}) {
+  const fontSize = options.fontSize || 21;
+  const strokeThickness = options.strokeThickness === undefined ? 6 : options.strokeThickness;
+  const padding = options.padding === undefined ? 10 : options.padding;
+  const font = 'bold ' + fontSize + 'px ' + FONT_FAMILY;
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  context.font = font;
+  const metrics = context.measureText(label);
+  const textWidth = Math.ceil(metrics.width);
+  const textHeight = Math.ceil(fontSize * 1.45);
+  canvas.width = textWidth + padding * 2 + strokeThickness * 2;
+  canvas.height = textHeight + padding * 2 + strokeThickness * 2;
+
+  context.font = font;
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.lineJoin = 'round';
+
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  context.strokeStyle = options.stroke || '#050914';
+  context.lineWidth = strokeThickness;
+  context.strokeText(label, centerX, centerY);
+  context.fillStyle = Array.isArray(options.fill)
+    ? createCanvasTextGradient(context, canvas, options.fill, padding)
+    : (options.fill || '#ffd84d');
+  context.fillText(label, centerX, centerY);
+
+  const textureKey = options.textureKey || (options.texturePrefix || 'canvasText') + '-' + pointPopupTextureId;
+  pointPopupTextureId += 1;
+  scene.textures.addCanvas(textureKey, canvas);
+  const image = scene.add.image(0, 0, textureKey).setOrigin(0.5);
+  image.textureKey = textureKey;
+  return image;
+}
+
+function createCanvasTextGradient(context, canvas, colors, padding) {
+  const gradient = context.createLinearGradient(padding, 0, canvas.width - padding, 0);
+  colors.forEach((color, index) => {
+    gradient.addColorStop(index / Math.max(1, colors.length - 1), color);
+  });
+  return gradient;
+}
+
+function getPointPopupGradientColors(color) {
+  if (!isHexColor(color)) return [color, '#ecf7ff'];
+  return [
+    mixHexColors(color, '#ffffff', 0.62),
+    color,
+    mixHexColors(color, '#76ffe8', 0.34),
+  ];
+}
+
+function isHexColor(color) {
+  return typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color);
+}
+
+function mixHexColors(fromHex, toHex, progress) {
+  const from = hexToRgb(fromHex);
+  const to = hexToRgb(toHex);
+  const r = Math.round(Phaser.Math.Linear(from.r, to.r, progress));
+  const g = Math.round(Phaser.Math.Linear(from.g, to.g, progress));
+  const b = Math.round(Phaser.Math.Linear(from.b, to.b, progress));
+  return '#' + [r, g, b].map((value) => value.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToRgb(hex) {
+  const value = parseInt(hex.slice(1), 16);
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255,
+  };
+}
+
+function removeCanvasTextTexture(scene, image) {
+  if (!scene || !image || !image.textureKey || !scene.textures.exists(image.textureKey)) return;
+  scene.textures.remove(image.textureKey);
 }
 
 function getPointPopupPosition(scene, x, y) {
@@ -4371,7 +4568,11 @@ function maybeOpenUpgradeChoice(scene) {
     updateUpgradeBar(scene);
   }
 
-  if (!hasAvailableUpgrades()) return;
+  if (!hasAvailableUpgrades()) {
+    updateUpgradeBar(scene);
+    consumePendingBossWave(scene);
+    return;
+  }
 
   state = 'upgrading';
   isDraggingShip = false;
@@ -4498,11 +4699,8 @@ function chooseUpgrade(scene, upgradeKind) {
   scene.availableUpgradeChoices = null;
 
   if (scene.pendingBossWave) {
-    const bossConfig = scene.pendingBossWave;
-    scene.pendingBossWave = false;
     state = 'playing';
-    releasePendingStreakRepairKit(scene);
-    activateLevelBoss(scene, bossConfig);
+    consumePendingBossWave(scene);
     return;
   }
 
@@ -4526,10 +4724,19 @@ function getUpgradeLevel(upgradeKind) {
   return 0;
 }
 
+function consumePendingBossWave(scene) {
+  if (!scene || !scene.pendingBossWave || state !== 'playing') return false;
+  const bossConfig = scene.pendingBossWave;
+  scene.pendingBossWave = false;
+  releasePendingStreakRepairKit(scene);
+  activateLevelBoss(scene, bossConfig);
+  return true;
+}
+
 function releasePendingStreakRepairKit(scene) {
   if (!scene || !scene.pendingStreakRepairKit) return;
   scene.pendingStreakRepairKit = false;
-  if (lifeBoosterLevel <= 0) return;
+  if (!canDropLifeBooster()) return;
   spawnForcedFallingKind(scene, 'lifeBooster', Phaser.Math.Clamp(scene.ship.x, 28, getGameWidth(scene) - 28));
 }
 
@@ -4810,6 +5017,7 @@ function spawnBall(scene) {
 
 function spawnForcedFallingKind(scene, kind, x = null) {
   if (!scene || !scene.balls) return null;
+  if (kind === 'lifeBooster' && !canDropLifeBooster()) return null;
   return spawnFallingKind(scene, kind, x);
 }
 
