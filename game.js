@@ -629,13 +629,7 @@ function create() {
   this.input.on('pointerdown', (pointer) => {
     if (state === 'paused') {
       if (this.optionsOverlay && this.optionsOverlay.element && this.optionsOverlay.element.classList.contains('is-visible')) return;
-      if (!canStartShipDrag(this, pointer.x, pointer.y, true)) return;
-      if (isXyGameMode() && !this.xyPauseResumeArmed) {
-        armXyPauseResume(this);
-        return;
-      }
-      resumeGame.call(this);
-      startDraggingShipAt(this, pointer.x, pointer.y);
+      handlePausedResumePointer(this, pointer.x, pointer.y);
       return;
     }
     if (state !== 'playing') return;
@@ -1299,16 +1293,11 @@ function bindPausedShipResumeFallback(scene) {
 
     const point = getGamePointFromClient(scene, event.clientX, event.clientY);
     if (!point) return;
-    if (!canStartShipDrag(scene, point.x, point.y, true)) return;
+    if (!canHandlePausedResumePointer(scene, point.x, point.y)) return;
 
     event.preventDefault();
     event.stopPropagation();
-    if (isXyGameMode() && !scene.xyPauseResumeArmed) {
-      armXyPauseResume(scene);
-      return;
-    }
-    resumeGame.call(scene);
-    startDraggingShipAt(scene, point.x, point.y);
+    handlePausedResumePointer(scene, point.x, point.y);
   };
 
   container.addEventListener('pointerdown', resumeFromEvent, { capture: true });
@@ -1322,6 +1311,26 @@ function bindPausedShipResumeFallback(scene) {
 
   window.addEventListener('pointerup', () => pauseIfDraggingShip(scene));
   window.addEventListener('pointercancel', () => pauseIfDraggingShip(scene));
+}
+
+function canHandlePausedResumePointer(scene, x, y) {
+  if (isXyGameMode() && !scene.xyPauseResumeArmed) return true;
+  return canStartShipDrag(scene, x, y, true);
+}
+
+function handlePausedResumePointer(scene, x, y) {
+  if (!scene || state !== 'paused') return false;
+
+  if (isXyGameMode() && !scene.xyPauseResumeArmed) {
+    armXyPauseResume(scene);
+    return true;
+  }
+
+  if (!canStartShipDrag(scene, x, y, true)) return false;
+
+  resumeGame.call(scene);
+  startDraggingShipAt(scene, x, y);
+  return true;
 }
 
 function pauseIfDraggingShip(scene) {
@@ -1378,12 +1387,8 @@ function update(time, delta) {
       if (isCollectibleBallKind(ball.getData('kind'))) {
         ball.destroy();
         resetEnergyStreak();
-        if (!isShieldActive(this)) {
-          playBadSound(this);
-          loseLife(this);
-        } else if (state === 'playing') {
-          playBadSound(this);
-        }
+        playBadSound(this);
+        loseLife(this);
       } else {
         ball.destroy();
       }
@@ -1625,12 +1630,7 @@ function prepareXyPauseResume(scene) {
   if (!scene || !isXyGameMode()) return;
   scene.xyPauseResumeArmed = false;
   setXyControlVisible(scene, true);
-  const controlPosition = clampXyControlPosition(
-    scene,
-    scene.ship ? scene.ship.x : getGameWidth(scene) / 2,
-    getXyControlHomePosition(scene).y
-  );
-  moveXyControlTo(scene, controlPosition.x, controlPosition.y);
+  updateXyControlFromShip(scene);
 }
 
 function prepareControlPauseResume(scene) {
@@ -2190,7 +2190,7 @@ function setPauseOverlayMode(scene, mode = 'normal') {
   }
   if (scene.pauseOverlay.copy) {
     scene.pauseOverlay.copy.textContent = isXyGameMode()
-      ? 'Toca la huella azul para volver a la nave'
+      ? (isUpgradePause ? 'Toca fuera de la ventana para continuar' : 'Toca fuera del menu para continuar')
       : 'Arrastra la huella azul para continuar';
   }
 }
