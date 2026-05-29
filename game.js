@@ -17,6 +17,7 @@ const SUPABASE_URL = 'https://fqkpwigonxgnsynfdzyw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Up1cBihd6uOftnMkhj3A3w_ZH1q7YOR';
 const SUPABASE_RANKING_TABLE = 'ranking';
 const SUPABASE_SCORE_COLUMN = 'puntos';
+const SUPABASE_STREAK_COLUMN = 'racha';
 const DEFAULT_PLAYER_NAME = 'Anónimo';
 const INITIAL_SPAWN_DELAY = 1500;
 const MIN_SPAWN_DELAY = 600;
@@ -72,17 +73,22 @@ const PLASMA_BAR_HEIGHT = 18;
 const PLASMA_BAR_GAP_WIDTH = SHIP_WIDTH + 54;
 const PLASMA_BAR_VERTICAL_SPEED = 152;
 const PLASMA_BAR_GAP_SPEED = 42;
+const PLASMA_BAR_SPARK_COUNT = 5;
+const PLASMA_BAR_SPARK_STEP = 9;
+const PLASMA_BAR_SPARK_AMPLITUDE = 5;
+const PLASMA_BAR_OUTER_SPARK_AMPLITUDE = 9;
+const PLASMA_BAR_OUTER_SPARK_COUNT_MULTIPLIER = 2;
 const BOSS_WAVE_DURATION = 30000;
-const BOSS_WAVE_ATTACKS = 5;
+const BOSS_WAVE_ATTACKS = 7;
 const RED_NEEDLE_BOSS_ATTACKS = 6;
 const RED_NEEDLE_BOSS_PASS_DURATION = 3400;
 const RED_NEEDLE_BOSS_PASS_GAP = 620;
 const TRAVEL_SENTINEL_ATTACKS = 2;
 const TRAVEL_SENTINEL_CHANCE = 0.018;
 const TRAVEL_SENTINEL_COOLDOWN = 26000;
-const BOSS_LASER_WARN_DURATION = 1500;
+const BOSS_LASER_WARN_DURATION = 1100;
 const BOSS_LASER_DURATION = 2000;
-const BOSS_ATTACK_GAP = 2000;
+const BOSS_ATTACK_GAP = 1500;
 const BOSS_WIDTH = 560;
 const BOSS_HEIGHT = 220;
 const BOSS_LASER_WIDTH = 32;
@@ -90,8 +96,12 @@ const WAVE_CLEAR_DELAY = 2200;
 const WAVE_POST_DELAY = 900;
 const BOSS_CUE_BAND_HEIGHT = 76;
 const BOSS_CUE_HOLD_DURATION = 900;
+const BOSS_CUE_FADE_IN_DURATION = 260;
 const BOSS_CUE_FADE_DURATION = 520;
-const BOSS_LASER_MIN_X_GAP = 112;
+const BOSS_LASER_MIN_X_GAP = 90;
+const BOSS_LASER_CHAIN_MIN_X_GAP = SHIP_WIDTH + 34;
+const BOSS_LASER_TRACKING_CHANCE = 0.55;
+const BOSS_LASER_TRACKING_JITTER = 18;
 const RED_ENEMY_SWAY_SPEED = 0.0042;
 const RED_ENEMY_SWAY_MAX_VELOCITY = 24;
 const SHIP_MAX_TILT = 14;
@@ -147,6 +157,10 @@ const SCORE_BOOSTER_CHANCE = 0.07;
 const SHIELD_BOOSTER_CHANCE = 0.05;
 const LIFE_BOOSTER_CHANCE = 0.03;
 const FONT_FAMILY = '"Orbitron", "Rajdhani", "Trebuchet MS", Arial, sans-serif';
+const BACKGROUND_FIRST_COLOR = '#112c4d';
+const BACKGROUND_SECOND_COLOR = '#461240';
+const BACKGROUND_FIRST_COLOR_RATIO = 1 / 1.5;
+const BACKGROUND_GRADIENT_FADE_RATIO = 0.50;
 const FALLING_OBJECT_DEPTH = 4;
 const SHIP_DEPTH = 12;
 const FX_DEPTH = 30;
@@ -167,7 +181,7 @@ const UPGRADE_ICON_Y = BOOSTER_BAR_Y + 18;
 const config = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  backgroundColor: '#08142a',
+  backgroundColor: BACKGROUND_SECOND_COLOR,
   resolution: Math.min(2, window.devicePixelRatio || 1),
   render: {
     antialias: true,
@@ -199,6 +213,7 @@ let game = null;
 let score = 0;
 let ballsCaught = 0;
 let energyStreak = 0;
+let maxEnergyStreak = 0;
 let currentGravity = BASE_GRAVITY;
 let currentBoosterGravity = Math.round(BASE_GRAVITY * BOOSTER_GRAVITY_RATIO);
 let currentSpawnDelay = INITIAL_SPAWN_DELAY;
@@ -220,7 +235,7 @@ let isDraggingShip = false;
 let pausedMusicTime = 0;
 let playerTrailTimer = 0;
 let enemyTrailTimer = 0;
-let energyRefinerPassiveTimer = 0;
+let energyRefinerLevelBonus = 0;
 let hud = null;
 let supabaseClient = null;
 let pendingScoreSave = null;
@@ -303,7 +318,7 @@ function getBossConfigForLevel(level) {
 
   const bossKinds = ['red', 'boss', 'asteroid', 'plasma', 'drones', 'redNeedleBoss'];
   const bossKind = isInfiniteGameMode()
-    ? (bossIndex === 0 ? 'redNeedleBoss' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
+    ? (bossIndex === 0 ? 'plasma' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
     : bossKinds[bossIndex % bossKinds.length];
   return createBossConfig(bossKind);
 }
@@ -1369,7 +1384,6 @@ function update(time, delta) {
   updateRedNeedles(this);
   updateRedEnemySway(this, time);
   updateSpikeDrones(this);
-  updateEnergyRefinerPassive(this, delta);
   updateScoreBooster(this);
   updateShieldBooster(this);
   updateRedWave(this);
@@ -1790,7 +1804,8 @@ function createBackground(scene) {
   const layer = scene.backgroundLayer || scene.add.container(0, 0);
 
   layer.removeAll(true);
-  layer.add(scene.add.rectangle(0, 0, width, height, 0x08142a).setOrigin(0));
+  const gradientKey = createBackgroundGradientTexture(scene, width, height);
+  layer.add(scene.add.image(0, 0, gradientKey).setOrigin(0));
   ensureStarfieldTextures(scene);
 
   scene.starfieldLayers = STARFIELD_LAYERS.map((starLayer) => {
@@ -1800,6 +1815,29 @@ function createBackground(scene) {
     layer.add(tile);
     return { tile, baseSpeedX: starLayer.speedX, baseSpeedY: starLayer.speedY };
   });
+}
+
+function createBackgroundGradientTexture(scene, width, height) {
+  const key = 'backgroundGradient';
+  if (scene.textures.exists(key)) {
+    scene.textures.remove(key);
+  }
+
+  const texture = scene.textures.createCanvas(key, width, height);
+  const context = texture.getContext();
+  const fadeStart = Phaser.Math.Clamp(BACKGROUND_FIRST_COLOR_RATIO, 0, 1);
+  const fadeEnd = Phaser.Math.Clamp(fadeStart + BACKGROUND_GRADIENT_FADE_RATIO, fadeStart, 1);
+  const gradient = context.createLinearGradient(0, 0, 0, height);
+
+  gradient.addColorStop(0, BACKGROUND_FIRST_COLOR);
+  gradient.addColorStop(fadeStart, BACKGROUND_FIRST_COLOR);
+  gradient.addColorStop(fadeEnd, BACKGROUND_SECOND_COLOR);
+  gradient.addColorStop(1, BACKGROUND_SECOND_COLOR);
+
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, width, height);
+  texture.refresh();
+  return key;
 }
 
 function ensureStarfieldTextures(scene) {
@@ -2036,6 +2074,7 @@ function prepareGameOverScore(scene) {
   pendingScoreSave = {
     score,
     level: playerLevel,
+    streak: maxEnergyStreak,
   };
   lastScoreSaved = false;
 
@@ -2071,6 +2110,7 @@ async function savePendingScore(scene) {
     nombre: playerName,
     nivel: pendingScoreSave.level,
     [SUPABASE_SCORE_COLUMN]: pendingScoreSave.score,
+    [SUPABASE_STREAK_COLUMN]: pendingScoreSave.streak,
   };
   const { error } = await client.from(SUPABASE_RANKING_TABLE).insert(payload);
 
@@ -2137,6 +2177,7 @@ function renderRanking(listElement, rows) {
     const meta = document.createElement('span');
     const points = document.createElement('span');
     const scoreValue = Number(row[SUPABASE_SCORE_COLUMN] || 0);
+    const streakValue = Number(row[SUPABASE_STREAK_COLUMN] || 0);
     const levelValue = Number(row.nivel || 0);
 
     item.className = 'ranking-item';
@@ -2148,7 +2189,7 @@ function renderRanking(listElement, rows) {
 
     position.textContent = '#' + (index + 1);
     name.textContent = row.nombre || 'Jugador';
-    meta.textContent = 'Nivel ' + levelValue;
+    meta.textContent = 'Nivel ' + levelValue + ' - Racha ' + streakValue;
     points.textContent = scoreValue;
 
     player.append(name, meta);
@@ -2536,6 +2577,7 @@ function resetCounters() {
   score = 0;
   ballsCaught = 0;
   energyStreak = 0;
+  maxEnergyStreak = 0;
   currentGravity = BASE_GRAVITY;
   currentBoosterGravity = Math.round(BASE_GRAVITY * BOOSTER_GRAVITY_RATIO);
   currentSpawnDelay = INITIAL_SPAWN_DELAY;
@@ -2549,9 +2591,9 @@ function resetCounters() {
   shieldBoosterLevel = 0;
   scoreBoosterLevel = 0;
   energyRefinerLevel = 0;
+  energyRefinerLevelBonus = 0;
   playerTrailTimer = 0;
   enemyTrailTimer = 0;
-  energyRefinerPassiveTimer = 0;
   this.nextRedWaveEligibleAt = 0;
   this.nextAsteroidWaveEligibleAt = 0;
   this.obreraSpawnsUnlocked = false;
@@ -3338,7 +3380,8 @@ function canDropLifeBooster() {
 
 function getEnergyBallValue() {
   if (energyRefinerLevel <= 0) return 1;
-  return Math.min(5, energyRefinerLevel + 1);
+  const maxLevelBonus = energyRefinerLevel >= MAX_UPGRADE_LEVEL ? energyRefinerLevelBonus : 0;
+  return energyRefinerLevel + 1 + maxLevelBonus;
 }
 
 function resetEnergyStreak() {
@@ -3349,19 +3392,25 @@ function resetEnergyStreak() {
 
 function increaseEnergyStreak(scene) {
   energyStreak += 1;
+  maxEnergyStreak = Math.max(maxEnergyStreak, energyStreak);
   updateStreakText();
   if (energyStreak % ENERGY_STREAK_REWARD_TARGET !== 0) return;
   awardEnergyStreakReward(scene);
 }
 
+function getEnergyStreakRewardScore() {
+  return (energyStreak / ENERGY_STREAK_REWARD_TARGET) * ENERGY_STREAK_REWARD_SCORE;
+}
+
 function awardEnergyStreakReward(scene) {
   if (!scene || !scene.ship) return;
+  const rewardScore = getEnergyStreakRewardScore();
   const shouldDelayUpgrade = state === 'playing'
-    && levelProgressScore + ENERGY_STREAK_REWARD_SCORE >= nextUpgradeScore
+    && levelProgressScore + rewardScore >= nextUpgradeScore
     && hasAvailableUpgrades();
   const shouldDropRepairKit = canDropLifeBooster();
   playStreakSuccessSound(scene);
-  addScore(scene, ENERGY_STREAK_REWARD_SCORE, true, {
+  addScore(scene, rewardScore, true, {
     x: scene.ship.x,
     y: scene.ship.y - 28,
     color: '#ffd84d',
@@ -3393,17 +3442,6 @@ function addScore(scene, points, animate = true, feedback = null) {
   } else if (feedback) {
     showPointPopup(scene, feedback.x, feedback.y, points, feedback.color, feedback.label, feedback.duration);
   }
-}
-
-function updateEnergyRefinerPassive(scene, delta) {
-  if (energyRefinerLevel < MAX_UPGRADE_LEVEL) return;
-
-  energyRefinerPassiveTimer += delta;
-  while (energyRefinerPassiveTimer >= 1000) {
-    energyRefinerPassiveTimer -= 1000;
-    addScore(scene, 1, false);
-  }
-  maybeOpenUpgradeChoice(scene);
 }
 
 function showPointPopup(scene, x, y, points, color = '#ffd84d', label = null, duration = POINT_POPUP_DURATION) {
@@ -3731,7 +3769,7 @@ function activateScoreBooster(scene) {
   playPurpleBoosterMusic(scene);
 
   setHudBoosterVisible(true, '#9b5cff', 'Catalizador de energía');
-  updateBoosterBar(scene, 1);
+  updateBoosterBar(scene, 1, true);
 }
 
 function activateShieldBooster(scene) {
@@ -3749,7 +3787,7 @@ function activateShieldBooster(scene) {
   updateLivesText(scene);
 
   setHudBoosterVisible(true, '#4da3ff', 'Barrera protectora');
-  updateBoosterBar(scene, 1);
+  updateBoosterBar(scene, 1, true);
 }
 
 function updateScoreBooster(scene) {
@@ -4350,11 +4388,26 @@ function getNextBossLaserX(scene, bossWave) {
   const min = 46;
   const max = getGameWidth(scene) - 46;
   const blockedX = bossWave.previousLaserX;
+  const playerX = scene.ship ? scene.ship.x : getGameWidth(scene) / 2;
+  const requiredGap = Math.max(BOSS_LASER_MIN_X_GAP, BOSS_LASER_CHAIN_MIN_X_GAP);
+
+  if (Phaser.Math.FloatBetween(0, 1) < BOSS_LASER_TRACKING_CHANCE) {
+    const trackedX = Phaser.Math.Clamp(
+      playerX + Phaser.Math.Between(-BOSS_LASER_TRACKING_JITTER, BOSS_LASER_TRACKING_JITTER),
+      min,
+      max
+    );
+    if (blockedX === undefined || Math.abs(trackedX - blockedX) >= BOSS_LASER_MIN_X_GAP) {
+      return trackedX;
+    }
+  }
+
   const roomyCandidates = [];
 
-  for (let attempt = 0; attempt < 24; attempt += 1) {
+  for (let attempt = 0; attempt < 36; attempt += 1) {
     const x = Phaser.Math.Between(min, max);
-    if (blockedX === undefined || Math.abs(x - blockedX) >= BOSS_LASER_MIN_X_GAP) {
+    const farFromPrevious = blockedX === undefined || Math.abs(x - blockedX) >= requiredGap;
+    if (farFromPrevious) {
       roomyCandidates.push(x);
     }
   }
@@ -4363,9 +4416,10 @@ function getNextBossLaserX(scene, bossWave) {
     return Phaser.Utils.Array.GetRandom(roomyCandidates);
   }
 
-  const leftX = Phaser.Math.Clamp((blockedX || getGameWidth(scene) / 2) - BOSS_LASER_MIN_X_GAP, min, max);
-  const rightX = Phaser.Math.Clamp((blockedX || getGameWidth(scene) / 2) + BOSS_LASER_MIN_X_GAP, min, max);
-  return Math.abs(leftX - blockedX) > Math.abs(rightX - blockedX) ? leftX : rightX;
+  const anchorX = blockedX === undefined ? getGameWidth(scene) / 2 : blockedX;
+  const leftX = Phaser.Math.Clamp(anchorX - requiredGap, min, max);
+  const rightX = Phaser.Math.Clamp(anchorX + requiredGap, min, max);
+  return Math.abs(rightX - playerX) > Math.abs(leftX - playerX) ? rightX : leftX;
 }
 
 function showBossLaserWarning(scene, laserX) {
@@ -4560,13 +4614,16 @@ function showBossCueBand(scene, waveKind, cueKind, onCross) {
   element.classList.toggle('is-safe', cueKind === 'safe');
   element.classList.add('is-active');
   element.style.height = height + 'px';
-  element.style.opacity = '0.92';
+  element.style.opacity = '0';
   element.style.transition = 'none';
   scene.bossCueBand = element;
   scene.bossCueMotion = null;
   element.style.transform = 'translateY(' + targetY + 'px)';
+  void element.offsetHeight;
+  element.style.transition = 'opacity ' + BOSS_CUE_FADE_IN_DURATION + 'ms ease-out';
+  element.style.opacity = '0.92';
 
-  scene.bossCueTween = scene.time.delayedCall(BOSS_CUE_HOLD_DURATION, () => {
+  scene.bossCueTween = scene.time.delayedCall(BOSS_CUE_FADE_IN_DURATION + BOSS_CUE_HOLD_DURATION, () => {
     scene.bossCueTween = null;
     if (cueKind === 'warning') {
       playRedWaveSound(scene);
@@ -4768,6 +4825,7 @@ function spawnPlasmaBar(scene) {
     gapHalf,
     height: PLASMA_BAR_HEIGHT,
     damaged: false,
+    sparkSeed: Phaser.Math.Between(0, 9999),
   };
 
   updatePlasmaBarGeometry(scene, bar);
@@ -4820,13 +4878,14 @@ function updatePlasmaBarGeometry(scene, bar) {
   const rightWidth = Math.max(0, width - gapRight);
   const coreHeight = 4;
   const glowHeight = bar.height + 10;
+  const sparkPhase = scene.time.now * 0.018 + bar.sparkSeed;
 
   bar.graphics.clear();
-  drawPlasmaSegment(bar.graphics, 0, gapLeft, bar.height, glowHeight, coreHeight);
-  drawPlasmaSegment(bar.graphics, gapRight, rightWidth, bar.height, glowHeight, coreHeight);
+  drawPlasmaSegment(bar.graphics, 0, gapLeft, bar.height, glowHeight, coreHeight, sparkPhase);
+  drawPlasmaSegment(bar.graphics, gapRight, rightWidth, bar.height, glowHeight, coreHeight, sparkPhase + 37);
 }
 
-function drawPlasmaSegment(graphics, x, width, height, glowHeight, coreHeight) {
+function drawPlasmaSegment(graphics, x, width, height, glowHeight, coreHeight, sparkPhase) {
   if (width <= 1) return;
 
   graphics.fillStyle(0x4dc9ff, 0.16);
@@ -4838,6 +4897,79 @@ function drawPlasmaSegment(graphics, x, width, height, glowHeight, coreHeight) {
   graphics.lineStyle(1, 0xdffbff, 0.42);
   graphics.lineBetween(x, -height / 2, x + width, -height / 2);
   graphics.lineBetween(x, height / 2, x + width, height / 2);
+  drawPlasmaSparks(graphics, x, width, height, sparkPhase);
+}
+
+function drawPlasmaSparks(graphics, x, width, height, sparkPhase) {
+  if (width < 18) return;
+
+  const sparkCount = Math.min(PLASMA_BAR_SPARK_COUNT, Math.max(1, Math.floor(width / 72)));
+  const outerSparkCount = Math.min(
+    PLASMA_BAR_SPARK_COUNT * PLASMA_BAR_OUTER_SPARK_COUNT_MULTIPLIER,
+    Math.max(2, Math.floor(width / 36))
+  );
+  for (let i = 0; i < sparkCount; i += 1) {
+    const phase = sparkPhase + i * 29.7;
+    const flicker = Math.sin(phase * 1.73);
+    if (flicker < -0.2) continue;
+
+    const sparkWidth = Phaser.Math.Clamp(width * 0.16, 20, 54);
+    const startX = x + Phaser.Math.Clamp(
+      ((Math.sin(phase * 0.61) + 1) / 2) * Math.max(1, width - sparkWidth),
+      0,
+      Math.max(0, width - sparkWidth)
+    );
+    const pointCount = Math.max(3, Math.floor(sparkWidth / PLASMA_BAR_SPARK_STEP));
+    const baseY = (Math.sin(phase * 0.43) * 0.36) * height;
+    const alpha = 0.24 + Math.abs(flicker) * 0.34;
+
+    graphics.lineStyle(2, 0x8eeaff, alpha * 0.7);
+    drawJaggedSparkLine(graphics, startX, baseY, sparkWidth, pointCount, phase, height, false);
+    graphics.lineStyle(1, 0xf2feff, alpha);
+    drawJaggedSparkLine(graphics, startX, baseY, sparkWidth, pointCount, phase + 11, height, false);
+  }
+
+  for (let i = 0; i < outerSparkCount; i += 1) {
+    const phase = sparkPhase + i * 17.3 + 19;
+    const flicker = Math.sin(phase * 1.91);
+    if (flicker < -0.45) continue;
+
+    const sparkWidth = Phaser.Math.Clamp(width * 0.12, 16, 42);
+    const startX = x + Phaser.Math.Clamp(
+      ((Math.sin(phase * 0.67) + 1) / 2) * Math.max(1, width - sparkWidth),
+      0,
+      Math.max(0, width - sparkWidth)
+    );
+    const pointCount = Math.max(3, Math.floor(sparkWidth / PLASMA_BAR_SPARK_STEP));
+    const edgeY = i % 2 === 0 ? -height / 2 : height / 2;
+    const outerY = edgeY + (edgeY < 0 ? -3 : 3);
+    const alpha = 0.2 + Math.abs(flicker) * 0.32;
+
+    graphics.lineStyle(2, 0x5ed8ff, alpha * 0.55);
+    drawJaggedSparkLine(graphics, startX, outerY, sparkWidth, pointCount, phase, height, true);
+    graphics.lineStyle(1, 0xf7feff, alpha * 0.85);
+    drawJaggedSparkLine(graphics, startX, outerY, sparkWidth, pointCount, phase + 5.7, height, true);
+  }
+}
+
+function drawJaggedSparkLine(graphics, startX, baseY, sparkWidth, pointCount, phase, height, canArcOutside) {
+  graphics.beginPath();
+  for (let point = 0; point <= pointCount; point += 1) {
+    const progress = point / pointCount;
+    const px = startX + sparkWidth * progress;
+    const amplitude = canArcOutside ? PLASMA_BAR_OUTER_SPARK_AMPLITUDE : PLASMA_BAR_SPARK_AMPLITUDE;
+    const jitter = Math.sin(phase + point * 2.41) * amplitude;
+    const minY = canArcOutside ? -height / 2 - 10 : -height / 2 + 3;
+    const maxY = canArcOutside ? height / 2 + 10 : height / 2 - 3;
+    const py = Phaser.Math.Clamp(baseY + jitter, minY, maxY);
+
+    if (point === 0) {
+      graphics.moveTo(px, py);
+    } else {
+      graphics.lineTo(px, py);
+    }
+  }
+  graphics.strokePath();
 }
 
 function maybeDamageShipWithPlasma(scene, bar, shipHalfWidth, shipTop, shipBottom) {
@@ -4899,9 +5031,16 @@ function isLaserTouchingShip(scene, laser) {
   );
 }
 
-function updateBoosterBar(scene, progress) {
+function updateBoosterBar(scene, progress, immediate = false) {
   const currentHud = initHud();
   if (!currentHud.boosterFill) return;
+  if (immediate) {
+    currentHud.boosterFill.style.transition = 'none';
+    currentHud.boosterFill.style.width = Math.max(0, Math.min(100, progress * 100)) + '%';
+    void currentHud.boosterFill.offsetWidth;
+    currentHud.boosterFill.style.transition = '';
+    return;
+  }
   currentHud.boosterFill.style.width = Math.max(0, Math.min(100, progress * 100)) + '%';
 }
 
@@ -4995,6 +5134,9 @@ function advancePlayerLevel(scene) {
   const completedLevel = playerLevel;
   levelProgressScore = Math.max(0, levelProgressScore - nextUpgradeScore);
   playerLevel += 1;
+  if (energyRefinerLevel >= MAX_UPGRADE_LEVEL) {
+    energyRefinerLevelBonus += 1;
+  }
   nextUpgradeScore = getLevelRequirement(playerLevel);
   scene.pendingBossWave = getBossConfigForLevel(completedLevel);
   increaseDifficulty(scene);
@@ -5045,7 +5187,7 @@ function getUpgradeConfig(upgradeKind) {
       label: 'Refinador de energía',
       getDescription: (level) => level < MAX_UPGRADE_LEVEL
         ? 'Los orbes de energía proporcionan ' + (level + 1) + ' puntos.'
-        : 'La nave genera 1 punto por segundo.',
+        : 'Por cada nivel que superes se suma +1 al valor de los orbes de energía.',
       color: '#ffd84d',
     };
   }
@@ -5721,7 +5863,7 @@ function getNextSpawnKind(scene) {
 }
 
 function getNextTravelThreatKind(scene) {
-  if ((!scene.obreraSpawnsUnlocked && !scene.droneSpawnsUnlocked && !scene.redNeedleSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave) return null;
+  if ((!scene.obreraSpawnsUnlocked && !scene.droneSpawnsUnlocked && !scene.redNeedleSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || scene.activeBossWave) return null;
   if (hasActivePlasmaBars(scene)) return null;
   if (countActiveHostileFallingObjects(scene) >= 3) return null;
 
@@ -5741,7 +5883,7 @@ function shouldStartTravelSentinel(scene) {
 }
 
 function getNextAsteroidKind(scene) {
-  if (!scene.asteroidSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave) return null;
+  if (!scene.asteroidSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || scene.activeBossWave) return null;
   if (hasActivePlasmaBars(scene)) return null;
   if (hasFallingAsteroid(scene) || countActiveHostileFallingObjects(scene) >= 3) return null;
 
@@ -6062,7 +6204,15 @@ function catchBall(ball, scene) {
   if (kind === 'spikeDrone' && ball.getData('spikeState') !== 'expanded' && !isShieldActive(scene)) return;
   ball.destroy();
 
-  if (kind === 'redNeedle') return;
+  if (kind === 'redNeedle') {
+    if (isShieldActive(scene)) {
+      showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
+      playShieldBlockSound(scene);
+      flashPlayerShip(scene);
+      addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#4da3ff' });
+    }
+    return;
+  }
 
   if (kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedleLaser') {
     showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
