@@ -5018,7 +5018,7 @@ function getUpgradeConfig(upgradeKind) {
       label: 'Kit de reparación',
       getDescription: (level) => level === 1
         ? 'Desbloquea la aparición de kits de reparación. Repone 1 vida.'
-        : 'Repone ' + level + ' vidas.',
+        : 'El kit de reparación repone ' + level + ' vidas.',
       color: '#4dff88',
     };
   }
