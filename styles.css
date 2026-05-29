@@ -31,6 +31,9 @@ body {
   user-select: none;
   background: #000;
   --ui-scale: 1;
+  --ui-radius-panel: 8px;
+  --ui-radius-control: 7px;
+  --ui-radius-small: 5px;
 }
 
 canvas {
@@ -70,11 +73,14 @@ canvas {
   padding: 10px 12px 11px;
   border: 1px solid rgba(74, 197, 255, 0.48);
   border-left-color: rgba(255, 216, 77, 0.86);
+  border-radius: var(--ui-radius-panel);
   background:
+    linear-gradient(90deg, rgba(255, 216, 77, 0.16), transparent 18%, transparent 82%, rgba(74, 197, 255, 0.14)),
     linear-gradient(135deg, rgba(9, 17, 31, 0.82), rgba(7, 12, 24, 0.62)),
     rgba(4, 9, 20, 0.58);
   box-shadow:
     0 0 18px rgba(74, 197, 255, 0.18),
+    0 0 0 1px rgba(236, 247, 255, 0.04),
     inset 0 0 18px rgba(74, 197, 255, 0.08),
     inset 3px 0 0 rgba(255, 216, 77, 0.85);
   backdrop-filter: blur(12px);
@@ -86,6 +92,8 @@ canvas {
   position: absolute;
   inset: 3px;
   border: 1px solid rgba(255, 216, 77, 0.12);
+  border-radius: calc(var(--ui-radius-panel) - 3px);
+  pointer-events: none;
 }
 
 .hud-main-row,
@@ -175,8 +183,10 @@ canvas {
   position: relative;
   height: 14px;
   border: 1px solid rgba(77, 255, 136, 0.42);
+  border-radius: var(--ui-radius-small);
   background: rgba(12, 24, 36, 0.78);
   box-shadow: inset 0 0 8px rgba(77, 255, 136, 0.08);
+  overflow: hidden;
 }
 
 .hud-life-cell::before {
@@ -235,6 +245,7 @@ canvas {
   height: 9px;
   margin-top: 6px;
   border: 1px solid rgba(74, 197, 255, 0.38);
+  border-radius: 999px;
   background: rgba(3, 7, 16, 0.82);
   box-shadow: inset 0 0 10px rgba(74, 197, 255, 0.12);
 }
@@ -252,6 +263,7 @@ canvas {
   width: 0%;
   height: 100%;
   transform-origin: left center;
+  border-radius: inherit;
   background: linear-gradient(90deg, #4ac5ff, #77f3ff 52%, #ffd84d);
   box-shadow: 0 0 14px rgba(74, 197, 255, 0.72);
   transition: width 120ms ease;
@@ -263,13 +275,17 @@ canvas {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+  min-height: 21px;
   margin-top: 8px;
+  align-content: flex-start;
 }
 
 .hud-upgrade-chip {
   min-width: 42px;
+  min-height: 21px;
   padding: 5px 7px;
   border: 1px solid color-mix(in srgb, var(--chip-color, #65d8ff) 72%, white 28%);
+  border-radius: var(--ui-radius-small);
   background: linear-gradient(180deg, var(--chip-color, #65d8ff), color-mix(in srgb, var(--chip-color, #65d8ff) 72%, black 28%));
   color: #08111f;
   font-size: 9px;
@@ -277,6 +293,16 @@ canvas {
   line-height: 1;
   text-align: center;
   box-shadow: 0 0 10px color-mix(in srgb, var(--chip-color, #65d8ff) 42%, transparent), inset 0 0 8px rgba(255, 255, 255, 0.16);
+}
+
+.hud-upgrade-chip.is-empty {
+  border-color: color-mix(in srgb, var(--chip-color, #65d8ff) 38%, rgba(236, 247, 255, 0.18));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--chip-color, #65d8ff) 14%, transparent) 0 22%, transparent 22% 78%, color-mix(in srgb, var(--chip-color, #65d8ff) 12%, transparent) 78%),
+    rgba(4, 9, 20, 0.46);
+  box-shadow:
+    inset 0 0 8px color-mix(in srgb, var(--chip-color, #65d8ff) 18%, transparent),
+    0 0 8px rgba(74, 197, 255, 0.08);
 }
 
 .hud-booster {
@@ -373,11 +399,14 @@ canvas {
   padding: 28px 24px;
   border: 1px solid rgba(74, 197, 255, 0.52);
   border-left-color: rgba(255, 216, 77, 0.9);
+  border-radius: var(--ui-radius-panel);
   background:
+    linear-gradient(90deg, rgba(255, 216, 77, 0.14), transparent 16%, transparent 84%, rgba(74, 197, 255, 0.12)),
     linear-gradient(135deg, rgba(9, 17, 31, 0.94), rgba(5, 10, 22, 0.82)),
     rgba(5, 9, 18, 0.88);
   box-shadow:
     0 0 26px rgba(74, 197, 255, 0.2),
+    0 0 0 1px rgba(236, 247, 255, 0.04),
     inset 0 0 22px rgba(74, 197, 255, 0.08),
     inset 3px 0 0 rgba(255, 216, 77, 0.86);
   color: #ecf7ff;
@@ -394,6 +423,7 @@ canvas {
   right: 12px;
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(255, 216, 77, 0.68), transparent);
+  pointer-events: none;
 }
 
 .ui-panel::before {
@@ -468,11 +498,18 @@ canvas {
   min-height: 50px;
   margin-top: 24px;
   border: 1px solid rgba(255, 216, 77, 0.86);
-  background: linear-gradient(180deg, #ffd84d, #d69c25);
+  border-radius: var(--ui-radius-control);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 12%, transparent 88%, rgba(8, 17, 31, 0.16)),
+    linear-gradient(180deg, #ffe169, #d69c25);
   color: #08111f;
   font: 700 18px/1 "Orbitron", "Rajdhani", Arial, sans-serif;
   cursor: pointer;
-  box-shadow: 0 0 18px rgba(255, 216, 77, 0.3), inset 0 0 12px rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 0 18px rgba(255, 216, 77, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 0 12px rgba(255, 255, 255, 0.18);
+  overflow: hidden;
 }
 
 .ui-button:hover,
@@ -496,7 +533,9 @@ canvas {
   min-height: 42px;
   margin-top: 14px;
   border-color: rgba(74, 197, 255, 0.55);
-  background: linear-gradient(180deg, rgba(38, 56, 89, 0.96), rgba(18, 31, 55, 0.96));
+  background:
+    linear-gradient(90deg, rgba(74, 197, 255, 0.15), transparent 16%, transparent 84%, rgba(255, 216, 77, 0.08)),
+    linear-gradient(180deg, rgba(38, 56, 89, 0.96), rgba(18, 31, 55, 0.96));
   color: #ecf7ff;
   box-shadow: 0 0 14px rgba(74, 197, 255, 0.18), inset 0 0 12px rgba(74, 197, 255, 0.12);
 }
@@ -506,7 +545,9 @@ canvas {
   min-height: 42px;
   margin-top: 14px;
   border-color: rgba(255, 95, 122, 0.88);
-  background: linear-gradient(180deg, #ff5f7a, #c52f4d);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.16), transparent 14%, transparent 86%, rgba(40, 4, 12, 0.16)),
+    linear-gradient(180deg, #ff6f88, #c52f4d);
   color: #fff4f7;
   box-shadow: 0 0 16px rgba(255, 95, 122, 0.28), inset 0 0 12px rgba(255, 210, 218, 0.16);
 }
@@ -574,6 +615,7 @@ canvas {
   width: 100%;
   min-height: 44px;
   border: 1px solid rgba(74, 197, 255, 0.58);
+  border-radius: var(--ui-radius-control);
   background: rgba(4, 9, 20, 0.84);
   color: #ffffff;
   font: 700 18px/1 "Rajdhani", "Trebuchet MS", Arial, sans-serif;
@@ -649,7 +691,10 @@ canvas {
   min-height: 42px;
   padding: 8px 10px;
   border: 1px solid rgba(74, 197, 255, 0.28);
-  background: rgba(4, 9, 20, 0.58);
+  border-radius: var(--ui-radius-control);
+  background:
+    linear-gradient(90deg, rgba(74, 197, 255, 0.08), transparent 26%),
+    rgba(4, 9, 20, 0.58);
   box-shadow: inset 0 0 10px rgba(74, 197, 255, 0.08);
 }
 
@@ -690,6 +735,7 @@ canvas {
   display: block;
   padding: 15px 10px;
   border: 1px solid rgba(74, 197, 255, 0.2);
+  border-radius: var(--ui-radius-control);
   color: #b9cdec;
   font-family: "Rajdhani", "Trebuchet MS", Arial, sans-serif;
   font-size: 15px;
@@ -707,18 +753,18 @@ canvas {
 
 .ui-upgrade-button {
   width: 100%;
-  min-height: 86px;
+  min-height: 96px;
   margin-top: 0;
-  padding: 8px;
+  padding: 10px;
   border-color: var(--upgrade-color, #76ffe8);
   background: var(--upgrade-color, #76ffe8);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--upgrade-color, #76ffe8) 94%, white 6%), color-mix(in srgb, var(--upgrade-color, #76ffe8) 76%, black 24%));
   color: #ffffff;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.28;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   white-space: pre-line;
   box-shadow: 0 0 16px color-mix(in srgb, var(--upgrade-color, #76ffe8) 38%, transparent);
 }
@@ -727,7 +773,7 @@ canvas {
   display: block;
   width: 100%;
   color: #08111f;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.12;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.16);
 }
@@ -737,11 +783,12 @@ canvas {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid color-mix(in srgb, var(--upgrade-color, #76ffe8) 38%, #0a1020 62%);
+  border-radius: var(--ui-radius-small);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--upgrade-color, #76ffe8) 22%, #101827 78%), #080d18);
   color: #f2f8ff;
   font-family: "Rajdhani", "Trebuchet MS", Arial, sans-serif;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   line-height: 1.14;
   box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.22);

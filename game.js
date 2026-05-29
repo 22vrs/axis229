@@ -5170,28 +5170,22 @@ function updateUpgradeStatusIcons(scene) {
   if (!currentHud.upgrades) return;
 
   currentHud.upgrades.innerHTML = '';
-  if (lifeBoosterLevel > 0) {
-    addUpgradeStatusIcon(scene, lifeBoosterLevel, '#4dff88');
-  }
-  if (shieldBoosterLevel > 0) {
-    addUpgradeStatusIcon(scene, shieldBoosterLevel, '#4da3ff');
-  }
-  if (scoreBoosterLevel > 0) {
-    addUpgradeStatusIcon(scene, scoreBoosterLevel, '#9b5cff');
-  }
-  if (energyRefinerLevel > 0) {
-    addUpgradeStatusIcon(scene, energyRefinerLevel, '#ffd84d');
-  }
+  ['lifeBooster', 'shieldBooster', 'scoreBooster', 'energyRefiner'].forEach((upgradeKind) => {
+    const config = getUpgradeConfig(upgradeKind);
+    addUpgradeStatusIcon(scene, getUpgradeLevel(upgradeKind), config.color, config.label);
+  });
 }
 
-function addUpgradeStatusIcon(scene, level, color) {
+function addUpgradeStatusIcon(scene, level, color, label) {
   const currentHud = initHud();
   if (!currentHud.upgrades) return;
 
   const chip = document.createElement('span');
   chip.className = 'hud-upgrade-chip';
+  chip.classList.toggle('is-empty', level <= 0);
   chip.style.setProperty('--chip-color', color);
-  chip.textContent = 'Nv.' + level;
+  chip.setAttribute('aria-label', label + ': ' + (level > 0 ? 'nivel ' + level : 'sin desbloquear'));
+  chip.textContent = level > 0 ? 'Nv.' + level : '';
   currentHud.upgrades.appendChild(chip);
 }
 
