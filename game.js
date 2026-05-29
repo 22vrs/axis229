@@ -104,6 +104,7 @@ const XY_CONTROL_SHIP_OFFSET_Y = 68;
 const XY_CONTROL_BOTTOM_MARGIN = 56;
 const XY_CONTROL_TOUCH_PADDING = 18;
 const XY_BOTTOM_FRICTION_FADE_DURATION = 140;
+const XY_EDGE_FRICTION_PARTICLE_COOLDOWN = 55;
 const SHIP_LIFE_INDICATOR_CELL_WIDTH = 16;
 const SHIP_LIFE_INDICATOR_CELL_HEIGHT = 10;
 const SHIP_LIFE_INDICATOR_CELL_GAP = 5;
@@ -1669,7 +1670,7 @@ function showXyEdgeFriction(scene, x, edge) {
     : getXyShipBottomLimit(scene) + SHIP_HEIGHT / 2 + 3;
   const direction = isTopEdge ? -1 : 1;
   const halfWidth = Math.min(74, getShipWidth(scene) * 0.56);
-  const centerX = Phaser.Math.Clamp(x, halfWidth + 8, getGameWidth(scene) - halfWidth - 8);
+  const centerX = x;
   const graphics = scene.xyBottomFriction;
 
   if (scene.xyBottomFrictionTween) {
@@ -1678,28 +1679,26 @@ function showXyEdgeFriction(scene, x, edge) {
   }
 
   graphics.clear();
+  graphics.setPosition(centerX, wallY);
   graphics.setVisible(true);
   graphics.setAlpha(1);
-  graphics.lineStyle(3, 0x76ffe8, 0.82);
-  graphics.beginPath();
-  graphics.moveTo(centerX - halfWidth, wallY);
-  graphics.lineTo(centerX - halfWidth * 0.46, wallY + 5 * direction);
-  graphics.lineTo(centerX, wallY + 2 * direction);
-  graphics.lineTo(centerX + halfWidth * 0.46, wallY + 5 * direction);
-  graphics.lineTo(centerX + halfWidth, wallY);
-  graphics.strokePath();
-  graphics.lineStyle(1, 0xffffff, 0.55);
-  graphics.strokeCircle(centerX - halfWidth * 0.35, wallY - 2 * direction, 3);
-  graphics.strokeCircle(centerX + halfWidth * 0.28, wallY - 1 * direction, 2);
-  graphics.fillStyle(0x4da3ff, 0.16);
-  graphics.fillEllipse(centerX, wallY + 4 * direction, halfWidth * 1.55, 18);
+  graphics.setScale(1, 1);
+
+  graphics.fillStyle(0x4da3ff, 0.12);
+  graphics.fillEllipse(0, 6 * direction, halfWidth * 1.85, 24);
+  graphics.fillStyle(0x76ffe8, 0.1);
+  graphics.fillEllipse(0, 12 * direction, halfWidth * 1.25, 12);
 
   scene.xyBottomFrictionTween = scene.tweens.add({
     targets: graphics,
-    alpha: 0.18,
+    alpha: 0.24,
+    scaleX: 1.08,
+    scaleY: 0.96,
     duration: XY_BOTTOM_FRICTION_FADE_DURATION,
     ease: 'Sine.easeOut',
   });
+
+  emitXyEdgeFrictionParticles(scene, centerX, wallY, halfWidth, direction);
 }
 
 function hideXyBottomFriction(scene) {
@@ -1711,6 +1710,42 @@ function hideXyBottomFriction(scene) {
   scene.xyBottomFriction.clear();
   scene.xyBottomFriction.setVisible(false);
   scene.xyBottomFriction.setAlpha(1);
+  scene.xyBottomFriction.setScale(1, 1);
+}
+
+function emitXyEdgeFrictionParticles(scene, centerX, wallY, halfWidth, direction) {
+  if (!scene || !scene.add || !scene.tweens) return;
+  const now = scene.time ? scene.time.now : 0;
+  if (scene.nextXyEdgeFrictionParticleAt && now < scene.nextXyEdgeFrictionParticleAt) return;
+  scene.nextXyEdgeFrictionParticleAt = now + XY_EDGE_FRICTION_PARTICLE_COOLDOWN;
+
+  for (let i = 0; i < 4; i += 1) {
+    const particle = trackGameplayVisual(scene, scene.add.image(
+      centerX + Phaser.Math.Between(-halfWidth, halfWidth),
+      wallY + Phaser.Math.Between(-2, 5) * direction,
+      'goldTrailParticle'
+    ));
+    const driftX = Phaser.Math.Between(-16, 16);
+    const driftY = Phaser.Math.Between(12, 28) * -direction;
+
+    particle
+      .setDepth(FX_DEPTH + 5)
+      .setTint(i % 2 === 0 ? 0x76ffe8 : 0x4da3ff)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(Phaser.Math.FloatBetween(0.7, 1.4))
+      .setAlpha(0.85);
+
+    scene.tweens.add({
+      targets: particle,
+      x: particle.x + driftX,
+      y: particle.y + driftY,
+      scale: 0.15,
+      alpha: 0,
+      duration: Phaser.Math.Between(180, 280),
+      ease: 'Sine.easeOut',
+      onComplete: () => particle.destroy(),
+    });
+  }
 }
 
 function resetXyShipControl(scene) {
