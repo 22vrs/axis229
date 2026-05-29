@@ -103,6 +103,7 @@ const XY_CONTROL_RADIUS = 34;
 const XY_CONTROL_SHIP_OFFSET_Y = 68;
 const XY_CONTROL_BOTTOM_MARGIN = 56;
 const XY_CONTROL_TOUCH_PADDING = 18;
+const XY_BOTTOM_FRICTION_FADE_DURATION = 140;
 const SHIP_LIFE_INDICATOR_CELL_WIDTH = 16;
 const SHIP_LIFE_INDICATOR_CELL_HEIGHT = 10;
 const SHIP_LIFE_INDICATOR_CELL_GAP = 5;
@@ -357,15 +358,19 @@ function getBossIndexForLevel(level) {
 }
 
 function getValidGameMode(mode) {
-  return ['normal', 'infinite', 'xy'].includes(mode) ? mode : 'normal';
+  return ['normal', 'infinite', 'xy', 'xyInfinite'].includes(mode) ? mode : 'normal';
 }
 
 function isInfiniteGameMode() {
-  return currentGameMode === 'infinite';
+  return currentGameMode === 'infinite' || currentGameMode === 'xyInfinite';
 }
 
 function isXyGameMode() {
-  return currentGameMode === 'xy';
+  return currentGameMode === 'xy' || currentGameMode === 'xyInfinite';
+}
+
+function isXyInfiniteGameMode() {
+  return currentGameMode === 'xyInfinite';
 }
 
 bootGame();
@@ -572,6 +577,9 @@ function create() {
   this.xyControlPulse = this.add.circle(0, 0, XY_CONTROL_RADIUS + 10, 0x4da3ff, 0.12)
     .setDepth(SHIP_DEPTH - 2)
     .setVisible(false);
+  this.xyBottomFriction = this.add.graphics()
+    .setDepth(SHIP_DEPTH + 3)
+    .setVisible(false);
 
   this.energyRefinerModule = this.add.graphics()
     .setDepth(SHIP_DEPTH + 2)
@@ -650,6 +658,7 @@ function create() {
     const wasDragging = isDraggingShip;
     isDraggingShip = false;
     setXyControlActive(this, false);
+    hideXyBottomFriction(this);
     if (state === 'playing') {
       this.input.setDefaultCursor('default');
       if (wasDragging) {
@@ -662,6 +671,7 @@ function create() {
     const wasDragging = isDraggingShip;
     isDraggingShip = false;
     setXyControlActive(this, false);
+    hideXyBottomFriction(this);
     if (state === 'playing') {
       this.input.setDefaultCursor('default');
       if (wasDragging) {
@@ -1232,7 +1242,7 @@ function isPointerOverShip(scene, pointer) {
 }
 
 function canStartShipDrag(scene, x, y, isResume = false) {
-  if (isXyGameMode()) {
+  if (usesXyControlHandle(scene)) {
     return isGamePointOverXyControl(scene, x, y, isResume ? XY_CONTROL_TOUCH_PADDING : 0);
   }
 
@@ -1250,6 +1260,7 @@ function startDraggingShipAt(scene, x, y) {
   isDraggingShip = true;
   scene.input.setDefaultCursor('grabbing');
   setXyControlActive(scene, true);
+  setXyControlVisible(scene, false);
   const position = getDraggedShipPosition(scene, x, y);
   moveShipTo(scene, position.x, position.y);
 }
@@ -1316,6 +1327,7 @@ function pauseIfDraggingShip(scene) {
   const wasDragging = isDraggingShip;
   isDraggingShip = false;
   setXyControlActive(scene, false);
+  hideXyBottomFriction(scene);
   if (state !== 'playing') return;
   scene.input.setDefaultCursor('default');
   if (wasDragging) {
@@ -1392,7 +1404,7 @@ function moveShipTo(scene, x, y = scene.ship ? scene.ship.y : getShipY(scene)) {
   updateShipEquipmentModules(scene);
   updateShieldBubble(scene);
   updateShipLifeIndicator(scene);
-  if (isXyGameMode() && scene.xyControl && scene.xyControl.visible && !isDraggingShip) {
+  if (usesXyControlHandle(scene) && scene.xyControl && scene.xyControl.visible && !isDraggingShip) {
     updateXyControlFromShip(scene);
   }
 }
@@ -1552,9 +1564,25 @@ function getXyControlHomePosition(scene) {
   };
 }
 
+function getXyShipTopLimit(scene) {
+  return RED_NEEDLE_Y;
+}
+
+function getXyControlTopLimit(scene) {
+  return getXyShipTopLimit(scene) + XY_CONTROL_SHIP_OFFSET_Y;
+}
+
+function getXyControlBottomLimit(scene) {
+  return getGameHeight(scene) - XY_CONTROL_RADIUS - 10;
+}
+
+function getXyShipBottomLimit(scene) {
+  return getXyControlBottomLimit(scene) - XY_CONTROL_SHIP_OFFSET_Y;
+}
+
 function clampXyControlPosition(scene, x, y) {
-  const minY = SHIP_HEIGHT / 2 + XY_CONTROL_SHIP_OFFSET_Y;
-  const maxY = getGameHeight(scene) - XY_CONTROL_RADIUS - 10;
+  const minY = getXyControlTopLimit(scene);
+  const maxY = getXyControlBottomLimit(scene);
   const controlY = Phaser.Math.Clamp(y, minY, Math.max(minY, maxY));
   const shipPosition = clampShipPosition(scene, x, controlY - XY_CONTROL_SHIP_OFFSET_Y);
 
@@ -1582,10 +1610,14 @@ function setXyControlVisible(scene, visible) {
 }
 
 function setXyControlActive(scene, active) {
-  if (!scene || !scene.xyControl || !isXyGameMode()) return;
+  if (!scene || !scene.xyControl) return;
   scene.xyControl.setScale(active ? 0.92 : 1);
   scene.xyControl.setAlpha(active ? 0.62 : 0.45);
   if (scene.xyControlPulse) scene.xyControlPulse.setAlpha(active ? 0.09 : 0.04);
+}
+
+function usesXyControlHandle(scene) {
+  return Boolean(scene && scene.xyControl && scene.xyControl.visible);
 }
 
 function prepareXyPauseResume(scene) {
@@ -1600,6 +1632,18 @@ function prepareXyPauseResume(scene) {
   moveXyControlTo(scene, controlPosition.x, controlPosition.y);
 }
 
+function prepareControlPauseResume(scene) {
+  if (!scene) return;
+  if (isXyGameMode()) {
+    prepareXyPauseResume(scene);
+    return;
+  }
+
+  scene.xyPauseResumeArmed = false;
+  setXyControlVisible(scene, true);
+  updateXyControlFromShip(scene);
+}
+
 function armXyPauseResume(scene) {
   if (!scene || !isXyGameMode()) return;
   scene.xyPauseResumeArmed = true;
@@ -1607,6 +1651,66 @@ function armXyPauseResume(scene) {
   updateXyControlFromShip(scene);
   setXyControlActive(scene, false);
   if (scene.input) scene.input.setDefaultCursor('default');
+}
+
+function showXyBottomFriction(scene, x) {
+  showXyEdgeFriction(scene, x, 'bottom');
+}
+
+function showXyTopFriction(scene, x) {
+  showXyEdgeFriction(scene, x, 'top');
+}
+
+function showXyEdgeFriction(scene, x, edge) {
+  if (!scene || !scene.xyBottomFriction || !isXyGameMode()) return;
+  const isTopEdge = edge === 'top';
+  const wallY = isTopEdge
+    ? getXyShipTopLimit(scene) - SHIP_HEIGHT / 2 - 3
+    : getXyShipBottomLimit(scene) + SHIP_HEIGHT / 2 + 3;
+  const direction = isTopEdge ? -1 : 1;
+  const halfWidth = Math.min(74, getShipWidth(scene) * 0.56);
+  const centerX = Phaser.Math.Clamp(x, halfWidth + 8, getGameWidth(scene) - halfWidth - 8);
+  const graphics = scene.xyBottomFriction;
+
+  if (scene.xyBottomFrictionTween) {
+    scene.xyBottomFrictionTween.stop();
+    scene.xyBottomFrictionTween = null;
+  }
+
+  graphics.clear();
+  graphics.setVisible(true);
+  graphics.setAlpha(1);
+  graphics.lineStyle(3, 0x76ffe8, 0.82);
+  graphics.beginPath();
+  graphics.moveTo(centerX - halfWidth, wallY);
+  graphics.lineTo(centerX - halfWidth * 0.46, wallY + 5 * direction);
+  graphics.lineTo(centerX, wallY + 2 * direction);
+  graphics.lineTo(centerX + halfWidth * 0.46, wallY + 5 * direction);
+  graphics.lineTo(centerX + halfWidth, wallY);
+  graphics.strokePath();
+  graphics.lineStyle(1, 0xffffff, 0.55);
+  graphics.strokeCircle(centerX - halfWidth * 0.35, wallY - 2 * direction, 3);
+  graphics.strokeCircle(centerX + halfWidth * 0.28, wallY - 1 * direction, 2);
+  graphics.fillStyle(0x4da3ff, 0.16);
+  graphics.fillEllipse(centerX, wallY + 4 * direction, halfWidth * 1.55, 18);
+
+  scene.xyBottomFrictionTween = scene.tweens.add({
+    targets: graphics,
+    alpha: 0.18,
+    duration: XY_BOTTOM_FRICTION_FADE_DURATION,
+    ease: 'Sine.easeOut',
+  });
+}
+
+function hideXyBottomFriction(scene) {
+  if (!scene || !scene.xyBottomFriction) return;
+  if (scene.xyBottomFrictionTween) {
+    scene.xyBottomFrictionTween.stop();
+    scene.xyBottomFrictionTween = null;
+  }
+  scene.xyBottomFriction.clear();
+  scene.xyBottomFriction.setVisible(false);
+  scene.xyBottomFriction.setAlpha(1);
 }
 
 function resetXyShipControl(scene) {
@@ -1624,14 +1728,23 @@ function getDraggedShipPosition(scene, x, y) {
   if (isXyGameMode()) {
     const controlPosition = clampXyControlPosition(scene, x, y);
     moveXyControlTo(scene, controlPosition.x, controlPosition.y);
+    if (y < getXyControlTopLimit(scene) - 2) {
+      showXyTopFriction(scene, controlPosition.x);
+    } else if (y > getXyControlBottomLimit(scene) + 2) {
+      showXyBottomFriction(scene, controlPosition.x);
+    } else {
+      hideXyBottomFriction(scene);
+    }
     return {
       x: controlPosition.x,
       y: controlPosition.y - XY_CONTROL_SHIP_OFFSET_Y,
     };
   }
 
+  const controlX = clampShipX(scene, x);
+  moveXyControlTo(scene, controlX, getShipY(scene) + XY_CONTROL_SHIP_OFFSET_Y);
   return {
-    x: clampShipX(scene, x),
+    x: controlX,
     y: getShipY(scene),
   };
 }
@@ -1746,6 +1859,10 @@ function createMenu(scene) {
   bindScreenClick('menu', 'infinite-mode-button', () => {
     playButtonSound(scene);
     startGame.call(scene, { mode: 'infinite' });
+  });
+  bindScreenClick('menu', 'xy-infinite-mode-button', () => {
+    playButtonSound(scene);
+    startGame.call(scene, { mode: 'xyInfinite' });
   });
   bindScreenClick('menu', 'ranking-button', () => {
     playButtonSound(scene);
@@ -1894,7 +2011,6 @@ function prepareGameOverScore(scene) {
   if (overlay.playerNameInput) {
     overlay.playerNameInput.value = '';
     overlay.playerNameInput.disabled = false;
-    setTimeout(() => overlay.playerNameInput.focus(), 80);
   }
   if (overlay.saveScoreButton) overlay.saveScoreButton.disabled = false;
   const hasClient = Boolean(getSupabaseClient());
@@ -2013,6 +2129,10 @@ function createPauseOverlay(scene) {
   overlay.panel = overlay.element ? overlay.element.querySelector('.ui-panel') : null;
   bindScreenClick('pause', 'pause-surrender-button', () => {
     playButtonSound(scene);
+    if (!isInfiniteGameMode() && !isXyGameMode()) {
+      endGame.call(scene);
+      return;
+    }
     showMenu.call(scene);
   });
   bindScreenClick('pause', 'pause-options-button', () => {
@@ -2036,7 +2156,7 @@ function setPauseOverlayMode(scene, mode = 'normal') {
   if (scene.pauseOverlay.copy) {
     scene.pauseOverlay.copy.textContent = isXyGameMode()
       ? 'Toca la huella azul para volver a la nave'
-      : 'Arrastra la nave para continuar';
+      : 'Arrastra la huella azul para continuar';
   }
 }
 
@@ -2295,11 +2415,12 @@ function startGame(options = {}) {
     this.finalDamageGameOverEvent = null;
   }
 
-  setXyControlVisible(this, isXyGameMode());
+  setXyControlVisible(this, true);
   if (isXyGameMode()) {
     resetXyShipControl(this);
   } else {
     moveShipTo(this, getGameWidth(this) / 2, getShipY(this));
+    updateXyControlFromShip(this);
   }
 
   // Primera bola inmediata, luego spawn periodico
@@ -2309,7 +2430,7 @@ function startGame(options = {}) {
 }
 
 function endGame() {
-  if (state !== 'playing' && state !== 'dying') return; // Evitar llamadas dobles
+  if (state !== 'playing' && state !== 'paused' && state !== 'dying') return; // Evitar llamadas dobles
   state = 'gameover';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
@@ -2337,7 +2458,10 @@ function endGame() {
   playBackgroundMusic(this);
   setHudVisible(this, false);
   showOverlayScreen(this, 'gameover');
-  if (isInfiniteGameMode()) {
+  if (isXyInfiniteGameMode()) {
+    this.gameOverContainer.finalScore.setText('Modo X-Y Infinito - Puntuación: ' + score);
+    prepareUnrankedGameOver(this, 'Modo X-Y Infinito: la puntuacion no se guarda en el ranking normal.');
+  } else if (isInfiniteGameMode()) {
     this.gameOverContainer.finalScore.setText('Modo Infinito - Puntuación: ' + score);
     prepareUnrankedGameOver(this, 'Modo Infinito: la puntuacion no se guarda en el ranking.');
   } else if (isXyGameMode()) {
@@ -2455,6 +2579,7 @@ function clearGameplayVisuals(scene) {
 
   if (scene.shieldBubble) scene.shieldBubble.setVisible(false);
   if (scene.energyRefinerModule) scene.energyRefinerModule.setVisible(false);
+  hideXyBottomFriction(scene);
 }
 
 function updateLivesText(scene, options = {}) {
@@ -2875,7 +3000,7 @@ function pauseGame() {
   isDraggingShip = false;
   setPauseOverlayMode(this, 'normal');
   setXyControlActive(this, false);
-  if (isXyGameMode()) prepareXyPauseResume(this);
+  prepareControlPauseResume(this);
 
   if (spawnEvent) {
     spawnEvent.remove(false);
@@ -2893,7 +3018,7 @@ function resumeGame() {
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
   setPauseOverlayMode(this, 'normal');
-  setXyControlVisible(this, isXyGameMode());
+  setXyControlVisible(this, true);
   showOverlayScreen(this, null);
 
   resumeFallingObjects(this);
@@ -4939,7 +5064,7 @@ function chooseUpgrade(scene, upgradeKind) {
   scene.resumeSpawnDelay = UPGRADE_RESUME_DELAY;
   setPauseOverlayMode(scene, 'upgrade');
   setXyControlActive(scene, false);
-  if (isXyGameMode()) prepareXyPauseResume(scene);
+  prepareControlPauseResume(scene);
   showOverlayScreen(scene, 'pause');
 }
 

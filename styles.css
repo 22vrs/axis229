@@ -636,8 +636,9 @@ canvas {
 }
 
 .ranking-list-compact {
-  max-height: 112px;
+  max-height: none;
   margin-top: 10px;
+  overflow-y: visible;
 }
 
 .ranking-item {
