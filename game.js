@@ -621,6 +621,10 @@ function create() {
     if (state === 'paused') {
       if (this.optionsOverlay && this.optionsOverlay.element && this.optionsOverlay.element.classList.contains('is-visible')) return;
       if (!canStartShipDrag(this, pointer.x, pointer.y, true)) return;
+      if (isXyGameMode() && !this.xyPauseResumeArmed) {
+        armXyPauseResume(this);
+        return;
+      }
       resumeGame.call(this);
       startDraggingShipAt(this, pointer.x, pointer.y);
       return;
@@ -1286,6 +1290,11 @@ function bindPausedShipResumeFallback(scene) {
     if (!canStartShipDrag(scene, point.x, point.y, true)) return;
 
     event.preventDefault();
+    event.stopPropagation();
+    if (isXyGameMode() && !scene.xyPauseResumeArmed) {
+      armXyPauseResume(scene);
+      return;
+    }
     resumeGame.call(scene);
     startDraggingShipAt(scene, point.x, point.y);
   };
@@ -1577,6 +1586,27 @@ function setXyControlActive(scene, active) {
   scene.xyControl.setScale(active ? 0.92 : 1);
   scene.xyControl.setAlpha(active ? 0.62 : 0.45);
   if (scene.xyControlPulse) scene.xyControlPulse.setAlpha(active ? 0.09 : 0.04);
+}
+
+function prepareXyPauseResume(scene) {
+  if (!scene || !isXyGameMode()) return;
+  scene.xyPauseResumeArmed = false;
+  setXyControlVisible(scene, true);
+  const controlPosition = clampXyControlPosition(
+    scene,
+    scene.ship ? scene.ship.x : getGameWidth(scene) / 2,
+    getXyControlHomePosition(scene).y
+  );
+  moveXyControlTo(scene, controlPosition.x, controlPosition.y);
+}
+
+function armXyPauseResume(scene) {
+  if (!scene || !isXyGameMode()) return;
+  scene.xyPauseResumeArmed = true;
+  showOverlayScreen(scene, null);
+  updateXyControlFromShip(scene);
+  setXyControlActive(scene, false);
+  if (scene.input) scene.input.setDefaultCursor('default');
 }
 
 function resetXyShipControl(scene) {
@@ -2005,7 +2035,7 @@ function setPauseOverlayMode(scene, mode = 'normal') {
   }
   if (scene.pauseOverlay.copy) {
     scene.pauseOverlay.copy.textContent = isXyGameMode()
-      ? 'Arrastra la huella azul para continuar'
+      ? 'Toca la huella azul para volver a la nave'
       : 'Arrastra la nave para continuar';
   }
 }
@@ -2195,6 +2225,7 @@ function showMenu() {
   state = 'menu';
   currentGameMode = 'normal';
   isDraggingShip = false;
+  this.xyPauseResumeArmed = false;
   setXyControlVisible(this, false);
   if (this) this.optionsReturnScreen = null;
   pendingScoreSave = null;
@@ -2223,6 +2254,7 @@ function showMenu() {
 function showRanking() {
   state = 'ranking';
   isDraggingShip = false;
+  this.xyPauseResumeArmed = false;
   setXyControlVisible(this, false);
   this.optionsReturnScreen = null;
   this.input.setDefaultCursor('default');
@@ -2236,6 +2268,7 @@ function startGame(options = {}) {
   state = 'playing';
   currentGameMode = getValidGameMode(options.mode);
   isDraggingShip = false;
+  this.xyPauseResumeArmed = false;
   pendingScoreSave = null;
   lastScoreSaved = false;
   this.input.setDefaultCursor('default');
@@ -2279,6 +2312,7 @@ function endGame() {
   if (state !== 'playing' && state !== 'dying') return; // Evitar llamadas dobles
   state = 'gameover';
   isDraggingShip = false;
+  this.xyPauseResumeArmed = false;
   setXyControlVisible(this, false);
   this.input.setDefaultCursor('default');
   if (this.finalDamageGameOverEvent) {
@@ -2841,7 +2875,7 @@ function pauseGame() {
   isDraggingShip = false;
   setPauseOverlayMode(this, 'normal');
   setXyControlActive(this, false);
-  if (isXyGameMode()) resetXyShipControl(this);
+  if (isXyGameMode()) prepareXyPauseResume(this);
 
   if (spawnEvent) {
     spawnEvent.remove(false);
@@ -2857,6 +2891,7 @@ function resumeGame() {
   if (state !== 'paused') return;
   state = 'playing';
   isDraggingShip = false;
+  this.xyPauseResumeArmed = false;
   setPauseOverlayMode(this, 'normal');
   setXyControlVisible(this, isXyGameMode());
   showOverlayScreen(this, null);
@@ -4766,7 +4801,7 @@ function maybeOpenUpgradeChoice(scene) {
   isDraggingShip = false;
   scene.input.setDefaultCursor('default');
   setXyControlActive(scene, false);
-  if (isXyGameMode()) resetXyShipControl(scene);
+  if (isXyGameMode()) updateXyControlFromShip(scene);
 
   if (spawnEvent) {
     spawnEvent.remove(false);
@@ -4904,7 +4939,7 @@ function chooseUpgrade(scene, upgradeKind) {
   scene.resumeSpawnDelay = UPGRADE_RESUME_DELAY;
   setPauseOverlayMode(scene, 'upgrade');
   setXyControlActive(scene, false);
-  if (isXyGameMode()) resetXyShipControl(scene);
+  if (isXyGameMode()) prepareXyPauseResume(scene);
   showOverlayScreen(scene, 'pause');
 }
 
