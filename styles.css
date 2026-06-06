@@ -436,10 +436,6 @@ canvas {
   display: none;
 }
 
-#pause-overlay.is-frozen-pause-menu::before {
-  opacity: 0;
-}
-
 .ui-screen::before {
   content: "";
   position: absolute;
@@ -450,6 +446,15 @@ canvas {
     radial-gradient(circle at 50% 42%, rgba(39, 183, 245, 0.16), transparent 52%);
   backdrop-filter: brightness(0.42);
   -webkit-backdrop-filter: brightness(0.42);
+}
+
+#pause-overlay.is-frozen-pause-menu::before,
+#upgrade-overlay::before {
+  background:
+    linear-gradient(180deg, rgba(0, 4, 14, 0.66), rgba(0, 2, 8, 0.76)),
+    radial-gradient(circle at 50% 42%, rgba(39, 183, 245, 0.12), transparent 54%);
+  backdrop-filter: brightness(0.34);
+  -webkit-backdrop-filter: brightness(0.34);
 }
 
 .ui-panel {

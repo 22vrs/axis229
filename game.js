@@ -665,6 +665,13 @@ function create() {
 
   this.input.on('pointermove', (pointer) => {
     if (state !== 'playing' && state !== 'paused') return;
+    if (state === 'paused' && (
+      isFrozenPauseMenuOpen(this) ||
+      (this.optionsOverlay && this.optionsOverlay.element && this.optionsOverlay.element.classList.contains('is-visible'))
+    )) {
+      this.input.setDefaultCursor('default');
+      return;
+    }
     if (!isDraggingShip) {
       this.input.setDefaultCursor(canStartShipDrag(this, pointer.x, pointer.y, state === 'paused') ? 'grab' : 'default');
       return;
@@ -2280,6 +2287,8 @@ function setPauseOverlayMode(scene, mode = 'normal') {
 function showFrozenPauseMenu(scene) {
   if (!scene || state !== 'paused') return;
   setPauseOverlayMode(scene, 'normal');
+  setXyControlActive(scene, false);
+  setXyControlVisible(scene, false);
   if (scene.pauseOverlay && scene.pauseOverlay.element) {
     scene.pauseOverlay.element.classList.add('is-frozen-pause-menu');
   }
@@ -2292,6 +2301,7 @@ function hideFrozenPauseMenu(scene) {
   if (scene.pauseOverlay && scene.pauseOverlay.element) {
     scene.pauseOverlay.element.classList.remove('is-frozen-pause-menu');
   }
+  prepareControlPauseResume(scene);
   showOverlayScreen(scene, null);
   setPauseSettingsVisible(true);
 }
