@@ -65,6 +65,54 @@ canvas {
   opacity: 1;
 }
 
+.pause-settings-button {
+  position: absolute;
+  top: 204px;
+  right: 16px;
+  z-index: 2;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(74, 197, 255, 0.58);
+  border-left-color: rgba(255, 216, 77, 0.9);
+  border-radius: var(--ui-radius-control);
+  background:
+    linear-gradient(135deg, rgba(22, 104, 160, 0.94), rgba(9, 45, 98, 0.9)),
+    rgba(8, 54, 112, 0.86);
+  box-shadow:
+    0 0 16px rgba(74, 197, 255, 0.22),
+    inset 2px 0 0 rgba(255, 216, 77, 0.82);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 140ms ease, transform 140ms ease, border-color 140ms ease;
+}
+
+.pause-settings-line {
+  display: block;
+  width: 20px;
+  height: 3px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.46);
+}
+
+.hud.is-pause-settings-visible .pause-settings-button {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.pause-settings-button:hover,
+.pause-settings-button:focus-visible {
+  border-color: rgba(255, 216, 77, 0.9);
+  outline: none;
+}
+
 .hud-top-panel {
   position: absolute;
   top: 20px;
@@ -382,6 +430,14 @@ canvas {
 
 #pause-overlay.is-upgrade-pause .ui-button {
   display: none;
+}
+
+#pause-overlay:not(.is-upgrade-pause) .ui-copy {
+  display: none;
+}
+
+#pause-overlay.is-frozen-pause-menu::before {
+  opacity: 0;
 }
 
 .ui-screen::before {

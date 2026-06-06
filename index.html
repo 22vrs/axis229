@@ -45,6 +45,11 @@
         </div>
         <div id="hud-upgrades" class="hud-upgrades"></div>
       </div>
+      <button id="pause-settings-button" class="pause-settings-button" type="button" aria-label="Abrir pausa">
+        <span class="pause-settings-line"></span>
+        <span class="pause-settings-line"></span>
+        <span class="pause-settings-line"></span>
+      </button>
       <div id="hud-booster" class="hud-booster">
         <span id="hud-booster-label" class="hud-booster-label">BOOSTER</span>
         <div class="hud-booster-track">
@@ -99,7 +104,8 @@
       <section id="pause-overlay" class="ui-screen">
         <div class="ui-panel ui-panel-compact">
           <h2>PAUSA</h2>
-          <p class="ui-copy">Toca la nave para continuar</p>
+          <p class="ui-copy"></p>
+          <button id="pause-back-button" class="ui-button ui-button-primary" type="button">VOLVER</button>
           <button id="pause-surrender-button" class="ui-button ui-button-danger" type="button">RENDIRSE</button>
           <button id="pause-options-button" class="ui-button ui-button-secondary" type="button">OPCIONES</button>
         </div>

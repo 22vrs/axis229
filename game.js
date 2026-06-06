@@ -259,6 +259,7 @@ function initHud() {
     lifeCount: document.getElementById('hud-life-count'),
     lifeBar: document.getElementById('hud-life-bar'),
     upgrades: document.getElementById('hud-upgrades'),
+    pauseSettingsButton: document.getElementById('pause-settings-button'),
     booster: document.getElementById('hud-booster'),
     boosterLabel: document.getElementById('hud-booster-label'),
     boosterFill: document.getElementById('hud-booster-fill'),
@@ -281,7 +282,17 @@ function setHudVisible(scene, visible) {
   const currentHud = initHud();
   if (!currentHud.root) return;
   currentHud.root.classList.toggle('is-visible', visible);
+  if (!visible) setPauseSettingsVisible(false);
   updateHud(scene);
+}
+
+function setPauseSettingsVisible(visible) {
+  const currentHud = initHud();
+  if (!currentHud.root) return;
+  currentHud.root.classList.toggle('is-pause-settings-visible', Boolean(visible));
+  if (currentHud.pauseSettingsButton) {
+    currentHud.pauseSettingsButton.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  }
 }
 
 function updateHud(scene = gameScene) {
@@ -1329,14 +1340,16 @@ function bindPausedShipResumeFallback(scene) {
 }
 
 function canHandlePausedResumePointer(scene, x, y) {
-  if (!scene.xyPauseResumeArmed) return true;
+  if (isFrozenPauseMenuOpen(scene)) return false;
+  if (isUpgradePauseOverlayVisible(scene) && !scene.xyPauseResumeArmed) return true;
   return canStartShipDrag(scene, x, y, true);
 }
 
 function handlePausedResumePointer(scene, x, y) {
   if (!scene || state !== 'paused') return false;
+  if (isFrozenPauseMenuOpen(scene)) return false;
 
-  if (!scene.xyPauseResumeArmed) {
+  if (isUpgradePauseOverlayVisible(scene) && !scene.xyPauseResumeArmed) {
     armControlPauseResume(scene);
     return true;
   }
@@ -1346,6 +1359,26 @@ function handlePausedResumePointer(scene, x, y) {
   resumeGame.call(scene);
   startDraggingShipAt(scene, x, y);
   return true;
+}
+
+function isFrozenPauseMenuOpen(scene) {
+  return Boolean(
+    scene &&
+    scene.pauseOverlay &&
+    scene.pauseOverlay.element &&
+    scene.pauseOverlay.element.classList.contains('is-visible') &&
+    scene.pauseOverlay.element.classList.contains('is-frozen-pause-menu')
+  );
+}
+
+function isUpgradePauseOverlayVisible(scene) {
+  return Boolean(
+    scene &&
+    scene.pauseOverlay &&
+    scene.pauseOverlay.element &&
+    scene.pauseOverlay.element.classList.contains('is-visible') &&
+    scene.pauseOverlay.element.classList.contains('is-upgrade-pause')
+  );
 }
 
 function pauseIfDraggingShip(scene) {
@@ -2203,6 +2236,15 @@ function createPauseOverlay(scene) {
   overlay.title = overlay.element ? overlay.element.querySelector('h2') : null;
   overlay.copy = overlay.element ? overlay.element.querySelector('.ui-copy') : null;
   overlay.panel = overlay.element ? overlay.element.querySelector('.ui-panel') : null;
+  bindSingleClick('pause-settings-button', () => {
+    if (state !== 'paused') return;
+    playButtonSound(scene);
+    showFrozenPauseMenu(scene);
+  });
+  bindScreenClick('pause', 'pause-back-button', () => {
+    playButtonSound(scene);
+    hideFrozenPauseMenu(scene);
+  });
   bindScreenClick('pause', 'pause-surrender-button', () => {
     playButtonSound(scene);
     if (!isInfiniteGameMode() && !isXyGameMode()) {
@@ -2223,17 +2265,35 @@ function setPauseOverlayMode(scene, mode = 'normal') {
 
   const isUpgradePause = mode === 'upgrade';
   scene.pauseOverlay.element.classList.toggle('is-upgrade-pause', isUpgradePause);
+  scene.pauseOverlay.element.classList.remove('is-frozen-pause-menu');
   if (scene.pauseOverlay.panel) {
     scene.pauseOverlay.panel.classList.toggle('ui-panel-upgrade-pause', isUpgradePause);
   }
   if (scene.pauseOverlay.title) {
-    scene.pauseOverlay.title.textContent = isUpgradePause ? 'Nave mejorada' : 'PAUSA';
+    scene.pauseOverlay.title.textContent = 'PAUSA';
   }
   if (scene.pauseOverlay.copy) {
-    scene.pauseOverlay.copy.textContent = isUpgradePause
-      ? 'Toca fuera de la ventana y luego arrastra la huella'
-      : 'Toca fuera del menu y luego arrastra la huella';
+    scene.pauseOverlay.copy.textContent = '';
   }
+}
+
+function showFrozenPauseMenu(scene) {
+  if (!scene || state !== 'paused') return;
+  setPauseOverlayMode(scene, 'normal');
+  if (scene.pauseOverlay && scene.pauseOverlay.element) {
+    scene.pauseOverlay.element.classList.add('is-frozen-pause-menu');
+  }
+  setPauseSettingsVisible(false);
+  showOverlayScreen(scene, 'pause');
+}
+
+function hideFrozenPauseMenu(scene) {
+  if (!scene || state !== 'paused') return;
+  if (scene.pauseOverlay && scene.pauseOverlay.element) {
+    scene.pauseOverlay.element.classList.remove('is-frozen-pause-menu');
+  }
+  showOverlayScreen(scene, null);
+  setPauseSettingsVisible(true);
 }
 
 function createUpgradeOverlay(scene) {
@@ -2422,6 +2482,7 @@ function showMenu() {
   currentGameMode = 'normal';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
+  setPauseSettingsVisible(false);
   setXyControlVisible(this, false);
   if (this) this.optionsReturnScreen = null;
   pendingScoreSave = null;
@@ -2451,6 +2512,7 @@ function showRanking() {
   state = 'ranking';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
+  setPauseSettingsVisible(false);
   setXyControlVisible(this, false);
   this.optionsReturnScreen = null;
   this.input.setDefaultCursor('default');
@@ -2465,6 +2527,7 @@ function startGame(options = {}) {
   currentGameMode = getValidGameMode(options.mode);
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
+  setPauseSettingsVisible(false);
   pendingScoreSave = null;
   lastScoreSaved = false;
   this.input.setDefaultCursor('default');
@@ -2510,6 +2573,7 @@ function endGame() {
   state = 'gameover';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
+  setPauseSettingsVisible(false);
   setXyControlVisible(this, false);
   this.input.setDefaultCursor('default');
   if (this.finalDamageGameOverEvent) {
@@ -3086,7 +3150,8 @@ function pauseGame() {
 
   pauseFallingObjects(this);
   pauseTimedGameplay(this);
-  showOverlayScreen(this, 'pause');
+  showOverlayScreen(this, null);
+  setPauseSettingsVisible(true);
 }
 
 function resumeGame() {
@@ -3095,6 +3160,7 @@ function resumeGame() {
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
   setPauseOverlayMode(this, 'normal');
+  setPauseSettingsVisible(false);
   setXyControlVisible(this, true);
   showOverlayScreen(this, null);
 
@@ -5239,10 +5305,11 @@ function chooseUpgrade(scene, upgradeKind) {
 
   state = 'paused';
   scene.resumeSpawnDelay = UPGRADE_RESUME_DELAY;
-  setPauseOverlayMode(scene, 'upgrade');
+  setPauseOverlayMode(scene, 'normal');
   setXyControlActive(scene, false);
   prepareControlPauseResume(scene);
-  showOverlayScreen(scene, 'pause');
+  showOverlayScreen(scene, null);
+  setPauseSettingsVisible(true);
 }
 
 function getUpgradeLevel(upgradeKind) {
@@ -6467,6 +6534,7 @@ function showOptionsOverlay(scene, returnState) {
     ? 'pause'
     : (returnState || fallbackScreen || 'menu');
   state = 'options';
+  setPauseSettingsVisible(false);
   updateAudioOptionButtons(scene);
   showOverlayScreen(scene, 'options');
 }
@@ -6478,7 +6546,7 @@ function hideOptionsOverlay(scene) {
 
   if (returnScreen === 'pause') {
     state = 'paused';
-    showOverlayScreen(scene, 'pause');
+    showFrozenPauseMenu(scene);
     return;
   }
 
@@ -6497,6 +6565,7 @@ function hideOptionsOverlay(scene) {
   state = 'menu';
   const currentHud = initHud();
   if (currentHud.root) currentHud.root.classList.remove('is-visible');
+  setPauseSettingsVisible(false);
   showOverlayScreen(scene, 'menu');
 }
 
