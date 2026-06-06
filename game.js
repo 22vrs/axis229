@@ -5292,8 +5292,13 @@ function chooseUpgrade(scene, upgradeKind) {
   scene.availableUpgradeChoices = null;
 
   if (scene.pendingBossWave) {
-    state = 'playing';
-    consumePendingBossWave(scene);
+    state = 'paused';
+    scene.resumeSpawnDelay = null;
+    setPauseOverlayMode(scene, 'normal');
+    setXyControlActive(scene, false);
+    prepareControlPauseResume(scene);
+    showOverlayScreen(scene, null);
+    setPauseSettingsVisible(true);
     return;
   }
 
