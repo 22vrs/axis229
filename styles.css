@@ -388,13 +388,17 @@ canvas {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 0;
   background:
-    linear-gradient(180deg, rgba(12, 70, 130, 0.26), rgba(4, 29, 70, 0.56)),
-    radial-gradient(circle at 50% 42%, rgba(39, 183, 245, 0.22), transparent 48%);
+    linear-gradient(180deg, rgba(0, 5, 18, 0.72), rgba(0, 3, 12, 0.84)),
+    radial-gradient(circle at 50% 42%, rgba(39, 183, 245, 0.16), transparent 52%);
+  backdrop-filter: brightness(0.42);
+  -webkit-backdrop-filter: brightness(0.42);
 }
 
 .ui-panel {
   position: relative;
+  z-index: 1;
   width: min(330px, 100%);
   padding: 28px 24px;
   border: 1px solid rgba(74, 197, 255, 0.52);

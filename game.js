@@ -1329,15 +1329,15 @@ function bindPausedShipResumeFallback(scene) {
 }
 
 function canHandlePausedResumePointer(scene, x, y) {
-  if (isXyGameMode() && !scene.xyPauseResumeArmed) return true;
+  if (!scene.xyPauseResumeArmed) return true;
   return canStartShipDrag(scene, x, y, true);
 }
 
 function handlePausedResumePointer(scene, x, y) {
   if (!scene || state !== 'paused') return false;
 
-  if (isXyGameMode() && !scene.xyPauseResumeArmed) {
-    armXyPauseResume(scene);
+  if (!scene.xyPauseResumeArmed) {
+    armControlPauseResume(scene);
     return true;
   }
 
@@ -1659,8 +1659,8 @@ function prepareControlPauseResume(scene) {
   updateXyControlFromShip(scene);
 }
 
-function armXyPauseResume(scene) {
-  if (!scene || !isXyGameMode()) return;
+function armControlPauseResume(scene) {
+  if (!scene) return;
   scene.xyPauseResumeArmed = true;
   showOverlayScreen(scene, null);
   updateXyControlFromShip(scene);
@@ -2230,9 +2230,9 @@ function setPauseOverlayMode(scene, mode = 'normal') {
     scene.pauseOverlay.title.textContent = isUpgradePause ? 'Nave mejorada' : 'PAUSA';
   }
   if (scene.pauseOverlay.copy) {
-    scene.pauseOverlay.copy.textContent = isXyGameMode()
-      ? (isUpgradePause ? 'Toca fuera de la ventana para continuar' : 'Toca fuera del menu para continuar')
-      : 'Arrastra la huella azul para continuar';
+    scene.pauseOverlay.copy.textContent = isUpgradePause
+      ? 'Toca fuera de la ventana y luego arrastra la huella'
+      : 'Toca fuera del menu y luego arrastra la huella';
   }
 }
 
