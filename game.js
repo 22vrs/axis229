@@ -6406,6 +6406,13 @@ function handleHostileShipContact(scene, hostile, x, y, kind, isPurpleEnergy = f
   playShieldBlockSound(scene);
   flashPlayerShip(scene);
   addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#4da3ff' });
+  destroyShieldBlockedHostile(scene, hostile);
+}
+
+function destroyShieldBlockedHostile(scene, hostile) {
+  if (!hostile || !hostile.active) return;
+  if (scene && scene.tweens) scene.tweens.killTweensOf(hostile);
+  hostile.destroy();
 }
 
 function playCatchSound(scene) {
