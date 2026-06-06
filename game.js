@@ -248,7 +248,7 @@ let hud = null;
 let supabaseClient = null;
 let pendingScoreSave = null;
 let lastScoreSaved = false;
-let currentGameMode = 'normal';
+let currentGameMode = 'xy';
 let soundEffectsEnabled = true;
 let musicEnabled = true;
 
@@ -393,11 +393,11 @@ function getBossIndexForLevel(level) {
 }
 
 function getValidGameMode(mode) {
-  return ['normal', 'infinite', 'xy', 'xyInfinite'].includes(mode) ? mode : 'normal';
+  return ['xy', 'xyInfinite'].includes(mode) ? mode : 'xy';
 }
 
 function isInfiniteGameMode() {
-  return currentGameMode === 'infinite' || currentGameMode === 'xyInfinite';
+  return currentGameMode === 'xyInfinite';
 }
 
 function isXyGameMode() {
@@ -2024,14 +2024,6 @@ function createMenu(scene) {
     playButtonSound(scene);
     startGame.call(scene);
   });
-  bindScreenClick('menu', 'xy-mode-button', () => {
-    playButtonSound(scene);
-    startGame.call(scene, { mode: 'xy' });
-  });
-  bindScreenClick('menu', 'infinite-mode-button', () => {
-    playButtonSound(scene);
-    startGame.call(scene, { mode: 'infinite' });
-  });
   bindScreenClick('menu', 'xy-infinite-mode-button', () => {
     playButtonSound(scene);
     startGame.call(scene, { mode: 'xyInfinite' });
@@ -2313,11 +2305,7 @@ function createPauseOverlay(scene) {
   });
   bindScreenClick('pause', 'pause-surrender-button', () => {
     playButtonSound(scene);
-    if (!isInfiniteGameMode() && !isXyGameMode()) {
-      endGame.call(scene);
-      return;
-    }
-    showMenu.call(scene);
+    endGame.call(scene);
   });
   bindScreenClick('pause', 'pause-options-button', () => {
     playButtonSound(scene);
@@ -2548,7 +2536,7 @@ function setUiDepth(scene) {
 
 function showMenu() {
   state = 'menu';
-  currentGameMode = 'normal';
+  currentGameMode = 'xy';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
   setPauseSettingsVisible(false);
@@ -2668,16 +2656,10 @@ function endGame() {
   setHudVisible(this, false);
   showOverlayScreen(this, 'gameover');
   if (isXyInfiniteGameMode()) {
-    this.gameOverContainer.finalScore.setText('Modo X-Y Infinito - Puntuación: ' + score);
-    prepareUnrankedGameOver(this, 'Modo X-Y Infinito: la puntuacion no se guarda en el ranking normal.');
-  } else if (isInfiniteGameMode()) {
     this.gameOverContainer.finalScore.setText('Modo Infinito - Puntuación: ' + score);
-    prepareUnrankedGameOver(this, 'Modo Infinito: la puntuacion no se guarda en el ranking.');
-  } else if (isXyGameMode()) {
-    this.gameOverContainer.finalScore.setText('Modo X-Y - Puntuación: ' + score);
-    prepareUnrankedGameOver(this, 'Modo X-Y: la puntuacion no se guarda en el ranking normal.');
+    prepareUnrankedGameOver(this);
   } else {
-    this.gameOverContainer.finalScore.setText('Puntuación: ' + score);
+    this.gameOverContainer.finalScore.setText('Modo X-Y - Puntuación: ' + score);
     prepareGameOverScore(this);
     loadRankingInto(this.gameOverContainer.topRankingList, null, 3);
   }
@@ -2693,7 +2675,7 @@ function enableInfiniteModeThreats(scene) {
   scene.nextTravelSentinelEligibleAt = 0;
 }
 
-function prepareUnrankedGameOver(scene, message) {
+function prepareUnrankedGameOver(scene, message = '') {
   pendingScoreSave = null;
   lastScoreSaved = false;
 

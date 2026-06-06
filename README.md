@@ -25,9 +25,8 @@ En modo infinito, el primer jefe es `Aguja Roja` para facilitar pruebas. A parti
 
 | Modo | Movimiento | Ranking |
 | --- | --- | --- |
-| Normal | Nave limitada al eje horizontal clasico. | Guarda puntuacion. |
-| X-Y | Nave libre en ambos ejes dentro de la pantalla. | No guarda puntuacion en el ranking normal. |
-| Infinito | Nave limitada al eje horizontal clasico, con amenazas desbloqueadas. | No guarda puntuacion. |
+| X-Y | Nave libre en ambos ejes dentro de la pantalla. Es el modo normal al pulsar `JUGAR`. | Guarda puntuacion. |
+| Modo Infinito | Nave libre en ambos ejes, con amenazas desbloqueadas. | No guarda puntuacion en el ranking normal. |
 
 ## Enemigos y amenazas
 

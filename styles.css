@@ -4,6 +4,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html, body {
   width: 100%;
   height: 100%;
@@ -598,8 +602,8 @@ canvas {
 }
 
 .ui-button-secondary {
-  width: 168px;
-  min-height: 42px;
+  width: 220px;
+  min-height: 50px;
   margin-top: 14px;
   border-color: rgba(74, 197, 255, 0.55);
   background:
@@ -609,9 +613,23 @@ canvas {
   box-shadow: 0 0 14px rgba(74, 197, 255, 0.18), inset 0 0 12px rgba(74, 197, 255, 0.12);
 }
 
+.ui-button-stacked {
+  flex-direction: column;
+  gap: 7px;
+  min-height: 50px;
+  line-height: 1;
+}
+
+.ui-button-stacked small {
+  display: block;
+  font: 600 11px/1 "Rajdhani", "Trebuchet MS", Arial, sans-serif;
+  letter-spacing: 0;
+  opacity: 0.82;
+}
+
 .ui-button-danger {
-  width: 168px;
-  min-height: 42px;
+  width: 220px;
+  min-height: 50px;
   margin-top: 14px;
   border-color: rgba(255, 95, 122, 0.88);
   background:
