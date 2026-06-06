@@ -104,8 +104,16 @@ const BOSS_LASER_TRACKING_CHANCE = 0.55;
 const BOSS_LASER_TRACKING_JITTER = 18;
 const RED_ENEMY_SWAY_SPEED = 0.0042;
 const RED_ENEMY_SWAY_MAX_VELOCITY = 24;
-const SHIP_MAX_TILT = 14;
-const SHIP_TILT_SMOOTHING = 0.24;
+const SHIP_MAX_TILT = 24;
+const SHIP_TILT_SMOOTHING = 0.16;
+const SHIP_TILT_RETURN_SMOOTHING = 0.08;
+const SHIP_TILT_VELOCITY_SMOOTHING = 0.22;
+const SHIP_TILT_TARGET_SMOOTHING = 0.18;
+const SHIP_TILT_SPEED_TO_ANGLE = 18;
+const SHIP_TILT_SPEED_ANGLE_BOOST = 8;
+const SHIP_TILT_FULL_SPEED = 1.1;
+const SHIP_XY_DIRECTION_MAX_TILT = 32;
+const SHIP_XY_DIRECTION_VERTICAL_WEIGHT = 0.72;
 const SHIP_TILT_IDLE_DELAY = 170;
 const SHIP_RESUME_TOUCH_PADDING_X = 12;
 const SHIP_RESUME_TOUCH_PADDING_Y = 24;
@@ -1454,12 +1462,33 @@ function update(time, delta) {
 
 function moveShipTo(scene, x, y = scene.ship ? scene.ship.y : getShipY(scene)) {
   const previousX = scene.ship.x;
+  const previousY = scene.ship.y;
   const deltaX = x - previousX;
+  const deltaY = y - previousY;
+  const now = scene.time ? scene.time.now : 0;
+  const elapsedSinceLastMove = scene.lastShipMoveAt ? Math.max(16, now - scene.lastShipMoveAt) : 16;
   scene.ship.setPosition(x, y);
   scene.ship.body.reset(x, y);
-  if (Math.abs(deltaX) > 0.4 && state === 'playing') {
-    scene.shipTargetAngle = Phaser.Math.Clamp(deltaX * 0.75, -SHIP_MAX_TILT, SHIP_MAX_TILT);
-    scene.lastShipMoveAt = scene.time ? scene.time.now : 0;
+  if ((Math.abs(deltaX) > 0.4 || Math.abs(deltaY) > 0.4) && state === 'playing') {
+    const horizontalVelocity = deltaX / elapsedSinceLastMove;
+    const verticalVelocity = deltaY / elapsedSinceLastMove;
+    scene.shipTiltVelocityX = Phaser.Math.Linear(
+      scene.shipTiltVelocityX || 0,
+      horizontalVelocity,
+      SHIP_TILT_VELOCITY_SMOOTHING
+    );
+    scene.shipTiltVelocityY = Phaser.Math.Linear(
+      scene.shipTiltVelocityY || 0,
+      verticalVelocity,
+      SHIP_TILT_VELOCITY_SMOOTHING
+    );
+    const rawTargetAngle = getShipMovementTargetAngle(scene);
+    scene.shipTargetAngle = Phaser.Math.Linear(
+      scene.shipTargetAngle || 0,
+      rawTargetAngle,
+      SHIP_TILT_TARGET_SMOOTHING
+    );
+    scene.lastShipMoveAt = now;
   }
   updateShipEquipmentModules(scene);
   updateShieldBubble(scene);
@@ -1474,14 +1503,44 @@ function updateShipTilt(scene) {
 
   const now = scene.time ? scene.time.now : 0;
   if (!scene.lastShipMoveAt || now - scene.lastShipMoveAt > SHIP_TILT_IDLE_DELAY) {
-    scene.shipTargetAngle = 0;
+    scene.shipTiltVelocityX = Phaser.Math.Linear(scene.shipTiltVelocityX || 0, 0, SHIP_TILT_RETURN_SMOOTHING);
+    scene.shipTiltVelocityY = Phaser.Math.Linear(scene.shipTiltVelocityY || 0, 0, SHIP_TILT_RETURN_SMOOTHING);
+    scene.shipTargetAngle = Phaser.Math.Linear(scene.shipTargetAngle || 0, 0, SHIP_TILT_RETURN_SMOOTHING);
   }
 
   const targetAngle = scene.shipTargetAngle || 0;
-  scene.ship.setAngle(Phaser.Math.Linear(scene.ship.angle || 0, targetAngle, SHIP_TILT_SMOOTHING));
-  if (Math.abs(scene.ship.angle) < 0.05 && targetAngle === 0) {
+  const smoothing = Math.abs(targetAngle) < Math.abs(scene.ship.angle || 0)
+    ? SHIP_TILT_RETURN_SMOOTHING
+    : SHIP_TILT_SMOOTHING;
+  scene.ship.setAngle(Phaser.Math.Linear(scene.ship.angle || 0, targetAngle, smoothing));
+  if (Math.abs(scene.ship.angle) < 0.05 && Math.abs(targetAngle) < 0.05) {
     scene.ship.setAngle(0);
   }
+}
+
+function getShipMovementTargetAngle(scene) {
+  const velocityX = scene.shipTiltVelocityX || 0;
+  const velocityY = scene.shipTiltVelocityY || 0;
+
+  if (isXyGameMode()) {
+    const verticalInfluence = Math.max(0.28, Math.abs(velocityY) * SHIP_XY_DIRECTION_VERTICAL_WEIGHT);
+    const directionAngle = Phaser.Math.RadToDeg(Math.atan2(velocityX, verticalInfluence));
+    const movementSpeed = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+    const speedRatio = Phaser.Math.Clamp(movementSpeed / SHIP_TILT_FULL_SPEED, 0, 1);
+    return Phaser.Math.Clamp(
+      directionAngle * speedRatio,
+      -SHIP_XY_DIRECTION_MAX_TILT,
+      SHIP_XY_DIRECTION_MAX_TILT
+    );
+  }
+
+  const speedRatio = Phaser.Math.Clamp(Math.abs(velocityX) / SHIP_TILT_FULL_SPEED, 0, 1);
+  const speedToAngle = SHIP_TILT_SPEED_TO_ANGLE + speedRatio * SHIP_TILT_SPEED_ANGLE_BOOST;
+  return Phaser.Math.Clamp(
+    velocityX * speedToAngle,
+    -SHIP_MAX_TILT,
+    SHIP_MAX_TILT
+  );
 }
 
 function refreshShipSize(scene) {
