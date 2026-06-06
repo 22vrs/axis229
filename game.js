@@ -4372,6 +4372,11 @@ function updateRedNeedleBossWave(scene, bossWave) {
     fireRedNeedleBossShot(scene, shot);
     pass.shotsFired += 1;
   }
+
+  if (!pass.hasDamagedShip && isRedNeedleOverlappingShip(scene, scene.bossShip, 1.35)) {
+    pass.hasDamagedShip = true;
+    handleHostileShipContact(scene, scene.bossShip.x, scene.bossShip.y, 'redNeedle');
+  }
 }
 
 function launchRedNeedleBossPass(scene) {
@@ -4397,6 +4402,7 @@ function launchRedNeedleBossPass(scene) {
   bossWave.currentPass = {
     direction,
     shotsFired: 0,
+    hasDamagedShip: false,
     shots: getRedNeedleBossShots(scene, bossWave.attacksDone, direction),
   };
 
@@ -5564,6 +5570,7 @@ function isPreciseShipOverlap(scene, objectA, objectB) {
   const object = getCaughtObject(scene, objectA, objectB);
   if (!object) return false;
   if (object.getData('kind') === 'spikeDrone' && object.getData('spikeState') !== 'expanded' && !isShieldActive(scene)) return false;
+  if (object.getData('kind') === 'redNeedle') return isRedNeedleOverlappingShip(scene, object);
   if (object.getData('kind') === 'redNeedleLaser') return isRedNeedleLaserOverlappingShip(scene, object);
 
   if (isShieldActive(scene)) {
@@ -5574,12 +5581,26 @@ function isPreciseShipOverlap(scene, objectA, objectB) {
 }
 
 function isRedNeedleLaserOverlappingShip(scene, laser) {
-  const halfWidth = RED_NEEDLE_LASER_WIDTH / 2;
-  const halfHeight = RED_NEEDLE_LASER_HEIGHT / 2;
-  const left = laser.x - halfWidth;
-  const right = laser.x + halfWidth;
-  const top = laser.y - halfHeight;
-  const bottom = laser.y + halfHeight;
+  return isRectOverlappingShip(scene, laser.x, laser.y, RED_NEEDLE_LASER_WIDTH, RED_NEEDLE_LASER_HEIGHT);
+}
+
+function isRedNeedleOverlappingShip(scene, needle, scale = needle.scaleX || 1) {
+  return isRectOverlappingShip(
+    scene,
+    needle.x,
+    needle.y,
+    (RED_NEEDLE_WIDTH - 12) * Math.abs(scale),
+    (RED_NEEDLE_HEIGHT - 6) * Math.abs(scale)
+  );
+}
+
+function isRectOverlappingShip(scene, x, y, width, height) {
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  const left = x - halfWidth;
+  const right = x + halfWidth;
+  const top = y - halfHeight;
+  const bottom = y + halfHeight;
 
   if (isShieldActive(scene)) {
     const closestX = Phaser.Math.Clamp(scene.ship.x, left, right);
@@ -5589,14 +5610,22 @@ function isRedNeedleLaserOverlappingShip(scene, laser) {
     return distanceX * distanceX + distanceY * distanceY <= SHIELD_BUBBLE_RADIUS * SHIELD_BUBBLE_RADIUS;
   }
 
-  return getShipHitboxPolygon(scene).some((point) => (
+  const shipPolygon = getShipHitboxPolygon(scene);
+  const rectCorners = [
+    { x: left, y: top },
+    { x: right, y: top },
+    { x: right, y: bottom },
+    { x: left, y: bottom },
+  ];
+
+  return shipPolygon.some((point) => (
     point.x >= left &&
     point.x <= right &&
     point.y >= top &&
     point.y <= bottom
-  )) || (
-    laser.x >= scene.ship.x - getShipWidth(scene) / 2 &&
-    laser.x <= scene.ship.x + getShipWidth(scene) / 2 &&
+  )) || rectCorners.some((point) => isPointInPolygon(point.x, point.y, shipPolygon)) || (
+    x >= scene.ship.x - getShipWidth(scene) / 2 &&
+    x <= scene.ship.x + getShipWidth(scene) / 2 &&
     bottom >= scene.ship.y - SHIP_HEIGHT / 2 &&
     top <= scene.ship.y + SHIP_HEIGHT / 2
   );
@@ -6077,7 +6106,7 @@ function hasFallingAsteroid(scene) {
 function countActiveHostileFallingObjects(scene) {
   return scene.balls
     .getChildren()
-    .filter((ball) => ball.active && (ball.getData('kind') === 'damageBooster' || ball.getData('kind') === 'spikeDrone' || ball.getData('kind') === 'redNeedleLaser' || isAsteroidKind(ball.getData('kind'))))
+    .filter((ball) => ball.active && isShieldBlockedKind(ball.getData('kind')))
     .length;
 }
 
@@ -6117,7 +6146,7 @@ function isAsteroidKind(kind) {
 }
 
 function isShieldBlockedKind(kind) {
-  return kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedleLaser' || isAsteroidKind(kind);
+  return kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || isAsteroidKind(kind);
 }
 
 function findSpawnX(scene) {
@@ -6345,36 +6374,9 @@ function catchBall(ball, scene) {
   if (kind === 'spikeDrone' && ball.getData('spikeState') !== 'expanded' && !isShieldActive(scene)) return;
   ball.destroy();
 
-  if (kind === 'redNeedle') {
-    if (isShieldActive(scene)) {
-      showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
-      playShieldBlockSound(scene);
-      flashPlayerShip(scene);
-      addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#4da3ff' });
-    }
-    return;
-  }
-
-  if (kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedleLaser') {
-    showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
+  if (isShieldBlockedKind(kind)) {
+    handleHostileShipContact(scene, x, y, kind, isPurpleEnergy);
     hitFeedbackShown = true;
-    if (!isShieldActive(scene)) {
-      takeDirectDamage(scene);
-    } else {
-      playShieldBlockSound(scene);
-      flashPlayerShip(scene);
-      addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#4da3ff' });
-    }
-  } else if (isAsteroidKind(kind)) {
-    showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
-    hitFeedbackShown = true;
-    if (!isShieldActive(scene)) {
-      takeDirectDamage(scene);
-    } else {
-      playShieldBlockSound(scene);
-      flashPlayerShip(scene);
-      addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#4da3ff' });
-    }
   } else if (kind === 'lifeBooster') {
     gainLife(scene);
   } else if (kind === 'scoreBooster') {
@@ -6391,7 +6393,7 @@ function catchBall(ball, scene) {
   if (state !== 'playing') return;
 
   if (!hitFeedbackShown) {
-    if (kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedleLaser' || isAsteroidKind(kind)) {
+    if (isShieldBlockedKind(kind)) {
       playBadSound(scene);
     } else if (isBoosterKind(kind)) {
       playBoosterSound(scene);
@@ -6406,6 +6408,18 @@ function catchBall(ball, scene) {
   if (kind === 'ball') {
     maybeOpenUpgradeChoice(scene);
   }
+}
+
+function handleHostileShipContact(scene, x, y, kind, isPurpleEnergy = false) {
+  showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
+  if (!isShieldActive(scene)) {
+    takeDirectDamage(scene);
+    return;
+  }
+
+  playShieldBlockSound(scene);
+  flashPlayerShip(scene);
+  addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#4da3ff' });
 }
 
 function playCatchSound(scene) {
@@ -6734,6 +6748,7 @@ function getAbsorbParticleTint(kind, isPurpleEnergy = false) {
   if (isAsteroidKind(kind)) return 0xaeb7c8;
   if (kind === 'damageBooster') return 0xff3b4f;
   if (kind === 'spikeDrone') return 0xff3045;
+  if (kind === 'redNeedle') return 0xff263c;
   if (kind === 'redNeedleLaser') return 0xff263c;
   if (kind === 'lifeBooster') return 0x4dff88;
   if (kind === 'scoreBooster') return 0x9b5cff;
