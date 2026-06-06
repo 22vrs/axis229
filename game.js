@@ -2823,9 +2823,15 @@ function startFinalDamageGameOver(scene) {
 }
 
 function takeDirectDamage(scene) {
+  if (isShipDamageInvulnerable(scene)) return false;
   playBadSound(scene);
   flashPlayerShip(scene, true);
   loseLife(scene);
+  return true;
+}
+
+function isShipDamageInvulnerable(scene) {
+  return Boolean(scene && scene.shipDamageTween);
 }
 
 function flashPlayerShip(scene, damaged = false) {
@@ -4228,11 +4234,8 @@ function updateBossWave(scene) {
   recoverStalledBossWave(scene, bossWave);
   if (scene.activeBossWave !== bossWave) return;
 
-  if (scene.bossLaser && !scene.bossLaser.getData('hasDamagedShip') && isLaserTouchingShip(scene, scene.bossLaser)) {
-    scene.bossLaser.setData('hasDamagedShip', true);
-    if (!isShieldActive(scene)) {
-      takeDirectDamage(scene);
-    }
+  if (scene.bossLaser && isLaserTouchingShip(scene, scene.bossLaser) && !isShieldActive(scene)) {
+    takeDirectDamage(scene);
   }
 }
 
@@ -4354,9 +4357,8 @@ function updateRedNeedleBossWave(scene, bossWave) {
     pass.shotsFired += 1;
   }
 
-  if (!pass.hasDamagedShip && isRedNeedleOverlappingShip(scene, scene.bossShip, 1.35)) {
-    pass.hasDamagedShip = true;
-    handleHostileShipContact(scene, scene.bossShip.x, scene.bossShip.y, 'redNeedle');
+  if (isRedNeedleOverlappingShip(scene, scene.bossShip, 1.35)) {
+    handleHostileShipContact(scene, scene.bossShip, scene.bossShip.x, scene.bossShip.y, 'redNeedle');
   }
 }
 
@@ -4383,7 +4385,6 @@ function launchRedNeedleBossPass(scene) {
   bossWave.currentPass = {
     direction,
     shotsFired: 0,
-    hasDamagedShip: false,
     shots: getRedNeedleBossShots(scene, bossWave.attacksDone, direction),
   };
 
@@ -4597,7 +4598,6 @@ function fireBossLaser(scene, laserX) {
   scene.bossLaserCore = scene.add.rectangle(laserX, laserCenterY, 9, laserHeight, 0xffedf0, 0.86)
     .setOrigin(0.5, 0.5)
     .setDepth(FX_DEPTH - 1);
-  scene.bossLaser.setData('hasDamagedShip', false);
   playBossLaserSound(scene);
 
   scene.bossLaserClearEvent = scene.time.addEvent({
@@ -4946,7 +4946,6 @@ function spawnPlasmaBar(scene) {
     gapVelocity: PLASMA_BAR_GAP_SPEED * direction,
     gapHalf,
     height: PLASMA_BAR_HEIGHT,
-    damaged: false,
     sparkSeed: Phaser.Math.Between(0, 9999),
   };
 
@@ -5095,7 +5094,7 @@ function drawJaggedSparkLine(graphics, startX, baseY, sparkWidth, pointCount, ph
 }
 
 function maybeDamageShipWithPlasma(scene, bar, shipHalfWidth, shipTop, shipBottom) {
-  if (bar.damaged || isShieldActive(scene)) return;
+  if (isShieldActive(scene) || isShipDamageInvulnerable(scene)) return;
 
   const barTop = bar.container.y - bar.height / 2;
   const barBottom = bar.container.y + bar.height / 2;
@@ -5108,7 +5107,6 @@ function maybeDamageShipWithPlasma(scene, bar, shipHalfWidth, shipTop, shipBotto
   const shipInsideGap = shipLeft >= gapLeft && shipRight <= gapRight;
   if (shipInsideGap) return;
 
-  bar.damaged = true;
   takeDirectDamage(scene);
 }
 
@@ -6353,18 +6351,21 @@ function catchBall(ball, scene) {
   const isPurpleEnergy = Boolean(ball.getData('isPurpleEnergy'));
   let hitFeedbackShown = false;
   if (kind === 'spikeDrone' && ball.getData('spikeState') !== 'expanded' && !isShieldActive(scene)) return;
-  ball.destroy();
 
   if (isShieldBlockedKind(kind)) {
-    handleHostileShipContact(scene, x, y, kind, isPurpleEnergy);
+    handleHostileShipContact(scene, ball, x, y, kind, isPurpleEnergy);
     hitFeedbackShown = true;
   } else if (kind === 'lifeBooster') {
+    ball.destroy();
     gainLife(scene);
   } else if (kind === 'scoreBooster') {
+    ball.destroy();
     activateScoreBooster(scene);
   } else if (kind === 'shieldBooster') {
+    ball.destroy();
     activateShieldBooster(scene);
   } else {
+    ball.destroy();
     const points = getEnergyBallValue() * scoreMultiplier;
     addScore(scene, points, true, { x, y, color: isPurpleEnergy ? '#d7a8ff' : '#ffd84d' });
     ballsCaught += 1;
@@ -6391,13 +6392,17 @@ function catchBall(ball, scene) {
   }
 }
 
-function handleHostileShipContact(scene, x, y, kind, isPurpleEnergy = false) {
+function handleHostileShipContact(scene, hostile, x, y, kind, isPurpleEnergy = false) {
+  if (!isShieldActive(scene) && isShipDamageInvulnerable(scene)) return;
+  if (isShieldActive(scene) && hostile && hostile.getData('hasBeenShieldBlocked')) return;
+
   showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
   if (!isShieldActive(scene)) {
     takeDirectDamage(scene);
     return;
   }
 
+  if (hostile) hostile.setData('hasBeenShieldBlocked', true);
   playShieldBlockSound(scene);
   flashPlayerShip(scene);
   addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#4da3ff' });
