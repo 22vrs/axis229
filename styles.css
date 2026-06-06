@@ -419,6 +419,10 @@ canvas {
   z-index: 1;
 }
 
+#pause-overlay.is-frozen-pause-menu {
+  transition: none;
+}
+
 #pause-overlay.is-visible {
   pointer-events: none;
 }

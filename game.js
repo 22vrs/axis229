@@ -600,7 +600,7 @@ function create() {
   this.xyControl = this.add.image(0, 0, 'xyControl')
     .setDepth(SHIP_DEPTH - 1)
     .setVisible(false)
-    .setAlpha(0.45);
+    .setAlpha(0.78);
   this.xyControlPulse = this.add.circle(0, 0, XY_CONTROL_RADIUS + 10, 0x4da3ff, 0.12)
     .setDepth(SHIP_DEPTH - 2)
     .setVisible(false);
@@ -1672,8 +1672,8 @@ function setXyControlVisible(scene, visible) {
 function setXyControlActive(scene, active) {
   if (!scene || !scene.xyControl) return;
   scene.xyControl.setScale(active ? 0.92 : 1);
-  scene.xyControl.setAlpha(active ? 0.62 : 0.45);
-  if (scene.xyControlPulse) scene.xyControlPulse.setAlpha(active ? 0.09 : 0.04);
+  scene.xyControl.setAlpha(0.78);
+  if (scene.xyControlPulse) scene.xyControlPulse.setAlpha(0.1);
 }
 
 function usesXyControlHandle(scene) {
