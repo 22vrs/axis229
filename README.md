@@ -1,8 +1,57 @@
-# Jueguito - Jefes, enemigos y probabilidades
+# Horizonte Infinito
 
-Este documento resume los jefes, desbloqueos y probabilidades de aparicion definidas en `game.js`.
+Juego arcade hecho con HTML, CSS, JavaScript y Phaser 3. Controlas una nave en una pantalla vertical, recoges orbes de energia, encadenas rachas, eliges mejoras y sobrevives a oleadas de amenazas cada vez mas agresivas.
 
-Las probabilidades son por cada intento de aparicion, no por segundo. En partida normal el tiempo entre intentos empieza en `1500 ms` y baja hasta `600 ms` con la dificultad. En jefes algunos patrones usan su propio intervalo.
+## Como jugar
+
+Abre `index.html` en el navegador o sirve la carpeta con un servidor local sencillo.
+
+```powershell
+python -m http.server 8000
+```
+
+Despues entra en `http://localhost:8000`.
+
+El juego carga Phaser y Supabase desde CDN, asi que hace falta conexion a internet para jugar con todas las funciones. Los sonidos y la musica estan en `assets/`.
+
+## Controles
+
+- Arrastra la nave para moverla libremente en X-Y dentro de la pantalla.
+- Recoge orbes amarillos para sumar puntos y llenar la barra de progreso.
+- Evita enemigos, asteroides, lasers y barras de plasma.
+- Usa el boton de pausa del HUD para pausar, rendirte o abrir opciones.
+- En opciones puedes activar o desactivar efectos y musica. La preferencia se guarda en `localStorage`.
+
+## Modos
+
+| Modo | Descripcion | Ranking |
+| --- | --- | --- |
+| `JUGAR` | Partida normal con progresion, jefes cada 3 niveles y ranking. | Si |
+| `MODO INFINITO` | Partida libre con amenazas desbloqueadas y jefes aleatorios. | No |
+
+En modo infinito, el primer jefe es `Marea de Plasma`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
+
+## Progresion
+
+- La partida empieza con 5 vidas.
+- La dificultad sube con el nivel: la gravedad de los orbes escala desde `1.00x` hasta `2.00x`.
+- El intervalo entre apariciones empieza en `1500 ms` y baja hasta `600 ms`.
+- Cada vez que llenas la barra de progreso subes de nivel y, si hay mejoras disponibles, eliges entre 2 opciones.
+- Hay un jefe cada 3 niveles.
+- Al encadenar 50 orbes de energia sin recibir dano se concede una recompensa de racha. La recompensa base es de 50 puntos y crece con cada bloque de 50 de racha.
+
+## Mejoras
+
+Cada mejora puede subir hasta nivel 5.
+
+| Mejora | Efecto |
+| --- | --- |
+| Kit de reparacion | Desbloquea kits verdes. Cada kit cura tantas vidas como nivel tenga la mejora. |
+| Barrera protectora | Desbloquea escudos azules temporales. Bloquea amenazas y suma puntos al destruirlas por contacto. |
+| Catalizador de energia | Desbloquea boosters morados temporales. Duplica los puntos obtenidos por orbes mientras esta activo. |
+| Refinador de energia | Aumenta el valor de cada orbe. Al nivel maximo suma +1 extra por cada nivel superado. |
+
+Los boosters temporales duran entre `5 s` y `15 s` segun el nivel de la mejora.
 
 ## Jefes del modo normal
 
@@ -14,66 +63,68 @@ Hay un jefe cada 3 niveles. La rotacion normal es:
 | 6 | Centinela | Laser vertical con aviso previo | Centinela viajero |
 | 9 | Cinturon | Asteroides normales y grandes | Asteroides en el viaje |
 | 12 | Marea de Plasma | Barras horizontales con hueco movil | Barras de plasma en el viaje |
-| 15 | Drones | Drones de pinchos que alternan estados y se expanden | Drones en el viaje |
-| 18 | Aguja Roja | 6 pasadas horizontales con patrones de laser | Aguja Roja en el viaje |
+| 15 | Drones | Drones de pinchos que alternan estados | Drones en el viaje |
+| 18 | Aguja Roja | Pasadas horizontales con disparos laser | Aguja Roja en el viaje |
 
 Despues del nivel 18 la rotacion se repite cada 18 niveles: nivel 21 Enjambre, nivel 24 Centinela, nivel 27 Cinturon, etc.
 
-En modo infinito, el primer jefe es `Aguja Roja` para facilitar pruebas. A partir de ahi los jefes se eligen aleatoriamente entre la rotacion disponible.
+## Amenazas y probabilidades
 
-## Modos de juego
-
-| Modo | Movimiento | Ranking |
-| --- | --- | --- |
-| X-Y | Nave libre en ambos ejes dentro de la pantalla. Es el modo normal al pulsar `JUGAR`. | Guarda puntuacion. |
-| Modo Infinito | Nave libre en ambos ejes, con amenazas desbloqueadas. | No guarda puntuacion en el ranking normal. |
-
-## Enemigos y amenazas
+Las probabilidades son por intento de aparicion, no por segundo. En partida normal el tiempo entre intentos depende de la dificultad. Durante jefes algunas amenazas usan su propio intervalo.
 
 | Amenaza | Probabilidad | Cuando puede aparecer | Notas |
 | --- | ---: | --- | --- |
-| Obrera / enemigo rojo (`damageBooster`) | 16% | Viaje normal, despues de desbloquear obreras | No aparece si ya hay una barra de plasma o 3 amenazas activas. |
-| Drone de pinchos (`spikeDrone`) | 5% | Viaje normal, despues de desbloquear drones | Solo hace dano cuando esta expandido, salvo que choque con el escudo. |
-| Aguja Roja (`redNeedle`) | 5% | Viaje normal, despues de vencer al jefe Aguja Roja | Amenaza horizontal. No puede aparecer si ya hay otra Aguja Roja en pantalla. |
-| Asteroide | 10% | Viaje normal, despues de desbloquear asteroides | No aparece si ya hay una barra de plasma, otro asteroide o 3 amenazas activas. |
-| Asteroide grande | 24% de los asteroides | Viaje normal | En probabilidad total equivale aprox. a 2,4% por intento, si se llega a tirar asteroide. |
-| Barra de plasma | 5% | Viaje normal, despues de desbloquear plasma | No aparece durante jefes, si ya hay una barra activa ni si hay amenazas hostiles activas. |
-| Centinela viajero | 1,8% | Viaje normal, despues de desbloquearlo | Solo si no hay jefe, booster temporal activo, jefe pendiente ni barra de plasma. Tiene cooldown de `26000 ms`. |
+| Obrera / enemigo rojo | 16% | Despues de vencer a Enjambre | No aparece si hay barra de plasma o 3 amenazas hostiles activas. |
+| Drone de pinchos | 5% | Despues de vencer a Drones | Solo dana cuando esta expandido, salvo contacto con escudo. |
+| Aguja Roja | 5% | Despues de vencer a Aguja Roja | Amenaza horizontal. Solo puede haber una activa. |
+| Asteroide | 10% | Despues de vencer a Cinturon | No aparece si ya hay asteroide, barra de plasma o 3 amenazas hostiles. |
+| Asteroide grande | 24% de los asteroides de viaje | Viaje normal | Equivale aprox. a 2,4% por intento si se llega a tirar asteroide. |
+| Barra de plasma | 5% | Despues de vencer a Marea de Plasma | No aparece si hay jefe, otra barra o amenazas hostiles activas. |
+| Centinela viajero | 1,8% | Despues de vencer a Centinela | Tiene cooldown de `26000 ms` y no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. |
 
-## Jefes
+## Patrones de jefe
 
-| Jefe | Amenaza | Patron |
-| --- | --- | --- |
-| Drones | Drones de pinchos | Spawns cada `680 ms` durante la oleada. |
-| Enjambre | Obrera / enemigo rojo | Spawns cada `400 ms`, con separacion horizontal minima. |
-| Cinturon | Asteroides | 84% asteroide normal y 16% asteroide grande cada `760 ms`. |
-| Centinela | Laser vertical | `5` ataques por jefe normal, `2` en encuentro viajero. |
-| Marea de Plasma | Barra de plasma | Barras cada `2100 ms`, con hueco movil. |
-| Aguja Roja | Laseres cortos rojos | `6` pasadas alternando izquierda/derecha. Las 2 primeras usan 4 disparos repartidos y las 4 siguientes usan patrones especiales. |
+| Jefe | Patron |
+| --- | --- |
+| Enjambre | Spawns de enemigos rojos cada `400 ms`, intentando mantener separacion horizontal minima de `SHIP_WIDTH + 56`. |
+| Centinela | `7` ataques laser en jefe normal y `2` en encuentro viajero. |
+| Cinturon | Asteroides cada `760 ms`; 84% normales y 16% grandes. |
+| Marea de Plasma | Barras cada `2100 ms` con hueco movil. |
+| Drones | Drones de pinchos cada `680 ms`. |
+| Aguja Roja | `6` pasadas alternando izquierda/derecha; las primeras son repartidas y las siguientes usan patrones especiales. |
 
-En Enjambre, los enemigos intentan mantener una separacion horizontal minima de `SHIP_WIDTH + 56`, para dejar huecos algo mayores que la nave.
-
-## Boosters
-
-| Booster | Probabilidad | Condicion |
-| --- | ---: | --- |
-| Catalizador de energia (`scoreBooster`) | 7% | Solo si la mejora esta desbloqueada y no hay otro booster temporal activo. |
-| Barrera protectora (`shieldBooster`) | 5% | Solo si la mejora esta desbloqueada y no hay otro booster temporal activo. |
-| Kit de reparacion (`lifeBooster`) | 3% | Solo si la mejora esta desbloqueada y la vida actual esta por debajo del maximo. |
-
-Solo puede haber un booster util cayendo a la vez. Si ya hay un `lifeBooster`, `scoreBooster` o `shieldBooster` activo en pantalla, no se genera otro.
-
-## Orden de decision
+## Orden de aparicion
 
 En viaje normal, el juego decide la siguiente aparicion en este orden:
 
-1. Amenaza viajera: Aguja Roja, drone de pinchos u obrera/enemigo rojo.
-2. Barra de plasma.
-3. Asteroide.
-4. Booster.
-5. Orbe normal, si nada anterior aparece.
+1. Centinela viajero, si cumple condiciones.
+2. Amenaza viajera: Aguja Roja, drone de pinchos u obrera.
+3. Barra de plasma.
+4. Asteroide.
+5. Booster.
+6. Orbe normal, si nada anterior aparece.
 
-Esto significa que las probabilidades de plasma, asteroides y boosters son sus probabilidades cuando el juego llega a esa comprobacion. Si antes aparece una amenaza, las comprobaciones siguientes ya no se ejecutan en ese intento.
+Esto significa que las probabilidades de plasma, asteroides y boosters son condicionales: solo se comprueban si las decisiones anteriores no generaron nada.
+
+## Ranking
+
+El ranking usa Supabase y guarda:
+
+- nombre del jugador,
+- puntos,
+- nivel alcanzado,
+- racha maxima.
+
+La tabla configurada es `ranking`; las columnas principales usadas por el juego son `nombre`, `puntos`, `nivel` y `racha`.
+
+## Estructura
+
+| Archivo | Uso |
+| --- | --- |
+| `index.html` | Estructura del juego, HUD, overlays y carga de librerias. |
+| `styles.css` | Estilos del HUD, menus, ranking, pausa, opciones y pantalla de mejoras. |
+| `game.js` | Logica completa del juego, Phaser, progresion, jefes, spawns, audio y ranking. |
+| `assets/` | Musica y efectos de sonido. |
 
 ## Constantes principales
 
@@ -81,6 +132,11 @@ Esto significa que las probabilidades de plasma, asteroides y boosters son sus p
 | --- | ---: |
 | `INITIAL_SPAWN_DELAY` | `1500 ms` |
 | `MIN_SPAWN_DELAY` | `600 ms` |
+| `MAX_SPEED_MULTIPLIER` | `2` |
+| `UPGRADE_POINTS_REQUIRED` | `10` |
+| `MAX_UPGRADE_LEVEL` | `5` |
+| `ENERGY_STREAK_REWARD_TARGET` | `50` |
+| `ENERGY_STREAK_REWARD_SCORE` | `50` |
 | `DRONE_WAVE_SPAWN_DELAY` | `680 ms` |
 | `RED_WAVE_SPAWN_DELAY` | `400 ms` |
 | `ASTEROID_WAVE_SPAWN_DELAY` | `760 ms` |
