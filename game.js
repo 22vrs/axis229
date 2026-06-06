@@ -104,8 +104,16 @@ const BOSS_LASER_TRACKING_CHANCE = 0.55;
 const BOSS_LASER_TRACKING_JITTER = 18;
 const RED_ENEMY_SWAY_SPEED = 0.0042;
 const RED_ENEMY_SWAY_MAX_VELOCITY = 24;
-const SHIP_MAX_TILT = 14;
-const SHIP_TILT_SMOOTHING = 0.24;
+const SHIP_MAX_TILT = 24;
+const SHIP_TILT_SMOOTHING = 0.16;
+const SHIP_TILT_RETURN_SMOOTHING = 0.08;
+const SHIP_TILT_VELOCITY_SMOOTHING = 0.22;
+const SHIP_TILT_TARGET_SMOOTHING = 0.18;
+const SHIP_TILT_SPEED_TO_ANGLE = 18;
+const SHIP_TILT_SPEED_ANGLE_BOOST = 8;
+const SHIP_TILT_FULL_SPEED = 1.1;
+const SHIP_XY_DIRECTION_MAX_TILT = 32;
+const SHIP_XY_DIRECTION_VERTICAL_WEIGHT = 0.72;
 const SHIP_TILT_IDLE_DELAY = 170;
 const SHIP_RESUME_TOUCH_PADDING_X = 12;
 const SHIP_RESUME_TOUCH_PADDING_Y = 24;
@@ -240,7 +248,7 @@ let hud = null;
 let supabaseClient = null;
 let pendingScoreSave = null;
 let lastScoreSaved = false;
-let currentGameMode = 'normal';
+let currentGameMode = 'xy';
 let soundEffectsEnabled = true;
 let musicEnabled = true;
 
@@ -259,6 +267,7 @@ function initHud() {
     lifeCount: document.getElementById('hud-life-count'),
     lifeBar: document.getElementById('hud-life-bar'),
     upgrades: document.getElementById('hud-upgrades'),
+    pauseSettingsButton: document.getElementById('pause-settings-button'),
     booster: document.getElementById('hud-booster'),
     boosterLabel: document.getElementById('hud-booster-label'),
     boosterFill: document.getElementById('hud-booster-fill'),
@@ -281,7 +290,17 @@ function setHudVisible(scene, visible) {
   const currentHud = initHud();
   if (!currentHud.root) return;
   currentHud.root.classList.toggle('is-visible', visible);
+  if (!visible) setPauseSettingsVisible(false);
   updateHud(scene);
+}
+
+function setPauseSettingsVisible(visible) {
+  const currentHud = initHud();
+  if (!currentHud.root) return;
+  currentHud.root.classList.toggle('is-pause-settings-visible', Boolean(visible));
+  if (currentHud.pauseSettingsButton) {
+    currentHud.pauseSettingsButton.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  }
 }
 
 function updateHud(scene = gameScene) {
@@ -374,11 +393,11 @@ function getBossIndexForLevel(level) {
 }
 
 function getValidGameMode(mode) {
-  return ['normal', 'infinite', 'xy', 'xyInfinite'].includes(mode) ? mode : 'normal';
+  return ['xy', 'xyInfinite'].includes(mode) ? mode : 'xy';
 }
 
 function isInfiniteGameMode() {
-  return currentGameMode === 'infinite' || currentGameMode === 'xyInfinite';
+  return currentGameMode === 'xyInfinite';
 }
 
 function isXyGameMode() {
@@ -589,7 +608,7 @@ function create() {
   this.xyControl = this.add.image(0, 0, 'xyControl')
     .setDepth(SHIP_DEPTH - 1)
     .setVisible(false)
-    .setAlpha(0.45);
+    .setAlpha(0.78);
   this.xyControlPulse = this.add.circle(0, 0, XY_CONTROL_RADIUS + 10, 0x4da3ff, 0.12)
     .setDepth(SHIP_DEPTH - 2)
     .setVisible(false);
@@ -654,6 +673,13 @@ function create() {
 
   this.input.on('pointermove', (pointer) => {
     if (state !== 'playing' && state !== 'paused') return;
+    if (state === 'paused' && (
+      isFrozenPauseMenuOpen(this) ||
+      (this.optionsOverlay && this.optionsOverlay.element && this.optionsOverlay.element.classList.contains('is-visible'))
+    )) {
+      this.input.setDefaultCursor('default');
+      return;
+    }
     if (!isDraggingShip) {
       this.input.setDefaultCursor(canStartShipDrag(this, pointer.x, pointer.y, state === 'paused') ? 'grab' : 'default');
       return;
@@ -1329,14 +1355,16 @@ function bindPausedShipResumeFallback(scene) {
 }
 
 function canHandlePausedResumePointer(scene, x, y) {
-  if (!scene.xyPauseResumeArmed) return true;
+  if (isFrozenPauseMenuOpen(scene)) return false;
+  if (isUpgradePauseOverlayVisible(scene) && !scene.xyPauseResumeArmed) return true;
   return canStartShipDrag(scene, x, y, true);
 }
 
 function handlePausedResumePointer(scene, x, y) {
   if (!scene || state !== 'paused') return false;
+  if (isFrozenPauseMenuOpen(scene)) return false;
 
-  if (!scene.xyPauseResumeArmed) {
+  if (isUpgradePauseOverlayVisible(scene) && !scene.xyPauseResumeArmed) {
     armControlPauseResume(scene);
     return true;
   }
@@ -1346,6 +1374,26 @@ function handlePausedResumePointer(scene, x, y) {
   resumeGame.call(scene);
   startDraggingShipAt(scene, x, y);
   return true;
+}
+
+function isFrozenPauseMenuOpen(scene) {
+  return Boolean(
+    scene &&
+    scene.pauseOverlay &&
+    scene.pauseOverlay.element &&
+    scene.pauseOverlay.element.classList.contains('is-visible') &&
+    scene.pauseOverlay.element.classList.contains('is-frozen-pause-menu')
+  );
+}
+
+function isUpgradePauseOverlayVisible(scene) {
+  return Boolean(
+    scene &&
+    scene.pauseOverlay &&
+    scene.pauseOverlay.element &&
+    scene.pauseOverlay.element.classList.contains('is-visible') &&
+    scene.pauseOverlay.element.classList.contains('is-upgrade-pause')
+  );
 }
 
 function pauseIfDraggingShip(scene) {
@@ -1414,12 +1462,33 @@ function update(time, delta) {
 
 function moveShipTo(scene, x, y = scene.ship ? scene.ship.y : getShipY(scene)) {
   const previousX = scene.ship.x;
+  const previousY = scene.ship.y;
   const deltaX = x - previousX;
+  const deltaY = y - previousY;
+  const now = scene.time ? scene.time.now : 0;
+  const elapsedSinceLastMove = scene.lastShipMoveAt ? Math.max(16, now - scene.lastShipMoveAt) : 16;
   scene.ship.setPosition(x, y);
   scene.ship.body.reset(x, y);
-  if (Math.abs(deltaX) > 0.4 && state === 'playing') {
-    scene.shipTargetAngle = Phaser.Math.Clamp(deltaX * 0.75, -SHIP_MAX_TILT, SHIP_MAX_TILT);
-    scene.lastShipMoveAt = scene.time ? scene.time.now : 0;
+  if ((Math.abs(deltaX) > 0.4 || Math.abs(deltaY) > 0.4) && state === 'playing') {
+    const horizontalVelocity = deltaX / elapsedSinceLastMove;
+    const verticalVelocity = deltaY / elapsedSinceLastMove;
+    scene.shipTiltVelocityX = Phaser.Math.Linear(
+      scene.shipTiltVelocityX || 0,
+      horizontalVelocity,
+      SHIP_TILT_VELOCITY_SMOOTHING
+    );
+    scene.shipTiltVelocityY = Phaser.Math.Linear(
+      scene.shipTiltVelocityY || 0,
+      verticalVelocity,
+      SHIP_TILT_VELOCITY_SMOOTHING
+    );
+    const rawTargetAngle = getShipMovementTargetAngle(scene);
+    scene.shipTargetAngle = Phaser.Math.Linear(
+      scene.shipTargetAngle || 0,
+      rawTargetAngle,
+      SHIP_TILT_TARGET_SMOOTHING
+    );
+    scene.lastShipMoveAt = now;
   }
   updateShipEquipmentModules(scene);
   updateShieldBubble(scene);
@@ -1434,14 +1503,44 @@ function updateShipTilt(scene) {
 
   const now = scene.time ? scene.time.now : 0;
   if (!scene.lastShipMoveAt || now - scene.lastShipMoveAt > SHIP_TILT_IDLE_DELAY) {
-    scene.shipTargetAngle = 0;
+    scene.shipTiltVelocityX = Phaser.Math.Linear(scene.shipTiltVelocityX || 0, 0, SHIP_TILT_RETURN_SMOOTHING);
+    scene.shipTiltVelocityY = Phaser.Math.Linear(scene.shipTiltVelocityY || 0, 0, SHIP_TILT_RETURN_SMOOTHING);
+    scene.shipTargetAngle = Phaser.Math.Linear(scene.shipTargetAngle || 0, 0, SHIP_TILT_RETURN_SMOOTHING);
   }
 
   const targetAngle = scene.shipTargetAngle || 0;
-  scene.ship.setAngle(Phaser.Math.Linear(scene.ship.angle || 0, targetAngle, SHIP_TILT_SMOOTHING));
-  if (Math.abs(scene.ship.angle) < 0.05 && targetAngle === 0) {
+  const smoothing = Math.abs(targetAngle) < Math.abs(scene.ship.angle || 0)
+    ? SHIP_TILT_RETURN_SMOOTHING
+    : SHIP_TILT_SMOOTHING;
+  scene.ship.setAngle(Phaser.Math.Linear(scene.ship.angle || 0, targetAngle, smoothing));
+  if (Math.abs(scene.ship.angle) < 0.05 && Math.abs(targetAngle) < 0.05) {
     scene.ship.setAngle(0);
   }
+}
+
+function getShipMovementTargetAngle(scene) {
+  const velocityX = scene.shipTiltVelocityX || 0;
+  const velocityY = scene.shipTiltVelocityY || 0;
+
+  if (isXyGameMode()) {
+    const verticalInfluence = Math.max(0.28, Math.abs(velocityY) * SHIP_XY_DIRECTION_VERTICAL_WEIGHT);
+    const directionAngle = Phaser.Math.RadToDeg(Math.atan2(velocityX, verticalInfluence));
+    const movementSpeed = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+    const speedRatio = Phaser.Math.Clamp(movementSpeed / SHIP_TILT_FULL_SPEED, 0, 1);
+    return Phaser.Math.Clamp(
+      directionAngle * speedRatio,
+      -SHIP_XY_DIRECTION_MAX_TILT,
+      SHIP_XY_DIRECTION_MAX_TILT
+    );
+  }
+
+  const speedRatio = Phaser.Math.Clamp(Math.abs(velocityX) / SHIP_TILT_FULL_SPEED, 0, 1);
+  const speedToAngle = SHIP_TILT_SPEED_TO_ANGLE + speedRatio * SHIP_TILT_SPEED_ANGLE_BOOST;
+  return Phaser.Math.Clamp(
+    velocityX * speedToAngle,
+    -SHIP_MAX_TILT,
+    SHIP_MAX_TILT
+  );
 }
 
 function refreshShipSize(scene) {
@@ -1632,8 +1731,8 @@ function setXyControlVisible(scene, visible) {
 function setXyControlActive(scene, active) {
   if (!scene || !scene.xyControl) return;
   scene.xyControl.setScale(active ? 0.92 : 1);
-  scene.xyControl.setAlpha(active ? 0.62 : 0.45);
-  if (scene.xyControlPulse) scene.xyControlPulse.setAlpha(active ? 0.09 : 0.04);
+  scene.xyControl.setAlpha(0.78);
+  if (scene.xyControlPulse) scene.xyControlPulse.setAlpha(0.1);
 }
 
 function usesXyControlHandle(scene) {
@@ -1925,14 +2024,6 @@ function createMenu(scene) {
     playButtonSound(scene);
     startGame.call(scene);
   });
-  bindScreenClick('menu', 'xy-mode-button', () => {
-    playButtonSound(scene);
-    startGame.call(scene, { mode: 'xy' });
-  });
-  bindScreenClick('menu', 'infinite-mode-button', () => {
-    playButtonSound(scene);
-    startGame.call(scene, { mode: 'infinite' });
-  });
   bindScreenClick('menu', 'xy-infinite-mode-button', () => {
     playButtonSound(scene);
     startGame.call(scene, { mode: 'xyInfinite' });
@@ -2203,13 +2294,18 @@ function createPauseOverlay(scene) {
   overlay.title = overlay.element ? overlay.element.querySelector('h2') : null;
   overlay.copy = overlay.element ? overlay.element.querySelector('.ui-copy') : null;
   overlay.panel = overlay.element ? overlay.element.querySelector('.ui-panel') : null;
+  bindSingleClick('pause-settings-button', () => {
+    if (state !== 'paused') return;
+    playButtonSound(scene);
+    showFrozenPauseMenu(scene);
+  });
+  bindScreenClick('pause', 'pause-back-button', () => {
+    playButtonSound(scene);
+    hideFrozenPauseMenu(scene);
+  });
   bindScreenClick('pause', 'pause-surrender-button', () => {
     playButtonSound(scene);
-    if (!isInfiniteGameMode() && !isXyGameMode()) {
-      endGame.call(scene);
-      return;
-    }
-    showMenu.call(scene);
+    endGame.call(scene);
   });
   bindScreenClick('pause', 'pause-options-button', () => {
     playButtonSound(scene);
@@ -2223,17 +2319,38 @@ function setPauseOverlayMode(scene, mode = 'normal') {
 
   const isUpgradePause = mode === 'upgrade';
   scene.pauseOverlay.element.classList.toggle('is-upgrade-pause', isUpgradePause);
+  scene.pauseOverlay.element.classList.remove('is-frozen-pause-menu');
   if (scene.pauseOverlay.panel) {
     scene.pauseOverlay.panel.classList.toggle('ui-panel-upgrade-pause', isUpgradePause);
   }
   if (scene.pauseOverlay.title) {
-    scene.pauseOverlay.title.textContent = isUpgradePause ? 'Nave mejorada' : 'PAUSA';
+    scene.pauseOverlay.title.textContent = 'PAUSA';
   }
   if (scene.pauseOverlay.copy) {
-    scene.pauseOverlay.copy.textContent = isUpgradePause
-      ? 'Toca fuera de la ventana y luego arrastra la huella'
-      : 'Toca fuera del menu y luego arrastra la huella';
+    scene.pauseOverlay.copy.textContent = '';
   }
+}
+
+function showFrozenPauseMenu(scene) {
+  if (!scene || state !== 'paused') return;
+  setPauseOverlayMode(scene, 'normal');
+  setXyControlActive(scene, false);
+  setXyControlVisible(scene, false);
+  if (scene.pauseOverlay && scene.pauseOverlay.element) {
+    scene.pauseOverlay.element.classList.add('is-frozen-pause-menu');
+  }
+  setPauseSettingsVisible(false);
+  showOverlayScreen(scene, 'pause');
+}
+
+function hideFrozenPauseMenu(scene) {
+  if (!scene || state !== 'paused') return;
+  if (scene.pauseOverlay && scene.pauseOverlay.element) {
+    scene.pauseOverlay.element.classList.remove('is-frozen-pause-menu');
+  }
+  prepareControlPauseResume(scene);
+  showOverlayScreen(scene, null);
+  setPauseSettingsVisible(true);
 }
 
 function createUpgradeOverlay(scene) {
@@ -2419,9 +2536,10 @@ function setUiDepth(scene) {
 
 function showMenu() {
   state = 'menu';
-  currentGameMode = 'normal';
+  currentGameMode = 'xy';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
+  setPauseSettingsVisible(false);
   setXyControlVisible(this, false);
   if (this) this.optionsReturnScreen = null;
   pendingScoreSave = null;
@@ -2451,6 +2569,7 @@ function showRanking() {
   state = 'ranking';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
+  setPauseSettingsVisible(false);
   setXyControlVisible(this, false);
   this.optionsReturnScreen = null;
   this.input.setDefaultCursor('default');
@@ -2465,6 +2584,7 @@ function startGame(options = {}) {
   currentGameMode = getValidGameMode(options.mode);
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
+  setPauseSettingsVisible(false);
   pendingScoreSave = null;
   lastScoreSaved = false;
   this.input.setDefaultCursor('default');
@@ -2510,6 +2630,7 @@ function endGame() {
   state = 'gameover';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
+  setPauseSettingsVisible(false);
   setXyControlVisible(this, false);
   this.input.setDefaultCursor('default');
   if (this.finalDamageGameOverEvent) {
@@ -2535,16 +2656,10 @@ function endGame() {
   setHudVisible(this, false);
   showOverlayScreen(this, 'gameover');
   if (isXyInfiniteGameMode()) {
-    this.gameOverContainer.finalScore.setText('Modo X-Y Infinito - Puntuación: ' + score);
-    prepareUnrankedGameOver(this, 'Modo X-Y Infinito: la puntuacion no se guarda en el ranking normal.');
-  } else if (isInfiniteGameMode()) {
     this.gameOverContainer.finalScore.setText('Modo Infinito - Puntuación: ' + score);
-    prepareUnrankedGameOver(this, 'Modo Infinito: la puntuacion no se guarda en el ranking.');
-  } else if (isXyGameMode()) {
-    this.gameOverContainer.finalScore.setText('Modo X-Y - Puntuación: ' + score);
-    prepareUnrankedGameOver(this, 'Modo X-Y: la puntuacion no se guarda en el ranking normal.');
+    prepareUnrankedGameOver(this);
   } else {
-    this.gameOverContainer.finalScore.setText('Puntuación: ' + score);
+    this.gameOverContainer.finalScore.setText('Modo X-Y - Puntuación: ' + score);
     prepareGameOverScore(this);
     loadRankingInto(this.gameOverContainer.topRankingList, null, 3);
   }
@@ -2560,7 +2675,7 @@ function enableInfiniteModeThreats(scene) {
   scene.nextTravelSentinelEligibleAt = 0;
 }
 
-function prepareUnrankedGameOver(scene, message) {
+function prepareUnrankedGameOver(scene, message = '') {
   pendingScoreSave = null;
   lastScoreSaved = false;
 
@@ -2708,9 +2823,15 @@ function startFinalDamageGameOver(scene) {
 }
 
 function takeDirectDamage(scene) {
+  if (isShipDamageInvulnerable(scene)) return false;
   playBadSound(scene);
   flashPlayerShip(scene, true);
   loseLife(scene);
+  return true;
+}
+
+function isShipDamageInvulnerable(scene) {
+  return Boolean(scene && scene.shipDamageTween);
 }
 
 function flashPlayerShip(scene, damaged = false) {
@@ -3086,7 +3207,8 @@ function pauseGame() {
 
   pauseFallingObjects(this);
   pauseTimedGameplay(this);
-  showOverlayScreen(this, 'pause');
+  showOverlayScreen(this, null);
+  setPauseSettingsVisible(true);
 }
 
 function resumeGame() {
@@ -3095,6 +3217,7 @@ function resumeGame() {
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
   setPauseOverlayMode(this, 'normal');
+  setPauseSettingsVisible(false);
   setXyControlVisible(this, true);
   showOverlayScreen(this, null);
 
@@ -3451,16 +3574,15 @@ function showPointPopup(scene, x, y, points, color = '#ffd84d', label = null, du
   const text = trackGameplayVisual(scene, createCanvasTextImage(scene, label || '+' + points, {
     fontSize: 18,
     fill: getPointPopupGradientColors(color),
-    stroke: '#050914',
-    strokeThickness: 6,
     texturePrefix: 'pointPopupText',
   }).setPosition(popupPosition.x, popupPosition.y).setDepth(UI_DEPTH + 4));
 
-  text.setScale(0.78);
+  text.setScale(0.66);
+  text.setAlpha(0.84);
   scene.tweens.add({
     targets: text,
     y: popupPosition.y - 50,
-    scale: 1.05,
+    scale: 0.9,
     duration,
     ease: 'Back.easeOut',
   });
@@ -3483,8 +3605,8 @@ function showStreakPointPopup(scene, x, y, label) {
   const popupPosition = getPointPopupPosition(scene, x, y);
   const container = trackGameplayVisual(scene, scene.add.container(popupPosition.x, popupPosition.y));
   container.setDepth(UI_DEPTH + 5);
-  container.setScale(0.72);
-  container.setAlpha(1);
+  container.setScale(0.62);
+  container.setAlpha(0.84);
 
   const streakText = createStreakGradientText(scene, label);
   container.add(streakText);
@@ -3492,7 +3614,7 @@ function showStreakPointPopup(scene, x, y, label) {
   scene.tweens.add({
     targets: container,
     y: popupPosition.y - 48,
-    scale: 1,
+    scale: 0.88,
     duration: STREAK_POINT_POPUP_DURATION,
     ease: 'Sine.easeOut',
   });
@@ -3531,15 +3653,13 @@ function createStreakGradientText(scene, label) {
   return createCanvasTextImage(scene, label, {
     fontSize: 22,
     fill: STREAK_POINT_POPUP_COLORS,
-    stroke: '#050914',
-    strokeThickness: 6,
     textureKey,
   });
 }
 
 function createCanvasTextImage(scene, label, options = {}) {
   const fontSize = options.fontSize || 21;
-  const strokeThickness = options.strokeThickness === undefined ? 6 : options.strokeThickness;
+  const strokeThickness = options.strokeThickness || 0;
   const padding = options.padding === undefined ? 10 : options.padding;
   const font = 'bold ' + fontSize + 'px ' + FONT_FAMILY;
   const canvas = document.createElement('canvas');
@@ -3558,9 +3678,11 @@ function createCanvasTextImage(scene, label, options = {}) {
 
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
-  context.strokeStyle = options.stroke || '#050914';
-  context.lineWidth = strokeThickness;
-  context.strokeText(label, centerX, centerY);
+  if (strokeThickness > 0) {
+    context.strokeStyle = options.stroke || '#050914';
+    context.lineWidth = strokeThickness;
+    context.strokeText(label, centerX, centerY);
+  }
   context.fillStyle = Array.isArray(options.fill)
     ? createCanvasTextGradient(context, canvas, options.fill, padding)
     : (options.fill || '#ffd84d');
@@ -4112,11 +4234,8 @@ function updateBossWave(scene) {
   recoverStalledBossWave(scene, bossWave);
   if (scene.activeBossWave !== bossWave) return;
 
-  if (scene.bossLaser && !scene.bossLaser.getData('hasDamagedShip') && isLaserTouchingShip(scene, scene.bossLaser)) {
-    scene.bossLaser.setData('hasDamagedShip', true);
-    if (!isShieldActive(scene)) {
-      takeDirectDamage(scene);
-    }
+  if (scene.bossLaser && isLaserTouchingShip(scene, scene.bossLaser) && !isShieldActive(scene)) {
+    takeDirectDamage(scene);
   }
 }
 
@@ -4236,6 +4355,10 @@ function updateRedNeedleBossWave(scene, bossWave) {
 
     fireRedNeedleBossShot(scene, shot);
     pass.shotsFired += 1;
+  }
+
+  if (isRedNeedleOverlappingShip(scene, scene.bossShip, 1.35)) {
+    handleHostileShipContact(scene, scene.bossShip, scene.bossShip.x, scene.bossShip.y, 'redNeedle');
   }
 }
 
@@ -4475,7 +4598,6 @@ function fireBossLaser(scene, laserX) {
   scene.bossLaserCore = scene.add.rectangle(laserX, laserCenterY, 9, laserHeight, 0xffedf0, 0.86)
     .setOrigin(0.5, 0.5)
     .setDepth(FX_DEPTH - 1);
-  scene.bossLaser.setData('hasDamagedShip', false);
   playBossLaserSound(scene);
 
   scene.bossLaserClearEvent = scene.time.addEvent({
@@ -4824,7 +4946,6 @@ function spawnPlasmaBar(scene) {
     gapVelocity: PLASMA_BAR_GAP_SPEED * direction,
     gapHalf,
     height: PLASMA_BAR_HEIGHT,
-    damaged: false,
     sparkSeed: Phaser.Math.Between(0, 9999),
   };
 
@@ -4973,7 +5094,7 @@ function drawJaggedSparkLine(graphics, startX, baseY, sparkWidth, pointCount, ph
 }
 
 function maybeDamageShipWithPlasma(scene, bar, shipHalfWidth, shipTop, shipBottom) {
-  if (bar.damaged || isShieldActive(scene)) return;
+  if (isShieldActive(scene) || isShipDamageInvulnerable(scene)) return;
 
   const barTop = bar.container.y - bar.height / 2;
   const barBottom = bar.container.y + bar.height / 2;
@@ -4986,7 +5107,6 @@ function maybeDamageShipWithPlasma(scene, bar, shipHalfWidth, shipTop, shipBotto
   const shipInsideGap = shipLeft >= gapLeft && shipRight <= gapRight;
   if (shipInsideGap) return;
 
-  bar.damaged = true;
   takeDirectDamage(scene);
 }
 
@@ -5226,8 +5346,13 @@ function chooseUpgrade(scene, upgradeKind) {
   scene.availableUpgradeChoices = null;
 
   if (scene.pendingBossWave) {
-    state = 'playing';
-    consumePendingBossWave(scene);
+    state = 'paused';
+    scene.resumeSpawnDelay = null;
+    setPauseOverlayMode(scene, 'normal');
+    setXyControlActive(scene, false);
+    prepareControlPauseResume(scene);
+    showOverlayScreen(scene, null);
+    setPauseSettingsVisible(true);
     return;
   }
 
@@ -5239,10 +5364,11 @@ function chooseUpgrade(scene, upgradeKind) {
 
   state = 'paused';
   scene.resumeSpawnDelay = UPGRADE_RESUME_DELAY;
-  setPauseOverlayMode(scene, 'upgrade');
+  setPauseOverlayMode(scene, 'normal');
   setXyControlActive(scene, false);
   prepareControlPauseResume(scene);
-  showOverlayScreen(scene, 'pause');
+  showOverlayScreen(scene, null);
+  setPauseSettingsVisible(true);
 }
 
 function getUpgradeLevel(upgradeKind) {
@@ -5423,6 +5549,7 @@ function isPreciseShipOverlap(scene, objectA, objectB) {
   const object = getCaughtObject(scene, objectA, objectB);
   if (!object) return false;
   if (object.getData('kind') === 'spikeDrone' && object.getData('spikeState') !== 'expanded' && !isShieldActive(scene)) return false;
+  if (object.getData('kind') === 'redNeedle') return isRedNeedleOverlappingShip(scene, object);
   if (object.getData('kind') === 'redNeedleLaser') return isRedNeedleLaserOverlappingShip(scene, object);
 
   if (isShieldActive(scene)) {
@@ -5433,12 +5560,26 @@ function isPreciseShipOverlap(scene, objectA, objectB) {
 }
 
 function isRedNeedleLaserOverlappingShip(scene, laser) {
-  const halfWidth = RED_NEEDLE_LASER_WIDTH / 2;
-  const halfHeight = RED_NEEDLE_LASER_HEIGHT / 2;
-  const left = laser.x - halfWidth;
-  const right = laser.x + halfWidth;
-  const top = laser.y - halfHeight;
-  const bottom = laser.y + halfHeight;
+  return isRectOverlappingShip(scene, laser.x, laser.y, RED_NEEDLE_LASER_WIDTH, RED_NEEDLE_LASER_HEIGHT);
+}
+
+function isRedNeedleOverlappingShip(scene, needle, scale = needle.scaleX || 1) {
+  return isRectOverlappingShip(
+    scene,
+    needle.x,
+    needle.y,
+    (RED_NEEDLE_WIDTH - 12) * Math.abs(scale),
+    (RED_NEEDLE_HEIGHT - 6) * Math.abs(scale)
+  );
+}
+
+function isRectOverlappingShip(scene, x, y, width, height) {
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  const left = x - halfWidth;
+  const right = x + halfWidth;
+  const top = y - halfHeight;
+  const bottom = y + halfHeight;
 
   if (isShieldActive(scene)) {
     const closestX = Phaser.Math.Clamp(scene.ship.x, left, right);
@@ -5448,14 +5589,22 @@ function isRedNeedleLaserOverlappingShip(scene, laser) {
     return distanceX * distanceX + distanceY * distanceY <= SHIELD_BUBBLE_RADIUS * SHIELD_BUBBLE_RADIUS;
   }
 
-  return getShipHitboxPolygon(scene).some((point) => (
+  const shipPolygon = getShipHitboxPolygon(scene);
+  const rectCorners = [
+    { x: left, y: top },
+    { x: right, y: top },
+    { x: right, y: bottom },
+    { x: left, y: bottom },
+  ];
+
+  return shipPolygon.some((point) => (
     point.x >= left &&
     point.x <= right &&
     point.y >= top &&
     point.y <= bottom
-  )) || (
-    laser.x >= scene.ship.x - getShipWidth(scene) / 2 &&
-    laser.x <= scene.ship.x + getShipWidth(scene) / 2 &&
+  )) || rectCorners.some((point) => isPointInPolygon(point.x, point.y, shipPolygon)) || (
+    x >= scene.ship.x - getShipWidth(scene) / 2 &&
+    x <= scene.ship.x + getShipWidth(scene) / 2 &&
     bottom >= scene.ship.y - SHIP_HEIGHT / 2 &&
     top <= scene.ship.y + SHIP_HEIGHT / 2
   );
@@ -5936,7 +6085,7 @@ function hasFallingAsteroid(scene) {
 function countActiveHostileFallingObjects(scene) {
   return scene.balls
     .getChildren()
-    .filter((ball) => ball.active && (ball.getData('kind') === 'damageBooster' || ball.getData('kind') === 'spikeDrone' || ball.getData('kind') === 'redNeedleLaser' || isAsteroidKind(ball.getData('kind'))))
+    .filter((ball) => ball.active && isShieldBlockedKind(ball.getData('kind')))
     .length;
 }
 
@@ -5976,7 +6125,7 @@ function isAsteroidKind(kind) {
 }
 
 function isShieldBlockedKind(kind) {
-  return kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedleLaser' || isAsteroidKind(kind);
+  return kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || isAsteroidKind(kind);
 }
 
 function findSpawnX(scene) {
@@ -6202,45 +6351,21 @@ function catchBall(ball, scene) {
   const isPurpleEnergy = Boolean(ball.getData('isPurpleEnergy'));
   let hitFeedbackShown = false;
   if (kind === 'spikeDrone' && ball.getData('spikeState') !== 'expanded' && !isShieldActive(scene)) return;
-  ball.destroy();
 
-  if (kind === 'redNeedle') {
-    if (isShieldActive(scene)) {
-      showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
-      playShieldBlockSound(scene);
-      flashPlayerShip(scene);
-      addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#4da3ff' });
-    }
-    return;
-  }
-
-  if (kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedleLaser') {
-    showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
+  if (isShieldBlockedKind(kind)) {
+    handleHostileShipContact(scene, ball, x, y, kind, isPurpleEnergy);
     hitFeedbackShown = true;
-    if (!isShieldActive(scene)) {
-      takeDirectDamage(scene);
-    } else {
-      playShieldBlockSound(scene);
-      flashPlayerShip(scene);
-      addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#4da3ff' });
-    }
-  } else if (isAsteroidKind(kind)) {
-    showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
-    hitFeedbackShown = true;
-    if (!isShieldActive(scene)) {
-      takeDirectDamage(scene);
-    } else {
-      playShieldBlockSound(scene);
-      flashPlayerShip(scene);
-      addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#4da3ff' });
-    }
   } else if (kind === 'lifeBooster') {
+    ball.destroy();
     gainLife(scene);
   } else if (kind === 'scoreBooster') {
+    ball.destroy();
     activateScoreBooster(scene);
   } else if (kind === 'shieldBooster') {
+    ball.destroy();
     activateShieldBooster(scene);
   } else {
+    ball.destroy();
     const points = getEnergyBallValue() * scoreMultiplier;
     addScore(scene, points, true, { x, y, color: isPurpleEnergy ? '#d7a8ff' : '#ffd84d' });
     ballsCaught += 1;
@@ -6250,7 +6375,7 @@ function catchBall(ball, scene) {
   if (state !== 'playing') return;
 
   if (!hitFeedbackShown) {
-    if (kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedleLaser' || isAsteroidKind(kind)) {
+    if (isShieldBlockedKind(kind)) {
       playBadSound(scene);
     } else if (isBoosterKind(kind)) {
       playBoosterSound(scene);
@@ -6265,6 +6390,29 @@ function catchBall(ball, scene) {
   if (kind === 'ball') {
     maybeOpenUpgradeChoice(scene);
   }
+}
+
+function handleHostileShipContact(scene, hostile, x, y, kind, isPurpleEnergy = false) {
+  if (!isShieldActive(scene) && isShipDamageInvulnerable(scene)) return;
+  if (isShieldActive(scene) && hostile && hostile.getData('hasBeenShieldBlocked')) return;
+
+  showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
+  if (!isShieldActive(scene)) {
+    takeDirectDamage(scene);
+    return;
+  }
+
+  if (hostile) hostile.setData('hasBeenShieldBlocked', true);
+  playShieldBlockSound(scene);
+  flashPlayerShip(scene);
+  addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#4da3ff' });
+  destroyShieldBlockedHostile(scene, hostile);
+}
+
+function destroyShieldBlockedHostile(scene, hostile) {
+  if (!hostile || !hostile.active) return;
+  if (scene && scene.tweens) scene.tweens.killTweensOf(hostile);
+  hostile.destroy();
 }
 
 function playCatchSound(scene) {
@@ -6467,6 +6615,7 @@ function showOptionsOverlay(scene, returnState) {
     ? 'pause'
     : (returnState || fallbackScreen || 'menu');
   state = 'options';
+  setPauseSettingsVisible(false);
   updateAudioOptionButtons(scene);
   showOverlayScreen(scene, 'options');
 }
@@ -6478,7 +6627,7 @@ function hideOptionsOverlay(scene) {
 
   if (returnScreen === 'pause') {
     state = 'paused';
-    showOverlayScreen(scene, 'pause');
+    showFrozenPauseMenu(scene);
     return;
   }
 
@@ -6497,6 +6646,7 @@ function hideOptionsOverlay(scene) {
   state = 'menu';
   const currentHud = initHud();
   if (currentHud.root) currentHud.root.classList.remove('is-visible');
+  setPauseSettingsVisible(false);
   showOverlayScreen(scene, 'menu');
 }
 
@@ -6591,6 +6741,7 @@ function getAbsorbParticleTint(kind, isPurpleEnergy = false) {
   if (isAsteroidKind(kind)) return 0xaeb7c8;
   if (kind === 'damageBooster') return 0xff3b4f;
   if (kind === 'spikeDrone') return 0xff3045;
+  if (kind === 'redNeedle') return 0xff263c;
   if (kind === 'redNeedleLaser') return 0xff263c;
   if (kind === 'lifeBooster') return 0x4dff88;
   if (kind === 'scoreBooster') return 0x9b5cff;
