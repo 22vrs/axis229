@@ -3586,16 +3586,15 @@ function showPointPopup(scene, x, y, points, color = '#ffd84d', label = null, du
   const text = trackGameplayVisual(scene, createCanvasTextImage(scene, label || '+' + points, {
     fontSize: 18,
     fill: getPointPopupGradientColors(color),
-    stroke: '#050914',
-    strokeThickness: 6,
     texturePrefix: 'pointPopupText',
   }).setPosition(popupPosition.x, popupPosition.y).setDepth(UI_DEPTH + 4));
 
-  text.setScale(0.78);
+  text.setScale(0.66);
+  text.setAlpha(0.84);
   scene.tweens.add({
     targets: text,
     y: popupPosition.y - 50,
-    scale: 1.05,
+    scale: 0.9,
     duration,
     ease: 'Back.easeOut',
   });
@@ -3618,8 +3617,8 @@ function showStreakPointPopup(scene, x, y, label) {
   const popupPosition = getPointPopupPosition(scene, x, y);
   const container = trackGameplayVisual(scene, scene.add.container(popupPosition.x, popupPosition.y));
   container.setDepth(UI_DEPTH + 5);
-  container.setScale(0.72);
-  container.setAlpha(1);
+  container.setScale(0.62);
+  container.setAlpha(0.84);
 
   const streakText = createStreakGradientText(scene, label);
   container.add(streakText);
@@ -3627,7 +3626,7 @@ function showStreakPointPopup(scene, x, y, label) {
   scene.tweens.add({
     targets: container,
     y: popupPosition.y - 48,
-    scale: 1,
+    scale: 0.88,
     duration: STREAK_POINT_POPUP_DURATION,
     ease: 'Sine.easeOut',
   });
@@ -3666,15 +3665,13 @@ function createStreakGradientText(scene, label) {
   return createCanvasTextImage(scene, label, {
     fontSize: 22,
     fill: STREAK_POINT_POPUP_COLORS,
-    stroke: '#050914',
-    strokeThickness: 6,
     textureKey,
   });
 }
 
 function createCanvasTextImage(scene, label, options = {}) {
   const fontSize = options.fontSize || 21;
-  const strokeThickness = options.strokeThickness === undefined ? 6 : options.strokeThickness;
+  const strokeThickness = options.strokeThickness || 0;
   const padding = options.padding === undefined ? 10 : options.padding;
   const font = 'bold ' + fontSize + 'px ' + FONT_FAMILY;
   const canvas = document.createElement('canvas');
@@ -3693,9 +3690,11 @@ function createCanvasTextImage(scene, label, options = {}) {
 
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
-  context.strokeStyle = options.stroke || '#050914';
-  context.lineWidth = strokeThickness;
-  context.strokeText(label, centerX, centerY);
+  if (strokeThickness > 0) {
+    context.strokeStyle = options.stroke || '#050914';
+    context.lineWidth = strokeThickness;
+    context.strokeText(label, centerX, centerY);
+  }
   context.fillStyle = Array.isArray(options.fill)
     ? createCanvasTextGradient(context, canvas, options.fill, padding)
     : (options.fill || '#ffd84d');
