@@ -753,36 +753,70 @@ function createShipTexture(scene, key, colors, textureWidth = SHIP_WIDTH) {
   const centerX = textureWidth / 2;
   const left = 4;
   const right = textureWidth - 4;
-  const innerLeft = textureWidth * 0.28;
-  const innerRight = textureWidth * 0.72;
+  const innerLeft = textureWidth * 0.29;
+  const innerRight = textureWidth * 0.71;
+  const darkPlate = 0x2b3038;
+  const midPlate = 0x7e8794;
+  const lightPlate = 0xd8dde5;
+  const palePlate = 0xeef1f5;
+  const canopyShade = 0x5f6f83;
+  const accent = colors.hullAccent || colors.wingAccent || colors.hullSideAccent || 0x9aa3af;
 
-  graphics.fillStyle(colors.wing, 0.95);
+  graphics.fillStyle(colors.wing, 1);
   graphics.fillPoints([
-    { x: left, y: 28 },
-    { x: innerLeft, y: 8 },
-    { x: centerX - 6, y: 18 },
-    { x: innerLeft - 8, y: 33 },
+    { x: left + 3, y: 26 },
+    { x: innerLeft, y: 9 },
+    { x: centerX - 10, y: 18 },
+    { x: innerLeft - 7, y: 31 },
   ], true);
   graphics.fillPoints([
-    { x: right, y: 28 },
-    { x: innerRight, y: 8 },
-    { x: centerX + 6, y: 18 },
-    { x: innerRight + 8, y: 33 },
+    { x: right - 3, y: 26 },
+    { x: innerRight, y: 9 },
+    { x: centerX + 10, y: 18 },
+    { x: innerRight + 7, y: 31 },
+  ], true);
+
+  graphics.fillStyle(darkPlate, 1);
+  graphics.fillPoints([
+    { x: left + 12, y: 25 },
+    { x: innerLeft + 2, y: 12 },
+    { x: centerX - 22, y: 19 },
+    { x: innerLeft - 2, y: 27 },
+  ], true);
+  graphics.fillPoints([
+    { x: right - 12, y: 25 },
+    { x: innerRight - 2, y: 12 },
+    { x: centerX + 22, y: 19 },
+    { x: innerRight + 2, y: 27 },
+  ], true);
+
+  graphics.fillStyle(midPlate, 1);
+  graphics.fillPoints([
+    { x: left + 18, y: 23 },
+    { x: innerLeft + 5, y: 15 },
+    { x: centerX - 32, y: 20 },
+    { x: innerLeft, y: 25 },
+  ], true);
+  graphics.fillPoints([
+    { x: right - 18, y: 23 },
+    { x: innerRight - 5, y: 15 },
+    { x: centerX + 32, y: 20 },
+    { x: innerRight, y: 25 },
   ], true);
 
   if (colors.wingAccent) {
-    graphics.fillStyle(colors.wingAccent, 0.9);
+    graphics.fillStyle(colors.wingAccent, 1);
     graphics.fillPoints([
-      { x: left + 11, y: 27 },
-      { x: innerLeft + 1, y: 13 },
-      { x: centerX - 16, y: 20 },
-      { x: innerLeft - 5, y: 28 },
+      { x: left + 8, y: 27 },
+      { x: innerLeft + 1, y: 17 },
+      { x: centerX - 26, y: 22 },
+      { x: innerLeft - 6, y: 29 },
     ], true);
     graphics.fillPoints([
-      { x: right - 11, y: 27 },
-      { x: innerRight - 1, y: 13 },
-      { x: centerX + 16, y: 20 },
-      { x: innerRight + 5, y: 28 },
+      { x: right - 8, y: 27 },
+      { x: innerRight - 1, y: 17 },
+      { x: centerX + 26, y: 22 },
+      { x: innerRight + 6, y: 29 },
     ], true);
   }
 
@@ -796,42 +830,69 @@ function createShipTexture(scene, key, colors, textureWidth = SHIP_WIDTH) {
     { x: centerX - 34, y: 13 },
   ], true);
 
+  graphics.fillStyle(lightPlate, 1);
+  graphics.fillPoints([
+    { x: centerX, y: 3 },
+    { x: centerX + 21, y: 12 },
+    { x: centerX + 11, y: 16 },
+    { x: centerX, y: 10 },
+    { x: centerX - 11, y: 16 },
+    { x: centerX - 21, y: 12 },
+  ], true);
+
+  graphics.fillStyle(midPlate, 1);
+  graphics.fillPoints([
+    { x: centerX - 23, y: 14 },
+    { x: centerX - 11, y: 18 },
+    { x: centerX - 14, y: 29 },
+    { x: centerX - 25, y: 27 },
+  ], true);
+  graphics.fillPoints([
+    { x: centerX + 23, y: 14 },
+    { x: centerX + 11, y: 18 },
+    { x: centerX + 14, y: 29 },
+    { x: centerX + 25, y: 27 },
+  ], true);
+
   if (colors.hullAccent) {
-    graphics.fillStyle(colors.hullAccent, 0.82);
+    graphics.fillStyle(colors.hullAccent, 1);
     graphics.fillPoints([
       { x: centerX, y: 5 },
-      { x: centerX + 14, y: 13 },
-      { x: centerX + 11, y: 28 },
+      { x: centerX + 13, y: 13 },
+      { x: centerX + 8, y: 27 },
       { x: centerX, y: 31 },
-      { x: centerX - 11, y: 28 },
-      { x: centerX - 14, y: 13 },
+      { x: centerX - 8, y: 27 },
+      { x: centerX - 13, y: 13 },
     ], true);
   }
 
   if (colors.hullSideAccent) {
-    graphics.fillStyle(colors.hullSideAccent, 0.72);
-    graphics.fillRoundedRect(centerX - 31, 16, 17, 6, 2);
-    graphics.fillRoundedRect(centerX + 14, 16, 17, 6, 2);
+    graphics.fillStyle(colors.hullSideAccent, 1);
+    graphics.fillRoundedRect(centerX - 33, 15, 17, 5, 2);
+    graphics.fillRoundedRect(centerX + 16, 15, 17, 5, 2);
+    graphics.fillStyle(colors.hullSideAccent, 1);
+    graphics.fillRoundedRect(centerX - 28, 23, 11, 4, 1);
+    graphics.fillRoundedRect(centerX + 17, 23, 11, 4, 1);
   }
 
-  graphics.fillStyle(colors.cockpit, 0.82);
-  graphics.fillEllipse(centerX, 15, 24, 12);
-  graphics.fillStyle(0x0b1024, 0.32);
-  graphics.fillEllipse(centerX, 16, 14, 6);
+  graphics.fillStyle(canopyShade, 1);
+  graphics.fillEllipse(centerX, 15, 27, 13);
+  graphics.fillStyle(colors.cockpit, 1);
+  graphics.fillEllipse(centerX, 14, 22, 10);
+  graphics.fillStyle(palePlate, 1);
+  graphics.fillEllipse(centerX - 5, 12, 7, 3);
 
-  graphics.fillStyle(colors.engine, 0.85);
-  graphics.fillTriangle(centerX - 13, 29, centerX - 6, 33, centerX - 19, 33);
-  graphics.fillTriangle(centerX + 13, 29, centerX + 6, 33, centerX + 19, 33);
+  graphics.fillStyle(0x6d7683, 1);
+  graphics.fillRoundedRect(centerX - 6, 24, 12, 6, 2);
+  graphics.fillStyle(accent, 1);
+  graphics.fillRoundedRect(centerX - 3, 25, 6, 3, 1);
 
-  graphics.lineStyle(2, 0xffffff, 0.42);
-  graphics.strokePoints([
-    { x: centerX, y: 2 },
-    { x: centerX + 34, y: 13 },
-    { x: centerX + 24, y: 28 },
-    { x: centerX, y: 33 },
-    { x: centerX - 24, y: 28 },
-    { x: centerX - 34, y: 13 },
-  ], true);
+  graphics.fillStyle(0x303743, 1);
+  graphics.fillRoundedRect(centerX - 23, 28, 15, 5, 2);
+  graphics.fillRoundedRect(centerX + 8, 28, 15, 5, 2);
+  graphics.fillStyle(colors.engine, 1);
+  graphics.fillTriangle(centerX - 15, 29, centerX - 8, 33, centerX - 23, 33);
+  graphics.fillTriangle(centerX + 15, 29, centerX + 8, 33, centerX + 23, 33);
 
   graphics.generateTexture(key, textureWidth, SHIP_HEIGHT);
   graphics.destroy();
