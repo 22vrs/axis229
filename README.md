@@ -33,7 +33,7 @@ En modo infinito, el primer jefe es `Drones`; despues los jefes se eligen aleato
 
 ## Progresion
 
-- La partida empieza con 5 vidas.
+- La partida empieza con 3 vidas.
 - La dificultad sube con el nivel: la gravedad de los orbes escala desde `1.00x` hasta `2.00x`.
 - El intervalo entre apariciones empieza en `1500 ms` y baja hasta `600 ms`.
 - Cada vez que llenas la barra de progreso subes de nivel y, si hay mejoras disponibles, eliges entre 2 opciones.
