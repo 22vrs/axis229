@@ -29,7 +29,7 @@ El juego carga Phaser y Supabase desde CDN, asi que hace falta conexion a intern
 | `JUGAR` | Partida normal con progresion, jefes cada 3 niveles y ranking. | Si |
 | `MODO INFINITO` | Partida libre con amenazas desbloqueadas y jefes aleatorios. | No |
 
-En modo infinito, el primer jefe es `Marea de Plasma`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
+En modo infinito, el primer jefe es `Drones`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
 
 ## Progresion
 

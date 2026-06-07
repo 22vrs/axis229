@@ -338,7 +338,7 @@ function getBossConfigForLevel(level) {
 
   const bossKinds = ['red', 'boss', 'asteroid', 'plasma', 'drones', 'redNeedleBoss'];
   const bossKind = isInfiniteGameMode()
-    ? (bossIndex === 0 ? 'plasma' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
+    ? (bossIndex === 0 ? 'drones' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
     : bossKinds[bossIndex % bossKinds.length];
   return createBossConfig(bossKind);
 }
@@ -1059,7 +1059,7 @@ function createSpikeDroneTexture(scene, key, mode) {
   graphics.strokePath();
 
   const safeLight = !warning && !expanded && !disabled;
-  const activeLightColor = warningGreen || safeLight ? 0x4dff88 : 0xff1f32;
+  const activeLightColor = warningGreen ? 0xff8f2a : safeLight ? 0x4dff88 : 0xff1f32;
   const lightColor = disabled ? 0x9aa3af : warning || expanded || safeLight ? activeLightColor : 0x263142;
   const lightAlpha = disabled ? 0.7 : warning || expanded || safeLight ? 1 : 0.86;
   const lightGlowRadius = safeLight || expanded ? 14 : warning ? 10 : 10;
@@ -5945,7 +5945,7 @@ function disableSpikeDrone(scene, drone) {
 }
 
 function isSpikeDroneGreenState(stateName) {
-  return stateName === 'folded' || stateName === 'warningGreen';
+  return stateName === 'folded';
 }
 
 function pauseSpikeDrones(scene) {
