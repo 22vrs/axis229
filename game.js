@@ -31,8 +31,8 @@ const STARFIELD_SPEED_RATIO = 0.32;
 const MAX_STARFIELD_SPEED_MULTIPLIER = 2.6;
 const BOOSTER_GRAVITY_RATIO = 0.8;
 const SHIP_SIDE_HIDE_RATIO = 1 / 3;
-const SHIP_WIDTH = 136;
-const SHIP_HEIGHT = 34;
+const SHIP_WIDTH = 156;
+const SHIP_HEIGHT = 46;
 const SHIP_RADIUS = 8;
 const SHIELD_BUBBLE_RADIUS = 82;
 const SHIELD_BUBBLE_DIAMETER = SHIELD_BUBBLE_RADIUS * 2;
@@ -751,148 +751,208 @@ function createEnergyBallTexture(scene, ballKey, colors) {
 function createShipTexture(scene, key, colors, textureWidth = SHIP_WIDTH) {
   const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
   const centerX = textureWidth / 2;
-  const left = 4;
-  const right = textureWidth - 4;
-  const innerLeft = textureWidth * 0.29;
-  const innerRight = textureWidth * 0.71;
-  const darkPlate = 0x2b3038;
-  const midPlate = 0x7e8794;
-  const lightPlate = 0xd8dde5;
-  const palePlate = 0xeef1f5;
-  const canopyShade = 0x5f6f83;
+  const centerY = SHIP_HEIGHT / 2;
+  const left = 2;
+  const right = textureWidth - 2;
+  const hullTop = 3;
+  const hullBottom = SHIP_HEIGHT - 7;
+  const darkPlate = 0x252a31;
+  const shadowPlate = 0x414852;
+  const midPlate = 0x8d96a2;
+  const lightPlate = 0xd6dbe3;
+  const palePlate = 0xf1f4f8;
+  const panelLine = 0x1e232a;
+  const glassDark = 0x263341;
+  const glassLight = colors.cockpit || 0xe7f7ff;
   const accent = colors.hullAccent || colors.wingAccent || colors.hullSideAccent || 0x9aa3af;
+
+  graphics.fillStyle(0x10151c, 0.7);
+  graphics.fillPoints([
+    { x: left + 5, y: 30 },
+    { x: 41, y: 4 },
+    { x: centerX - 18, y: 14 },
+    { x: centerX - 20, y: 34 },
+    { x: 44, y: SHIP_HEIGHT - 4 },
+  ], true);
+  graphics.fillPoints([
+    { x: right - 5, y: 30 },
+    { x: textureWidth - 41, y: 4 },
+    { x: centerX + 18, y: 14 },
+    { x: centerX + 20, y: 34 },
+    { x: textureWidth - 44, y: SHIP_HEIGHT - 4 },
+  ], true);
 
   graphics.fillStyle(colors.wing, 1);
   graphics.fillPoints([
-    { x: left + 3, y: 26 },
-    { x: innerLeft, y: 9 },
-    { x: centerX - 10, y: 18 },
-    { x: innerLeft - 7, y: 31 },
+    { x: left, y: 28 },
+    { x: 42, y: 7 },
+    { x: centerX - 25, y: 18 },
+    { x: centerX - 33, y: 34 },
+    { x: 25, y: 40 },
   ], true);
   graphics.fillPoints([
-    { x: right - 3, y: 26 },
-    { x: innerRight, y: 9 },
-    { x: centerX + 10, y: 18 },
-    { x: innerRight + 7, y: 31 },
+    { x: right, y: 28 },
+    { x: textureWidth - 42, y: 7 },
+    { x: centerX + 25, y: 18 },
+    { x: centerX + 33, y: 34 },
+    { x: textureWidth - 25, y: 40 },
+  ], true);
+
+  graphics.fillStyle(lightPlate, 0.92);
+  graphics.fillPoints([
+    { x: left + 6, y: 25 },
+    { x: 43, y: 10 },
+    { x: centerX - 35, y: 18 },
+    { x: 25, y: 34 },
+  ], true);
+  graphics.fillPoints([
+    { x: right - 6, y: 25 },
+    { x: textureWidth - 43, y: 10 },
+    { x: centerX + 35, y: 18 },
+    { x: textureWidth - 25, y: 34 },
   ], true);
 
   graphics.fillStyle(darkPlate, 1);
-  graphics.fillPoints([
-    { x: left + 12, y: 25 },
-    { x: innerLeft + 2, y: 12 },
-    { x: centerX - 22, y: 19 },
-    { x: innerLeft - 2, y: 27 },
-  ], true);
-  graphics.fillPoints([
-    { x: right - 12, y: 25 },
-    { x: innerRight - 2, y: 12 },
-    { x: centerX + 22, y: 19 },
-    { x: innerRight + 2, y: 27 },
-  ], true);
-
-  graphics.fillStyle(midPlate, 1);
-  graphics.fillPoints([
-    { x: left + 18, y: 23 },
-    { x: innerLeft + 5, y: 15 },
-    { x: centerX - 32, y: 20 },
-    { x: innerLeft, y: 25 },
-  ], true);
-  graphics.fillPoints([
-    { x: right - 18, y: 23 },
-    { x: innerRight - 5, y: 15 },
-    { x: centerX + 32, y: 20 },
-    { x: innerRight, y: 25 },
-  ], true);
+  graphics.fillTriangle(23, 27, 52, 16, 45, 30);
+  graphics.fillTriangle(textureWidth - 23, 27, textureWidth - 52, 16, textureWidth - 45, 30);
+  graphics.fillStyle(palePlate, 0.92);
+  for (let i = 0; i < 5; i += 1) {
+    graphics.fillRect(28 + i * 4, 25 + i * 0.4, 13, 2);
+    graphics.fillRect(textureWidth - 41 - i * 4, 25 + i * 0.4, 13, 2);
+  }
 
   if (colors.wingAccent) {
     graphics.fillStyle(colors.wingAccent, 1);
     graphics.fillPoints([
-      { x: left + 8, y: 27 },
-      { x: innerLeft + 1, y: 17 },
-      { x: centerX - 26, y: 22 },
-      { x: innerLeft - 6, y: 29 },
+      { x: 18, y: 31 },
+      { x: 52, y: 19 },
+      { x: centerX - 39, y: 25 },
+      { x: 33, y: 35 },
     ], true);
     graphics.fillPoints([
-      { x: right - 8, y: 27 },
-      { x: innerRight - 1, y: 17 },
-      { x: centerX + 26, y: 22 },
-      { x: innerRight + 6, y: 29 },
+      { x: textureWidth - 18, y: 31 },
+      { x: textureWidth - 52, y: 19 },
+      { x: centerX + 39, y: 25 },
+      { x: textureWidth - 33, y: 35 },
     ], true);
   }
 
   graphics.fillStyle(colors.hull, 1);
   graphics.fillPoints([
-    { x: centerX, y: 2 },
-    { x: centerX + 34, y: 13 },
-    { x: centerX + 24, y: 28 },
-    { x: centerX, y: 33 },
-    { x: centerX - 24, y: 28 },
-    { x: centerX - 34, y: 13 },
+    { x: centerX, y: hullTop },
+    { x: centerX + 44, y: 14 },
+    { x: centerX + 38, y: 35 },
+    { x: centerX + 17, y: hullBottom },
+    { x: centerX - 17, y: hullBottom },
+    { x: centerX - 38, y: 35 },
+    { x: centerX - 44, y: 14 },
   ], true);
 
   graphics.fillStyle(lightPlate, 1);
   graphics.fillPoints([
-    { x: centerX, y: 3 },
-    { x: centerX + 21, y: 12 },
-    { x: centerX + 11, y: 16 },
-    { x: centerX, y: 10 },
-    { x: centerX - 11, y: 16 },
-    { x: centerX - 21, y: 12 },
+    { x: centerX, y: hullTop + 1 },
+    { x: centerX + 26, y: 12 },
+    { x: centerX + 12, y: 18 },
+    { x: centerX, y: 12 },
+    { x: centerX - 12, y: 18 },
+    { x: centerX - 26, y: 12 },
   ], true);
 
   graphics.fillStyle(midPlate, 1);
   graphics.fillPoints([
-    { x: centerX - 23, y: 14 },
-    { x: centerX - 11, y: 18 },
-    { x: centerX - 14, y: 29 },
-    { x: centerX - 25, y: 27 },
+    { x: centerX - 42, y: 15 },
+    { x: centerX - 16, y: 20 },
+    { x: centerX - 19, y: 35 },
+    { x: centerX - 38, y: 32 },
   ], true);
   graphics.fillPoints([
-    { x: centerX + 23, y: 14 },
-    { x: centerX + 11, y: 18 },
-    { x: centerX + 14, y: 29 },
-    { x: centerX + 25, y: 27 },
+    { x: centerX + 42, y: 15 },
+    { x: centerX + 16, y: 20 },
+    { x: centerX + 19, y: 35 },
+    { x: centerX + 38, y: 32 },
   ], true);
 
   if (colors.hullAccent) {
     graphics.fillStyle(colors.hullAccent, 1);
     graphics.fillPoints([
-      { x: centerX, y: 5 },
-      { x: centerX + 13, y: 13 },
-      { x: centerX + 8, y: 27 },
-      { x: centerX, y: 31 },
-      { x: centerX - 8, y: 27 },
-      { x: centerX - 13, y: 13 },
+      { x: centerX, y: 7 },
+      { x: centerX + 16, y: 16 },
+      { x: centerX + 11, y: 34 },
+      { x: centerX, y: 38 },
+      { x: centerX - 11, y: 34 },
+      { x: centerX - 16, y: 16 },
     ], true);
   }
 
   if (colors.hullSideAccent) {
     graphics.fillStyle(colors.hullSideAccent, 1);
-    graphics.fillRoundedRect(centerX - 33, 15, 17, 5, 2);
-    graphics.fillRoundedRect(centerX + 16, 15, 17, 5, 2);
+    graphics.fillRoundedRect(centerX - 40, 18, 14, 5, 2);
+    graphics.fillRoundedRect(centerX + 26, 18, 14, 5, 2);
     graphics.fillStyle(colors.hullSideAccent, 1);
-    graphics.fillRoundedRect(centerX - 28, 23, 11, 4, 1);
-    graphics.fillRoundedRect(centerX + 17, 23, 11, 4, 1);
+    graphics.fillRoundedRect(centerX - 34, 29, 11, 4, 1);
+    graphics.fillRoundedRect(centerX + 23, 29, 11, 4, 1);
   }
 
-  graphics.fillStyle(canopyShade, 1);
-  graphics.fillEllipse(centerX, 15, 27, 13);
-  graphics.fillStyle(colors.cockpit, 1);
-  graphics.fillEllipse(centerX, 14, 22, 10);
-  graphics.fillStyle(palePlate, 1);
-  graphics.fillEllipse(centerX - 5, 12, 7, 3);
+  graphics.lineStyle(1, panelLine, 0.42);
+  graphics.strokePoints([
+    { x: centerX, y: hullTop },
+    { x: centerX + 44, y: 14 },
+    { x: centerX + 38, y: 35 },
+    { x: centerX + 17, y: hullBottom },
+    { x: centerX - 17, y: hullBottom },
+    { x: centerX - 38, y: 35 },
+    { x: centerX - 44, y: 14 },
+  ], true);
+  graphics.strokeLineShape(new Phaser.Geom.Line(centerX, hullTop + 2, centerX, hullBottom - 1));
+  graphics.strokeLineShape(new Phaser.Geom.Line(centerX - 40, 15, centerX - 18, 35));
+  graphics.strokeLineShape(new Phaser.Geom.Line(centerX + 40, 15, centerX + 18, 35));
 
-  graphics.fillStyle(0x6d7683, 1);
-  graphics.fillRoundedRect(centerX - 6, 24, 12, 6, 2);
-  graphics.fillStyle(accent, 1);
-  graphics.fillRoundedRect(centerX - 3, 25, 6, 3, 1);
+  graphics.fillStyle(0x161a1f, 1);
+  graphics.fillEllipse(centerX, centerY - 1, 30, 30);
+  graphics.fillStyle(shadowPlate, 1);
+  graphics.fillEllipse(centerX, centerY - 1, 24, 24);
+  graphics.fillStyle(glassDark, 1);
+  graphics.fillEllipse(centerX, centerY - 1, 17, 17);
+  graphics.fillStyle(glassLight, 0.9);
+  graphics.fillEllipse(centerX - 4, centerY - 5, 8, 7);
+  graphics.fillStyle(0x071016, 0.78);
+  graphics.fillEllipse(centerX + 2, centerY + 1, 10, 12);
+  graphics.lineStyle(2, palePlate, 0.46);
+  graphics.strokeCircle(centerX, centerY - 1, 14);
+  graphics.lineStyle(2, darkPlate, 0.8);
+  graphics.strokeCircle(centerX, centerY - 1, 20);
+
+  graphics.fillStyle(0x1a1f25, 1);
+  graphics.fillRoundedRect(centerX - 14, 31, 28, 9, 2);
+  graphics.fillStyle(0x090c10, 0.9);
+  for (let i = 0; i < 6; i += 1) {
+    graphics.fillRect(centerX - 11 + i * 4, 33, 2, 5);
+  }
+  graphics.lineStyle(1, accent, 0.45);
+  graphics.strokeRoundedRect(centerX - 14, 31, 28, 9, 2);
 
   graphics.fillStyle(0x303743, 1);
-  graphics.fillRoundedRect(centerX - 23, 28, 15, 5, 2);
-  graphics.fillRoundedRect(centerX + 8, 28, 15, 5, 2);
+  graphics.fillRoundedRect(centerX - 35, 35, 18, 7, 2);
+  graphics.fillRoundedRect(centerX + 17, 35, 18, 7, 2);
   graphics.fillStyle(colors.engine, 1);
-  graphics.fillTriangle(centerX - 15, 29, centerX - 8, 33, centerX - 23, 33);
-  graphics.fillTriangle(centerX + 15, 29, centerX + 8, 33, centerX + 23, 33);
+  graphics.fillTriangle(centerX - 26, 38, centerX - 16, SHIP_HEIGHT, centerX - 36, SHIP_HEIGHT);
+  graphics.fillTriangle(centerX + 26, 38, centerX + 16, SHIP_HEIGHT, centerX + 36, SHIP_HEIGHT);
+
+  graphics.lineStyle(1, 0xffffff, 0.35);
+  graphics.strokePoints([
+    { x: left, y: 28 },
+    { x: 42, y: 7 },
+    { x: centerX - 25, y: 18 },
+    { x: centerX - 33, y: 34 },
+    { x: 25, y: 40 },
+  ], true);
+  graphics.strokePoints([
+    { x: right, y: 28 },
+    { x: textureWidth - 42, y: 7 },
+    { x: centerX + 25, y: 18 },
+    { x: centerX + 33, y: 34 },
+    { x: textureWidth - 25, y: 40 },
+  ], true);
 
   graphics.generateTexture(key, textureWidth, SHIP_HEIGHT);
   graphics.destroy();
@@ -1704,14 +1764,15 @@ function getShipHitboxPolygon(scene) {
   const x = scene.ship.x;
   const y = scene.ship.y;
   return [
-    { x, y: y - 15 },
-    { x: x + 30, y: y - 9 },
-    { x: x + 64, y: y + 11 },
-    { x: x + 38, y: y + 16 },
-    { x, y: y + 16 },
-    { x: x - 38, y: y + 16 },
-    { x: x - 64, y: y + 11 },
-    { x: x - 30, y: y - 9 },
+    { x, y: y - 20 },
+    { x: x + 44, y: y - 12 },
+    { x: x + 74, y: y + 6 },
+    { x: x + 48, y: y + 18 },
+    { x: x + 16, y: y + 21 },
+    { x: x - 16, y: y + 21 },
+    { x: x - 48, y: y + 18 },
+    { x: x - 74, y: y + 6 },
+    { x: x - 44, y: y - 12 },
   ];
 }
 
