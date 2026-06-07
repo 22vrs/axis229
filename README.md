@@ -14,13 +14,18 @@ Despues entra en `http://localhost:8000`.
 
 El juego carga Phaser y Supabase desde CDN, asi que hace falta conexion a internet para jugar con todas las funciones. Los sonidos y la musica estan en `assets/`.
 
+Musica de fondo esperada:
+
+- `assets/menu-music.mp3`: menu principal, ranking y pantalla de fin de partida.
+- `assets/game-music.mp3`: musica durante la partida.
+
 ## Controles
 
 - Arrastra la nave para moverla libremente en X-Y dentro de la pantalla.
 - Recoge orbes amarillos para sumar puntos y llenar la barra de progreso.
 - Evita enemigos, asteroides, lasers y barras de plasma.
 - Usa el boton de pausa del HUD para pausar, rendirte o abrir opciones.
-- En opciones puedes activar o desactivar efectos y musica. La preferencia se guarda en `localStorage`.
+- En opciones puedes activar o desactivar efectos y musica, y ajustar su volumen por separado. La preferencia se guarda en `localStorage`.
 
 ## Modos
 

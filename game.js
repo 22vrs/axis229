@@ -12,7 +12,8 @@ const SPIKE_DRONE_SOUND_PATH = 'assets/spike-drone.mp3';
 const SPIKE_DRONE_DISABLE_SOUND_PATH = 'assets/spike-drone-disable.mp3';
 const RED_NEEDLE_SHOT_SOUND_PATH = 'assets/red-needle-shot.mp3';
 const STREAK_SUCCESS_SOUND_PATH = 'assets/streak-success.mp3';
-const BACKGROUND_MUSIC_PATH = 'assets/background.mp3';
+const MENU_MUSIC_PATH = 'assets/menu-music.mp3';
+const GAMEPLAY_MUSIC_PATH = 'assets/game-music.mp3';
 const PURPLE_BOOSTER_MUSIC_PATH = 'assets/purple-booster.mp3';
 const PLAYER_SHIP_IMAGE_PATH = 'assets/images/player-ship.svg';
 const SUPABASE_URL = 'https://fqkpwigonxgnsynfdzyw.supabase.co';
@@ -278,6 +279,11 @@ let lastScoreSaved = false;
 let currentGameMode = 'xy';
 let soundEffectsEnabled = true;
 let musicEnabled = true;
+let soundEffectsVolume = 1;
+let musicVolume = 1;
+let audioUnlockListenersBound = false;
+let audioUnlocked = false;
+let musicPlaybackBlocked = false;
 
 loadAudioSettings();
 
@@ -639,6 +645,7 @@ function create() {
   this.gameOverContainer = createGameOver(this);
   this.rankingContainer = createRanking(this);
   updateAudioOptionButtons(this);
+  bindAudioUnlockListeners(this);
   setUiDepth(this);
   layoutScene(this);
 
@@ -2544,8 +2551,23 @@ function createOptionsOverlay(scene) {
     } else if (scene.optionsReturnScreen === 'pause' || state === 'playing' || state === 'paused') {
       resumeCurrentMusic(scene);
     } else {
-      playBackgroundMusic(scene);
+      playMusicForCurrentState(scene);
     }
+  });
+
+  const sfxVolumeSlider = bindVolumeSlider('sfx-volume-slider', (value) => {
+    soundEffectsVolume = value;
+    saveAudioSettings();
+    applyAudioVolumes(scene);
+    updateAudioOptionButtons(scene);
+  });
+
+  const musicVolumeSlider = bindVolumeSlider('music-volume-slider', (value) => {
+    musicVolume = value;
+    saveAudioSettings();
+    applyAudioVolumes(scene);
+    updateAudioOptionButtons(scene);
+    if (musicEnabled) playMusicForCurrentState(scene);
   });
 
   bindScreenClick('options', 'options-back-button', () => {
@@ -2555,7 +2577,29 @@ function createOptionsOverlay(scene) {
 
   overlay.toggleSfxButton = toggleSfxButton;
   overlay.toggleMusicButton = toggleMusicButton;
+  overlay.sfxVolumeSlider = sfxVolumeSlider;
+  overlay.musicVolumeSlider = musicVolumeSlider;
+  overlay.sfxVolumeValue = document.getElementById('sfx-volume-value');
+  overlay.musicVolumeValue = document.getElementById('music-volume-value');
   return overlay;
+}
+
+function bindVolumeSlider(id, onInput) {
+  const slider = document.getElementById(id);
+  if (!slider) return null;
+
+  slider.addEventListener('input', () => {
+    onInput(getSliderVolume(slider));
+  });
+  slider.addEventListener('change', () => {
+    onInput(getSliderVolume(slider));
+  });
+  return slider;
+}
+
+function getSliderVolume(slider) {
+  const nextVolume = Number(slider.value) / 100;
+  return Number.isFinite(nextVolume) ? Phaser.Math.Clamp(nextVolume, 0, 1) : 1;
 }
 
 function bindSingleClick(id, handler) {
@@ -2723,7 +2767,7 @@ function showMenu() {
   resetBossWave(this);
   this.resumeSpawnDelay = null;
   clearGameplayVisuals(this);
-  stopBackgroundMusic(this);
+  playMenuMusic(this);
   showOverlayScreen(this, 'menu');
   resetCounters.call(this);
   setHudVisible(this, false);
@@ -2737,7 +2781,7 @@ function showRanking() {
   setXyControlVisible(this, false);
   this.optionsReturnScreen = null;
   this.input.setDefaultCursor('default');
-  stopBackgroundMusic(this);
+  playMenuMusic(this);
   setHudVisible(this, false);
   showOverlayScreen(this, 'ranking');
   loadRankingInto(this.rankingContainer && this.rankingContainer.list, this.rankingContainer && this.rankingContainer.status, 10);
@@ -2818,7 +2862,7 @@ function endGame() {
   clearPendingStreakReward(this);
   stopNonMusicAudio(this);
   clearGameplayVisuals(this);
-  playBackgroundMusic(this);
+  playMenuMusic(this);
   setHudVisible(this, false);
   showOverlayScreen(this, 'gameover');
   if (isXyInfiniteGameMode()) {
@@ -7111,9 +7155,10 @@ function playCatchSound(scene) {
   if (!soundEffectsEnabled) return;
   if (!scene.catchAudio) {
     scene.catchAudio = new Audio(CATCH_SOUND_PATH);
-    scene.catchAudio.volume = 0.45;
+    scene.catchAudio.baseVolume = 0.45;
   }
 
+  scene.catchAudio.volume = getSoundEffectVolume(scene.catchAudio.baseVolume);
   scene.catchAudio.currentTime = 0;
   scene.catchAudio.play().catch(() => {});
 }
@@ -7167,15 +7212,24 @@ function playStreakSuccessSound(scene) {
 }
 
 function playBackgroundMusic(scene) {
+  playGameplayMusic(scene);
+}
+
+function playGameplayMusic(scene) {
   if (!musicEnabled) return;
-  playMusicTrack(scene, 'backgroundMusic', BACKGROUND_MUSIC_PATH, 0.28);
+  playMusicTrack(scene, 'gameplayMusic', GAMEPLAY_MUSIC_PATH, 0.28);
+}
+
+function playMenuMusic(scene) {
+  if (!musicEnabled) return;
+  playMusicTrack(scene, 'menuMusic', MENU_MUSIC_PATH, 0.25);
 }
 
 function restartBackgroundMusic(scene) {
   pausedMusicTime = 0;
   stopCurrentMusic(scene);
   scene.currentMusicKey = null;
-  playBackgroundMusic(scene);
+  playGameplayMusic(scene);
 }
 
 function playPurpleBoosterMusic(scene) {
@@ -7185,20 +7239,84 @@ function playPurpleBoosterMusic(scene) {
 
 function playMusicTrack(scene, audioKey, path, volume) {
   if (!musicEnabled) return;
-  if (scene.currentMusicKey === audioKey && scene[audioKey] && !scene[audioKey].paused) return;
+  if (scene.currentMusicKey === audioKey && scene[audioKey] && !scene[audioKey].paused && !musicPlaybackBlocked) return;
 
   stopCurrentMusic(scene);
 
   if (!scene[audioKey]) {
     scene[audioKey] = new Audio(path);
     scene[audioKey].loop = true;
-    scene[audioKey].volume = volume;
   }
 
+  scene[audioKey].baseVolume = volume;
+  scene[audioKey].volume = getMusicVolume(volume);
   scene.currentMusicKey = audioKey;
   scene[audioKey].currentTime = pausedMusicTime > 0 ? pausedMusicTime : 0;
   pausedMusicTime = 0;
-  scene[audioKey].play().catch(() => {});
+  scene[audioKey].play()
+    .then(() => {
+      audioUnlocked = true;
+      musicPlaybackBlocked = false;
+    })
+    .catch(() => {
+      musicPlaybackBlocked = true;
+    });
+}
+
+function bindAudioUnlockListeners(scene) {
+  if (audioUnlockListenersBound) return;
+  audioUnlockListenersBound = true;
+
+  const unlockAudio = () => {
+    if ((audioUnlocked && !musicPlaybackBlocked) || !musicEnabled) return;
+    const targetScene = scene || gameScene;
+    if (!targetScene) return;
+    playMusicForCurrentState(targetScene);
+  };
+
+  ['pointerdown', 'touchstart', 'keydown'].forEach((eventName) => {
+    window.addEventListener(eventName, unlockAudio, { capture: true, passive: true });
+  });
+}
+
+function getSoundEffectVolume(baseVolume = 1) {
+  return Phaser.Math.Clamp(baseVolume * soundEffectsVolume, 0, 1);
+}
+
+function getMusicVolume(baseVolume = 1) {
+  return Phaser.Math.Clamp(baseVolume * musicVolume, 0, 1);
+}
+
+function applyAudioVolumes(scene) {
+  if (!scene) return;
+
+  [
+    'catchAudio',
+    'boosterAudio',
+    'badAudio',
+    'buttonAudio',
+    'levelUpAudio',
+    'redWaveAudio',
+    'bossLaserAudio',
+    'shieldBlockAudio',
+    'streakSuccessAudio',
+  ].forEach((audioKey) => {
+    const audio = scene[audioKey];
+    if (audio) audio.volume = getSoundEffectVolume(audio.baseVolume || 1);
+  });
+
+  ['spikeDroneAudios', 'spikeDroneDisableAudios', 'redNeedleShotAudios'].forEach((collectionKey) => {
+    const collection = scene[collectionKey];
+    if (!collection) return;
+    collection.forEach((audio) => {
+      audio.volume = getSoundEffectVolume(audio.baseVolume || 1);
+    });
+  });
+
+  ['menuMusic', 'gameplayMusic', 'purpleBoosterMusic', 'backgroundMusic'].forEach((audioKey) => {
+    const audio = scene[audioKey];
+    if (audio) audio.volume = getMusicVolume(audio.baseVolume || 1);
+  });
 }
 
 function stopBackgroundMusic(scene) {
@@ -7261,16 +7379,31 @@ function resumeCurrentMusic(scene) {
     playPurpleBoosterMusic(scene);
     return;
   }
-  playBackgroundMusic(scene);
+  if (currentKey === 'menuMusic') {
+    playMenuMusic(scene);
+    return;
+  }
+  playGameplayMusic(scene);
+}
+
+function playMusicForCurrentState(scene) {
+  if (!musicEnabled) return;
+  if (state === 'playing' || state === 'paused' || (scene && scene.optionsReturnScreen === 'pause')) {
+    resumeCurrentMusic(scene);
+    if (!scene.currentMusicKey) playGameplayMusic(scene);
+    return;
+  }
+  playMenuMusic(scene);
 }
 
 function playAudioFile(scene, audioKey, path, volume) {
   if (!soundEffectsEnabled) return;
   if (!scene[audioKey]) {
     scene[audioKey] = new Audio(path);
-    scene[audioKey].volume = volume;
   }
 
+  scene[audioKey].baseVolume = volume;
+  scene[audioKey].volume = getSoundEffectVolume(volume);
   scene[audioKey].currentTime = 0;
   scene[audioKey].play().catch(() => {});
 }
@@ -7280,7 +7413,8 @@ function playOverlappingAudioFile(scene, audioCollectionKey, path, volume) {
   if (!scene[audioCollectionKey]) scene[audioCollectionKey] = [];
 
   const audio = new Audio(path);
-  audio.volume = volume;
+  audio.baseVolume = volume;
+  audio.volume = getSoundEffectVolume(volume);
   scene[audioCollectionKey].push(audio);
 
   const removeAudio = () => {
@@ -7297,9 +7431,10 @@ function playLoopingAudioFile(scene, audioKey, path, volume) {
   if (!scene[audioKey]) {
     scene[audioKey] = new Audio(path);
     scene[audioKey].loop = true;
-    scene[audioKey].volume = volume;
   }
 
+  scene[audioKey].baseVolume = volume;
+  scene[audioKey].volume = getSoundEffectVolume(volume);
   scene[audioKey].currentTime = 0;
   scene[audioKey].play().catch(() => {});
 }
@@ -7362,17 +7497,35 @@ function updateAudioOptionButtons(scene = gameScene) {
   if (optionsOverlay.toggleMusicButton) {
     optionsOverlay.toggleMusicButton.textContent = 'MUSICA: ' + (musicEnabled ? 'ON' : 'OFF');
   }
+  if (optionsOverlay.sfxVolumeSlider) {
+    optionsOverlay.sfxVolumeSlider.value = String(Math.round(soundEffectsVolume * 100));
+  }
+  if (optionsOverlay.musicVolumeSlider) {
+    optionsOverlay.musicVolumeSlider.value = String(Math.round(musicVolume * 100));
+  }
+  if (optionsOverlay.sfxVolumeValue) {
+    optionsOverlay.sfxVolumeValue.textContent = Math.round(soundEffectsVolume * 100) + '%';
+  }
+  if (optionsOverlay.musicVolumeValue) {
+    optionsOverlay.musicVolumeValue.textContent = Math.round(musicVolume * 100) + '%';
+  }
 }
 
 function loadAudioSettings() {
   try {
     const sfx = window.localStorage.getItem('jueguito_sfx_enabled');
     const music = window.localStorage.getItem('jueguito_music_enabled');
+    const sfxVolume = window.localStorage.getItem('jueguito_sfx_volume');
+    const musicVolumeValue = window.localStorage.getItem('jueguito_music_volume');
     if (sfx !== null) soundEffectsEnabled = sfx === '1';
     if (music !== null) musicEnabled = music === '1';
+    if (sfxVolume !== null) soundEffectsVolume = normalizeStoredVolume(sfxVolume);
+    if (musicVolumeValue !== null) musicVolume = normalizeStoredVolume(musicVolumeValue);
   } catch (error) {
     soundEffectsEnabled = true;
     musicEnabled = true;
+    soundEffectsVolume = 1;
+    musicVolume = 1;
   }
 }
 
@@ -7380,9 +7533,16 @@ function saveAudioSettings() {
   try {
     window.localStorage.setItem('jueguito_sfx_enabled', soundEffectsEnabled ? '1' : '0');
     window.localStorage.setItem('jueguito_music_enabled', musicEnabled ? '1' : '0');
+    window.localStorage.setItem('jueguito_sfx_volume', String(soundEffectsVolume));
+    window.localStorage.setItem('jueguito_music_volume', String(musicVolume));
   } catch (error) {
     // Ignorar si el navegador no permite persistir.
   }
+}
+
+function normalizeStoredVolume(value) {
+  const parsedVolume = Number(value);
+  return Number.isFinite(parsedVolume) ? Phaser.Math.Clamp(parsedVolume, 0, 1) : 1;
 }
 
 function showAbsorbEffect(scene, x, y, kind, isPurpleEnergy = false) {
