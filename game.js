@@ -164,7 +164,7 @@ const MAGNET_PULL_RATIO = 0.75;
 const UPGRADE_BAR_TWEEN_DURATION = 260;
 const SCORE_BOOSTER_CHANCE = 0.07;
 const SHIELD_BOOSTER_CHANCE = 0.05;
-const LIFE_BOOSTER_CHANCE = 0.03;
+const LIFE_BOOSTER_CHANCE_PER_LEVEL = 0.02;
 const FONT_FAMILY = '"Orbitron", "Rajdhani", "Trebuchet MS", Arial, sans-serif';
 const BACKGROUND_FIRST_COLOR = '#112c4d';
 const BACKGROUND_SECOND_COLOR = '#461240';
@@ -3497,7 +3497,15 @@ function getTimedBoosterDuration(level) {
 }
 
 function getLifeBoosterHealAmount() {
-  return Math.max(1, lifeBoosterLevel);
+  return 1;
+}
+
+function getLifeBoosterChance(level = lifeBoosterLevel) {
+  return Math.max(0, level) * LIFE_BOOSTER_CHANCE_PER_LEVEL;
+}
+
+function getLifeBoosterChancePercent(level = lifeBoosterLevel) {
+  return Math.round(getLifeBoosterChance(level) * 100);
 }
 
 function canDropLifeBooster() {
@@ -5281,9 +5289,7 @@ function getUpgradeConfig(upgradeKind) {
   if (upgradeKind === 'lifeBooster') {
     return {
       label: 'Kit de reparación',
-      getDescription: (level) => level === 1
-        ? 'Desbloquea la aparición de kits de reparación. Repone 1 vida.'
-        : 'El kit de reparación repone ' + level + ' vidas.',
+      getDescription: (level) => 'Aumenta la probabilidad de aparición a ' + getLifeBoosterChancePercent(level) + '%. Repone 1 vida.',
       color: '#4dff88',
     };
   }
@@ -6073,7 +6079,7 @@ function getNextBoosterKind(scene) {
   const options = [
     { kind: 'scoreBooster', chance: timedBoosterActive || scoreBoosterLevel <= 0 ? 0 : SCORE_BOOSTER_CHANCE },
     { kind: 'shieldBooster', chance: timedBoosterActive || shieldBoosterLevel <= 0 ? 0 : SHIELD_BOOSTER_CHANCE },
-    { kind: 'lifeBooster', chance: lifeBoosterLevel > 0 && lives < maxLives ? LIFE_BOOSTER_CHANCE : 0 },
+    { kind: 'lifeBooster', chance: canDropLifeBooster() ? getLifeBoosterChance() : 0 },
   ];
   const totalChance = options.reduce((sum, option) => sum + option.chance, 0);
   let roll = Math.random();

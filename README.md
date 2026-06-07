@@ -46,7 +46,7 @@ Cada mejora puede subir hasta nivel 5.
 
 | Mejora | Efecto |
 | --- | --- |
-| Kit de reparacion | Desbloquea kits verdes. Cada kit cura tantas vidas como nivel tenga la mejora. |
+| Kit de reparacion | Desbloquea kits verdes. Cada kit cura 1 vida y su probabilidad aumenta 2 puntos porcentuales por nivel. |
 | Barrera protectora | Desbloquea escudos azules temporales. Bloquea amenazas y suma puntos al destruirlas por contacto. |
 | Catalizador de energia | Desbloquea boosters morados temporales. Duplica los puntos obtenidos por orbes mientras esta activo. |
 | Refinador de energia | Aumenta el valor de cada orbe. Al nivel maximo suma +1 extra por cada nivel superado. |
@@ -61,9 +61,9 @@ Las probabilidades son por intento de aparicion y se comprueban despues de las a
 | --- | ---: | --- | --- |
 | Catalizador de energia | 7% | Si la mejora esta desbloqueada y no hay otro booster temporal activo. | Duplica los puntos de los orbes durante `5 s` a `15 s`, segun nivel. |
 | Barrera protectora | 5% | Si la mejora esta desbloqueada y no hay otro booster temporal activo. | Activa un escudo durante `5 s` a `15 s`, segun nivel. |
-| Kit de reparacion | 3% | Si la mejora esta desbloqueada y la nave no esta al maximo de vidas. | Cura tantas vidas como nivel tenga la mejora. |
+| Kit de reparacion | 2% por nivel (`2%`, `4%`, `6%`, `8%`, `10%`) | Si la mejora esta desbloqueada y la nave no esta al maximo de vidas. | Cura 1 vida. |
 
-Si los tres boosters pueden aparecer, la probabilidad total de que el intento genere un booster es `15%`: `7%` catalizador, `5%` barrera y `3%` kit.
+Si los tres boosters pueden aparecer, la probabilidad total de que el intento genere un booster depende del nivel del kit: desde `14%` con kit nivel 1 hasta `22%` con kit nivel 5.
 
 ## Jefes del modo normal
 
@@ -157,4 +157,4 @@ La tabla configurada es `ranking`; las columnas principales usadas por el juego 
 | `SPIKE_DRONE_SPAWN_CHANCE` | `0.05` |
 | `SCORE_BOOSTER_CHANCE` | `0.07` |
 | `SHIELD_BOOSTER_CHANCE` | `0.05` |
-| `LIFE_BOOSTER_CHANCE` | `0.03` |
+| `LIFE_BOOSTER_CHANCE_PER_LEVEL` | `0.02` |
