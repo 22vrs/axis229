@@ -47,15 +47,15 @@ const RED_WAVE_SPAWN_DELAY = 400;
 const RED_WAVE_ENEMY_GRAVITY_RATIO = 0.72;
 const RED_WAVE_MIN_ENEMY_SPACING = SHIP_WIDTH + 56;
 const RED_WAVE_RECENT_ENEMY_HEIGHT = 230;
-const OBRERA_SPAWN_CHANCE = 0.16;
+const OBRERA_SPAWN_CHANCE = 0.2;
 const DRONE_WAVE_DURATION = 15000;
 const DRONE_WAVE_SPAWN_DELAY = 680;
 const ASTEROID_WAVE_DURATION = 15000;
 const ASTEROID_WAVE_SPAWN_DELAY = 760;
-const TRAVEL_ASTEROID_CHANCE = 0.1;
+const TRAVEL_ASTEROID_CHANCE = 0.15;
 const COMET_WAVE_DURATION = 15000;
 const COMET_WAVE_SPAWN_DELAY = 520;
-const TRAVEL_COMET_CHANCE = 0.2;
+const TRAVEL_COMET_CHANCE = 0.15;
 const COMET_GRAVITY_RATIO = 1.02;
 const COMET_HORIZONTAL_SPEED_RATIO = 0.96;
 const COMET_WAVE_GRAVITY_RATIO = 0.96;
@@ -68,7 +68,7 @@ const COMET_TRAIL_WIDTH = 18;
 const COMET_WAVE_MIN_SPAWN_SPACING = SHIP_WIDTH + 44;
 const COMET_OFFSCREEN_MARGIN = 62;
 const TRAVEL_PLASMA_CHANCE = 0.05;
-const SPIKE_DRONE_SPAWN_CHANCE = 0.05;
+const SPIKE_DRONE_SPAWN_CHANCE = 0.1;
 const SPIKE_DRONE_FOLDED_RADIUS = 18;
 const SPIKE_DRONE_EXPANDED_RADIUS = SPIKE_DRONE_FOLDED_RADIUS * 3;
 const SPIKE_DRONE_FOLDED_DURATION = 1100;
@@ -103,7 +103,7 @@ const RED_NEEDLE_BOSS_ATTACKS = 6;
 const RED_NEEDLE_BOSS_PASS_DURATION = 3400;
 const RED_NEEDLE_BOSS_PASS_GAP = 620;
 const TRAVEL_SENTINEL_ATTACKS = 2;
-const TRAVEL_SENTINEL_CHANCE = 0.018;
+const TRAVEL_SENTINEL_CHANCE = 0.02;
 const TRAVEL_SENTINEL_COOLDOWN = 26000;
 const BOSS_LASER_WARN_DURATION = 1100;
 const BOSS_LASER_DURATION = 2000;
@@ -3517,6 +3517,7 @@ function resumeTimedGameplay(scene) {
 
 function pauseCountdown(scene, countdown) {
   if (!countdown || !countdown.endsAt) return;
+  if (countdown.pausedRemaining !== undefined) return;
   countdown.pausedRemaining = Math.max(0, countdown.endsAt - scene.time.now);
 }
 
@@ -5699,7 +5700,10 @@ function maybeOpenUpgradeChoice(scene) {
 
   if (!hasAvailableUpgrades()) {
     updateUpgradeBar(scene);
-    consumePendingBossWave(scene);
+    resumeFallingObjects(scene);
+    resumeTimedGameplay(scene);
+    releasePendingStreakRepairKit(scene);
+    if (!consumePendingBossWave(scene)) recoverGameplaySpawning(scene);
     return;
   }
 
@@ -5714,11 +5718,8 @@ function maybeOpenUpgradeChoice(scene) {
     spawnEvent = null;
   }
 
-  resetTimedBoosters(scene);
-  resetRedWave(scene);
-  resetDroneWave(scene);
-  resetAsteroidWave(scene);
-  clearAllFallingObjects(scene);
+  pauseFallingObjects(scene);
+  pauseTimedGameplay(scene);
   scene.availableUpgradeChoices = getRandomUpgradeChoices();
   updateUpgradeButtons(scene);
   updateUpgradeBar(scene, true, () => {
@@ -5877,6 +5878,15 @@ function getUpgradeLevel(upgradeKind) {
 
 function consumePendingBossWave(scene) {
   if (!scene || !scene.pendingBossWave || state !== 'playing') return false;
+  if (
+    getActiveTimedBooster(scene) ||
+    getActiveWaveCountdown(scene) ||
+    scene.waveStartEvent ||
+    scene.waveResumeEvent ||
+    scene.bossCueTween ||
+    hasFallingObjects(scene) ||
+    hasActivePlasmaBars(scene)
+  ) return false;
   const bossConfig = scene.pendingBossWave;
   scene.pendingBossWave = false;
   releasePendingStreakRepairKit(scene);
@@ -5977,6 +5987,11 @@ function setUpgradeButtonState(button, config, level) {
 function pauseFallingObjects(scene) {
   scene.balls.getChildren().forEach((ball) => {
     if (!ball.active) return;
+    const kind = ball.getData('kind');
+    if (isAsteroidKind(kind) && ball.getData('pausedAngularVelocity') === undefined) {
+      ball.setData('pausedAngularVelocity', ball.body.angularVelocity || 0);
+      ball.setAngularVelocity(0);
+    }
     ball.body.setVelocityX(0);
     ball.body.setVelocityY(0);
   });
@@ -5986,6 +6001,13 @@ function resumeFallingObjects(scene) {
   scene.balls.getChildren().forEach((ball) => {
     if (!ball.active) return;
     const kind = ball.getData('kind');
+    if (isAsteroidKind(kind)) {
+      const pausedAngularVelocity = ball.getData('pausedAngularVelocity');
+      if (pausedAngularVelocity !== undefined) {
+        ball.setAngularVelocity(pausedAngularVelocity);
+        ball.setData('pausedAngularVelocity', undefined);
+      }
+    }
     ball.body.setVelocityX(getHorizontalVelocity(kind, scene, ball));
     ball.body.setVelocityY(getFallingVelocity(kind, scene, ball));
   });

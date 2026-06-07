@@ -123,14 +123,14 @@ Las probabilidades son por intento de aparicion. Algunas solo se desbloquean tra
 
 | Amenaza | Probabilidad | Condicion | Notas |
 | --- | ---: | --- | --- |
-| Obrera / enemigo rojo | `16%` | Tras vencer a Enjambre. | Puede aparecer durante el centinela viajero. |
-| Drone de pinchos | `5%` | Tras vencer a Drones. | Solo dana cuando esta expandido, salvo contacto con escudo. |
+| Obrera / enemigo rojo | `20%` | Tras vencer a Enjambre. | Puede aparecer durante el centinela viajero. |
+| Drone de pinchos | `10%` | Tras vencer a Drones. | Solo dana cuando esta expandido, salvo contacto con escudo. |
 | Aguja Roja | `5%` | Tras vencer a Aguja Roja. | Solo puede haber una activa. |
-| Cometa | `20%` | Tras vencer a Lluvia de estrellas. | Entra desde arriba con deriva diagonal y estela. |
-| Asteroide | `10%` | Tras vencer a Cinturon. | Puede aparecer como normal o grande. |
-| Asteroide grande | `24%` de los asteroides de viaje | Si aparece asteroide. | Aproximadamente `2.4%` por intento total. |
+| Cometa | `15%` | Tras vencer a Lluvia de estrellas. | Entra desde arriba con deriva diagonal y estela. |
+| Asteroide | `15%` | Tras vencer a Cinturon. | Puede aparecer como normal o grande. |
+| Asteroide grande | `24%` de los asteroides de viaje | Si aparece asteroide. | Aproximadamente `3.6%` por intento total. |
 | Barra de plasma | `5%` | Tras vencer a Marea de Plasma. | No aparece durante jefes de nivel. |
-| Centinela viajero | `1.8%` | Tras vencer a Centinela. | Cooldown de `26000 ms`; no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. |
+| Centinela viajero | `2%` | Tras vencer a Centinela. | Cooldown de `26000 ms`; no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. |
 
 Orden de decision en viaje normal:
 
