@@ -236,7 +236,7 @@ canvas {
 
 .hud-life-bar {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 3px;
   margin-top: 6px;
 }
@@ -897,6 +897,7 @@ canvas {
   font-size: 15px;
   font-weight: 700;
   line-height: 1.14;
+  white-space: pre-line;
   box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);

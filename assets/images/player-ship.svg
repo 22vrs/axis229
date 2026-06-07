@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="156" height="46" viewBox="0 0 156 46">
+  <title>Player ship</title>
+  <g id="ship" fill-rule="evenodd" stroke-linejoin="round">
+    <g id="wing-shadows" fill="#10151c" opacity="0.7">
+      <polygon points="7,30 41,4 60,14 58,34 44,42"/>
+      <polygon points="149,30 115,4 96,14 98,34 112,42"/>
+    </g>
+
+    <g id="wings">
+      <polygon fill="#6f7784" points="2,28 42,7 53,18 45,34 25,40"/>
+      <polygon fill="#6f7784" points="154,28 114,7 103,18 111,34 131,40"/>
+      <polygon fill="#d6dbe3" opacity="0.92" points="8,25 43,10 43,18 25,34"/>
+      <polygon fill="#d6dbe3" opacity="0.92" points="148,25 113,10 113,18 131,34"/>
+      <polygon fill="#252a31" points="23,27 52,16 45,30"/>
+      <polygon fill="#252a31" points="133,27 104,16 111,30"/>
+
+      <g id="wing-slats" fill="#f1f4f8" opacity="0.92">
+        <rect x="28" y="25" width="13" height="2"/>
+        <rect x="32" y="25.4" width="13" height="2"/>
+        <rect x="36" y="25.8" width="13" height="2"/>
+        <rect x="40" y="26.2" width="13" height="2"/>
+        <rect x="44" y="26.6" width="13" height="2"/>
+        <rect x="115" y="25" width="13" height="2"/>
+        <rect x="111" y="25.4" width="13" height="2"/>
+        <rect x="107" y="25.8" width="13" height="2"/>
+        <rect x="103" y="26.2" width="13" height="2"/>
+        <rect x="99" y="26.6" width="13" height="2"/>
+      </g>
+    </g>
+
+    <g id="hull">
+      <polygon fill="#b8bec8" points="78,3 122,14 116,35 95,39 61,39 40,35 34,14"/>
+      <polygon fill="#d6dbe3" points="78,4 104,12 90,18 78,12 66,18 52,12"/>
+      <polygon fill="#8d96a2" points="36,15 62,20 59,35 40,32"/>
+      <polygon fill="#8d96a2" points="120,15 94,20 97,35 116,32"/>
+
+      <path fill="none" stroke="#1e232a" stroke-opacity="0.42" d="M78 3L122 14L116 35L95 39H61L40 35L34 14Z"/>
+      <path fill="none" stroke="#1e232a" stroke-opacity="0.42" d="M78 5V38"/>
+      <path fill="none" stroke="#1e232a" stroke-opacity="0.42" d="M38 15L60 35"/>
+      <path fill="none" stroke="#1e232a" stroke-opacity="0.42" d="M118 15L96 35"/>
+    </g>
+
+    <g id="lens">
+      <ellipse fill="#161a1f" cx="78" cy="22" rx="12" ry="12"/>
+      <ellipse fill="#414852" cx="78" cy="22" rx="9.5" ry="9.5"/>
+      <ellipse fill="#263341" cx="78" cy="22" rx="6.5" ry="6.5"/>
+      <ellipse fill="#f1f4f8" opacity="0.9" cx="75" cy="18" rx="3" ry="2.5"/>
+      <ellipse fill="#071016" opacity="0.78" cx="79" cy="23" rx="4" ry="4.5"/>
+      <circle fill="none" stroke="#f1f4f8" stroke-opacity="0.46" stroke-width="2" cx="78" cy="22" r="11"/>
+      <circle fill="none" stroke="#252a31" stroke-opacity="0.8" stroke-width="2" cx="78" cy="22" r="16"/>
+    </g>
+
+    <g id="engines">
+      <rect fill="#303743" x="43" y="35" width="18" height="7" rx="2"/>
+      <rect fill="#303743" x="95" y="35" width="18" height="7" rx="2"/>
+      <polygon fill="#d6dbe3" points="52,38 62,46 42,46"/>
+      <polygon fill="#d6dbe3" points="104,38 114,46 94,46"/>
+    </g>
+
+    <g id="wing-outlines" fill="none" stroke="#ffffff" stroke-opacity="0.35">
+      <polygon points="2,28 42,7 53,18 45,34 25,40"/>
+      <polygon points="154,28 114,7 103,18 111,34 131,40"/>
+    </g>
+  </g>
+</svg>

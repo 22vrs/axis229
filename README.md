@@ -33,7 +33,7 @@ En modo infinito, el primer jefe es `Drones`; despues los jefes se eligen aleato
 
 ## Progresion
 
-- La partida empieza con 5 vidas.
+- La partida empieza con 3 vidas.
 - La dificultad sube con el nivel: la gravedad de los orbes escala desde `1.00x` hasta `2.00x`.
 - El intervalo entre apariciones empieza en `1500 ms` y baja hasta `600 ms`.
 - Cada vez que llenas la barra de progreso subes de nivel y, si hay mejoras disponibles, eliges entre 2 opciones.
@@ -47,11 +47,11 @@ Cada mejora puede subir hasta nivel 5.
 | Mejora | Efecto |
 | --- | --- |
 | Kit de reparacion | Desbloquea kits verdes. Cada kit cura 1 vida y su probabilidad aumenta 2 puntos porcentuales por nivel. |
-| Barrera protectora | Desbloquea escudos azules temporales. Bloquea amenazas y suma puntos al destruirlas por contacto. |
-| Catalizador de energia | Desbloquea boosters morados temporales. Duplica los puntos obtenidos por orbes mientras esta activo. |
+| Barrera protectora | Desbloquea escudos azules temporales. Bloquea amenazas y suma puntos al destruirlas por contacto. Su probabilidad aumenta 2 puntos porcentuales por nivel. |
+| Catalizador de energia | Desbloquea boosters morados temporales. Duplica los puntos obtenidos por orbes mientras esta activo. Su probabilidad aumenta 2 puntos porcentuales por nivel. |
 | Refinador de energia | Aumenta el valor de cada orbe. Al nivel maximo suma +1 extra por cada nivel superado. |
 
-Los boosters temporales duran entre `5 s` y `15 s` segun el nivel de la mejora.
+Los boosters temporales duran siempre `10 s`.
 
 ## Boosters y probabilidades
 
@@ -59,11 +59,11 @@ Las probabilidades son por intento de aparicion y se comprueban despues de las a
 
 | Booster | Probabilidad | Cuando puede aparecer | Efecto |
 | --- | ---: | --- | --- |
-| Catalizador de energia | 7% | Si la mejora esta desbloqueada y no hay otro booster temporal activo. | Duplica los puntos de los orbes durante `5 s` a `15 s`, segun nivel. |
-| Barrera protectora | 5% | Si la mejora esta desbloqueada y no hay otro booster temporal activo. | Activa un escudo durante `5 s` a `15 s`, segun nivel. |
+| Catalizador de energia | 2% por nivel (`2%`, `4%`, `6%`, `8%`, `10%`) | Si la mejora esta desbloqueada y no hay otro booster temporal activo. | Duplica los puntos de los orbes durante `10 s`. |
+| Barrera protectora | 2% por nivel (`2%`, `4%`, `6%`, `8%`, `10%`) | Si la mejora esta desbloqueada y no hay otro booster temporal activo. | Activa un escudo durante `10 s`. |
 | Kit de reparacion | 2% por nivel (`2%`, `4%`, `6%`, `8%`, `10%`) | Si la mejora esta desbloqueada y la nave no esta al maximo de vidas. | Cura 1 vida. |
 
-Si los tres boosters pueden aparecer, la probabilidad total de que el intento genere un booster depende del nivel del kit: desde `14%` con kit nivel 1 hasta `22%` con kit nivel 5.
+Si los tres boosters pueden aparecer, la probabilidad total de que el intento genere un booster depende de sus niveles: desde `6%` con los tres a nivel 1 hasta `30%` con los tres a nivel 5.
 
 ## Jefes del modo normal
 
@@ -155,6 +155,5 @@ La tabla configurada es `ranking`; las columnas principales usadas por el juego 
 | `PLASMA_WAVE_SPAWN_DELAY` | `2100 ms` |
 | `RED_NEEDLE_SPAWN_CHANCE` | `0.05` |
 | `SPIKE_DRONE_SPAWN_CHANCE` | `0.05` |
-| `SCORE_BOOSTER_CHANCE` | `0.07` |
-| `SHIELD_BOOSTER_CHANCE` | `0.05` |
-| `LIFE_BOOSTER_CHANCE_PER_LEVEL` | `0.02` |
+| `TIMED_BOOSTER_DURATION` | `10000 ms` |
+| `BOOSTER_CHANCE_PER_LEVEL` | `0.02` |

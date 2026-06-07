@@ -14,6 +14,7 @@ const RED_NEEDLE_SHOT_SOUND_PATH = 'assets/red-needle-shot.mp3';
 const STREAK_SUCCESS_SOUND_PATH = 'assets/streak-success.mp3';
 const BACKGROUND_MUSIC_PATH = 'assets/background.mp3';
 const PURPLE_BOOSTER_MUSIC_PATH = 'assets/purple-booster.mp3';
+const PLAYER_SHIP_IMAGE_PATH = 'assets/images/player-ship.svg';
 const SUPABASE_URL = 'https://fqkpwigonxgnsynfdzyw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Up1cBihd6uOftnMkhj3A3w_ZH1q7YOR';
 const SUPABASE_RANKING_TABLE = 'ranking';
@@ -31,13 +32,15 @@ const STARFIELD_SPEED_RATIO = 0.32;
 const MAX_STARFIELD_SPEED_MULTIPLIER = 2.6;
 const BOOSTER_GRAVITY_RATIO = 0.8;
 const SHIP_SIDE_HIDE_RATIO = 1 / 3;
-const SHIP_WIDTH = 136;
-const SHIP_HEIGHT = 34;
+const SHIP_TEXTURE_WIDTH = 156;
+const SHIP_TEXTURE_HEIGHT = 46;
+const SHIP_SCALE = 142 / SHIP_TEXTURE_WIDTH;
+const SHIP_WIDTH = Math.round(SHIP_TEXTURE_WIDTH * SHIP_SCALE);
+const SHIP_HEIGHT = Math.round(SHIP_TEXTURE_HEIGHT * SHIP_SCALE);
 const SHIP_RADIUS = 8;
 const SHIELD_BUBBLE_RADIUS = 82;
 const SHIELD_BUBBLE_DIAMETER = SHIELD_BUBBLE_RADIUS * 2;
-const MIN_TIMED_BOOSTER_DURATION = 5000;
-const MAX_TIMED_BOOSTER_DURATION = 15000;
+const TIMED_BOOSTER_DURATION = 10000;
 const RED_WAVE_DURATION = 15000;
 const RED_WAVE_SPAWN_DELAY = 400;
 const RED_WAVE_ENEMY_GRAVITY_RATIO = 0.72;
@@ -116,6 +119,13 @@ const SHIP_TILT_FULL_SPEED = 1.1;
 const SHIP_XY_DIRECTION_MAX_TILT = 32;
 const SHIP_XY_DIRECTION_VERTICAL_WEIGHT = 0.72;
 const SHIP_TILT_IDLE_DELAY = 170;
+const SHIP_TRAIL_DURATION = 620;
+const SHIP_TRAIL_MAX_POINTS = 38;
+const SHIP_TRAIL_MIN_POINT_DISTANCE = 4;
+const SHIP_TRAIL_WIDTH = 18;
+const SHIP_TRAIL_POSITION_SMOOTHING = 0.34;
+const SHIP_TRAIL_CURVE_PASSES = 2;
+const SHIP_TRAIL_BLUE_CORE_RATIO = 0.34;
 const SHIP_RESUME_TOUCH_PADDING_X = 12;
 const SHIP_RESUME_TOUCH_PADDING_Y = 24;
 const XY_CONTROL_RADIUS = 34;
@@ -156,15 +166,13 @@ const ASTEROID_WAVE_HORIZONTAL_SPEED_RATIO = 0.58;
 const ASTEROID_WRAP_MARGIN = 28;
 const UPGRADE_POINTS_REQUIRED = 10;
 const SHIELD_BLOCK_SCORE = 10;
-const INITIAL_HEART_CAPACITY = 5;
+const INITIAL_HEART_CAPACITY = 3;
 const MAX_UPGRADE_LEVEL = 5;
 const UPGRADE_RESUME_DELAY = 2000;
 const MAGNET_BASE_RADIUS_RATIO = 0.14;
 const MAGNET_PULL_RATIO = 0.75;
 const UPGRADE_BAR_TWEEN_DURATION = 260;
-const SCORE_BOOSTER_CHANCE = 0.07;
-const SHIELD_BOOSTER_CHANCE = 0.05;
-const LIFE_BOOSTER_CHANCE_PER_LEVEL = 0.02;
+const BOOSTER_CHANCE_PER_LEVEL = 0.02;
 const FONT_FAMILY = '"Orbitron", "Rajdhani", "Trebuchet MS", Arial, sans-serif';
 const BACKGROUND_FIRST_COLOR = '#112c4d';
 const BACKGROUND_SECOND_COLOR = '#461240';
@@ -242,7 +250,6 @@ let gameScene = null;
 let scoreMultiplier = 1;
 let isDraggingShip = false;
 let pausedMusicTime = 0;
-let playerTrailTimer = 0;
 let enemyTrailTimer = 0;
 let energyRefinerLevelBonus = 0;
 let hud = null;
@@ -429,7 +436,12 @@ function waitForGameFonts() {
   ]);
 }
 
-function preload() {}
+function preload() {
+  this.load.svg('ship', PLAYER_SHIP_IMAGE_PATH, {
+    width: SHIP_TEXTURE_WIDTH,
+    height: SHIP_TEXTURE_HEIGHT,
+  });
+}
 
 function create() {
   gameScene = this;
@@ -481,6 +493,15 @@ function create() {
   createAsteroidTexture(this);
   createBigAsteroidTexture(this);
 
+  if (!this.textures.exists('ship')) {
+    createShipTexture(this, 'ship', {
+      hull: 0xb8bec8,
+      wing: 0x6f7784,
+      cockpit: 0xf1f4f8,
+      engine: 0xd6dbe3,
+    });
+  }
+
   // Textura del booster de vida
   const lifeGraphics = this.make.graphics({ x: 0, y: 0, add: false });
   lifeGraphics.fillStyle(0x4dff88, 1);
@@ -515,12 +536,6 @@ function create() {
   scoreGraphics.generateTexture('scoreBooster', 36, 36);
   scoreGraphics.destroy();
 
-  createShipTexture(this, 'ship', {
-    hull: 0xb8bec8,
-    wing: 0x6f7784,
-    cockpit: 0xf1f4f8,
-    engine: 0xd6dbe3,
-  });
   createShipTexture(this, 'purpleShip', {
     hull: 0xb8bec8,
     wing: 0x6f7784,
@@ -605,6 +620,9 @@ function create() {
   this.ship.body.setImmovable(true);
   this.ship.body.setAllowGravity(false);
   refreshShipSize(this);
+
+  this.shipTrail = this.add.graphics().setDepth(SHIP_DEPTH - 1);
+  this.shipTrailPoints = [];
 
   this.xyControl = this.add.image(0, 0, 'xyControl')
     .setDepth(SHIP_DEPTH - 1)
@@ -742,92 +760,204 @@ function createEnergyBallTexture(scene, ballKey, colors) {
   ballGraphics.destroy();
 }
 
-function createShipTexture(scene, key, colors, textureWidth = SHIP_WIDTH) {
+function createShipTexture(scene, key, colors, textureWidth = SHIP_TEXTURE_WIDTH) {
   const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
   const centerX = textureWidth / 2;
-  const left = 4;
-  const right = textureWidth - 4;
-  const innerLeft = textureWidth * 0.28;
-  const innerRight = textureWidth * 0.72;
+  const centerY = SHIP_TEXTURE_HEIGHT / 2;
+  const left = 2;
+  const right = textureWidth - 2;
+  const hullTop = 3;
+  const hullBottom = SHIP_TEXTURE_HEIGHT - 7;
+  const darkPlate = 0x252a31;
+  const shadowPlate = 0x414852;
+  const midPlate = 0x8d96a2;
+  const lightPlate = 0xd6dbe3;
+  const palePlate = 0xf1f4f8;
+  const panelLine = 0x1e232a;
+  const glassDark = 0x263341;
+  const glassLight = colors.cockpit || 0xe7f7ff;
+  const accent = colors.hullAccent || colors.wingAccent || colors.hullSideAccent || 0x9aa3af;
 
-  graphics.fillStyle(colors.wing, 0.95);
+  graphics.fillStyle(0x10151c, 0.7);
+  graphics.fillPoints([
+    { x: left + 5, y: 30 },
+    { x: 41, y: 4 },
+    { x: centerX - 18, y: 14 },
+    { x: centerX - 20, y: 34 },
+    { x: 44, y: SHIP_TEXTURE_HEIGHT - 4 },
+  ], true);
+  graphics.fillPoints([
+    { x: right - 5, y: 30 },
+    { x: textureWidth - 41, y: 4 },
+    { x: centerX + 18, y: 14 },
+    { x: centerX + 20, y: 34 },
+    { x: textureWidth - 44, y: SHIP_TEXTURE_HEIGHT - 4 },
+  ], true);
+
+  graphics.fillStyle(colors.wing, 1);
   graphics.fillPoints([
     { x: left, y: 28 },
-    { x: innerLeft, y: 8 },
-    { x: centerX - 6, y: 18 },
-    { x: innerLeft - 8, y: 33 },
+    { x: 42, y: 7 },
+    { x: centerX - 25, y: 18 },
+    { x: centerX - 33, y: 34 },
+    { x: 25, y: 40 },
   ], true);
   graphics.fillPoints([
     { x: right, y: 28 },
-    { x: innerRight, y: 8 },
-    { x: centerX + 6, y: 18 },
-    { x: innerRight + 8, y: 33 },
+    { x: textureWidth - 42, y: 7 },
+    { x: centerX + 25, y: 18 },
+    { x: centerX + 33, y: 34 },
+    { x: textureWidth - 25, y: 40 },
   ], true);
 
+  graphics.fillStyle(lightPlate, 0.92);
+  graphics.fillPoints([
+    { x: left + 6, y: 25 },
+    { x: 43, y: 10 },
+    { x: centerX - 35, y: 18 },
+    { x: 25, y: 34 },
+  ], true);
+  graphics.fillPoints([
+    { x: right - 6, y: 25 },
+    { x: textureWidth - 43, y: 10 },
+    { x: centerX + 35, y: 18 },
+    { x: textureWidth - 25, y: 34 },
+  ], true);
+
+  graphics.fillStyle(darkPlate, 1);
+  graphics.fillTriangle(23, 27, 52, 16, 45, 30);
+  graphics.fillTriangle(textureWidth - 23, 27, textureWidth - 52, 16, textureWidth - 45, 30);
+  graphics.fillStyle(palePlate, 0.92);
+  for (let i = 0; i < 5; i += 1) {
+    graphics.fillRect(28 + i * 4, 25 + i * 0.4, 13, 2);
+    graphics.fillRect(textureWidth - 41 - i * 4, 25 + i * 0.4, 13, 2);
+  }
+
   if (colors.wingAccent) {
-    graphics.fillStyle(colors.wingAccent, 0.9);
+    graphics.fillStyle(colors.wingAccent, 1);
     graphics.fillPoints([
-      { x: left + 11, y: 27 },
-      { x: innerLeft + 1, y: 13 },
-      { x: centerX - 16, y: 20 },
-      { x: innerLeft - 5, y: 28 },
+      { x: 18, y: 31 },
+      { x: 52, y: 19 },
+      { x: centerX - 39, y: 25 },
+      { x: 33, y: 35 },
     ], true);
     graphics.fillPoints([
-      { x: right - 11, y: 27 },
-      { x: innerRight - 1, y: 13 },
-      { x: centerX + 16, y: 20 },
-      { x: innerRight + 5, y: 28 },
+      { x: textureWidth - 18, y: 31 },
+      { x: textureWidth - 52, y: 19 },
+      { x: centerX + 39, y: 25 },
+      { x: textureWidth - 33, y: 35 },
     ], true);
   }
 
   graphics.fillStyle(colors.hull, 1);
   graphics.fillPoints([
-    { x: centerX, y: 2 },
-    { x: centerX + 34, y: 13 },
-    { x: centerX + 24, y: 28 },
-    { x: centerX, y: 33 },
-    { x: centerX - 24, y: 28 },
-    { x: centerX - 34, y: 13 },
+    { x: centerX, y: hullTop },
+    { x: centerX + 44, y: 14 },
+    { x: centerX + 38, y: 35 },
+    { x: centerX + 17, y: hullBottom },
+    { x: centerX - 17, y: hullBottom },
+    { x: centerX - 38, y: 35 },
+    { x: centerX - 44, y: 14 },
+  ], true);
+
+  graphics.fillStyle(lightPlate, 1);
+  graphics.fillPoints([
+    { x: centerX, y: hullTop + 1 },
+    { x: centerX + 26, y: 12 },
+    { x: centerX + 12, y: 18 },
+    { x: centerX, y: 12 },
+    { x: centerX - 12, y: 18 },
+    { x: centerX - 26, y: 12 },
+  ], true);
+
+  graphics.fillStyle(midPlate, 1);
+  graphics.fillPoints([
+    { x: centerX - 42, y: 15 },
+    { x: centerX - 16, y: 20 },
+    { x: centerX - 19, y: 35 },
+    { x: centerX - 38, y: 32 },
+  ], true);
+  graphics.fillPoints([
+    { x: centerX + 42, y: 15 },
+    { x: centerX + 16, y: 20 },
+    { x: centerX + 19, y: 35 },
+    { x: centerX + 38, y: 32 },
   ], true);
 
   if (colors.hullAccent) {
-    graphics.fillStyle(colors.hullAccent, 0.82);
+    graphics.fillStyle(colors.hullAccent, 1);
     graphics.fillPoints([
-      { x: centerX, y: 5 },
-      { x: centerX + 14, y: 13 },
-      { x: centerX + 11, y: 28 },
-      { x: centerX, y: 31 },
-      { x: centerX - 11, y: 28 },
-      { x: centerX - 14, y: 13 },
+      { x: centerX, y: 7 },
+      { x: centerX + 16, y: 16 },
+      { x: centerX + 11, y: 34 },
+      { x: centerX, y: 38 },
+      { x: centerX - 11, y: 34 },
+      { x: centerX - 16, y: 16 },
     ], true);
   }
 
   if (colors.hullSideAccent) {
-    graphics.fillStyle(colors.hullSideAccent, 0.72);
-    graphics.fillRoundedRect(centerX - 31, 16, 17, 6, 2);
-    graphics.fillRoundedRect(centerX + 14, 16, 17, 6, 2);
+    graphics.fillStyle(colors.hullSideAccent, 1);
+    graphics.fillRoundedRect(centerX - 40, 18, 14, 5, 2);
+    graphics.fillRoundedRect(centerX + 26, 18, 14, 5, 2);
+    graphics.fillStyle(colors.hullSideAccent, 1);
+    graphics.fillRoundedRect(centerX - 34, 29, 11, 4, 1);
+    graphics.fillRoundedRect(centerX + 23, 29, 11, 4, 1);
   }
 
-  graphics.fillStyle(colors.cockpit, 0.82);
-  graphics.fillEllipse(centerX, 15, 24, 12);
-  graphics.fillStyle(0x0b1024, 0.32);
-  graphics.fillEllipse(centerX, 16, 14, 6);
-
-  graphics.fillStyle(colors.engine, 0.85);
-  graphics.fillTriangle(centerX - 13, 29, centerX - 6, 33, centerX - 19, 33);
-  graphics.fillTriangle(centerX + 13, 29, centerX + 6, 33, centerX + 19, 33);
-
-  graphics.lineStyle(2, 0xffffff, 0.42);
+  graphics.lineStyle(1, panelLine, 0.42);
   graphics.strokePoints([
-    { x: centerX, y: 2 },
-    { x: centerX + 34, y: 13 },
-    { x: centerX + 24, y: 28 },
-    { x: centerX, y: 33 },
-    { x: centerX - 24, y: 28 },
-    { x: centerX - 34, y: 13 },
+    { x: centerX, y: hullTop },
+    { x: centerX + 44, y: 14 },
+    { x: centerX + 38, y: 35 },
+    { x: centerX + 17, y: hullBottom },
+    { x: centerX - 17, y: hullBottom },
+    { x: centerX - 38, y: 35 },
+    { x: centerX - 44, y: 14 },
+  ], true);
+  graphics.strokeLineShape(new Phaser.Geom.Line(centerX, hullTop + 2, centerX, hullBottom - 1));
+  graphics.strokeLineShape(new Phaser.Geom.Line(centerX - 40, 15, centerX - 18, 35));
+  graphics.strokeLineShape(new Phaser.Geom.Line(centerX + 40, 15, centerX + 18, 35));
+
+  graphics.fillStyle(0x161a1f, 1);
+  graphics.fillEllipse(centerX, centerY - 1, 24, 24);
+  graphics.fillStyle(shadowPlate, 1);
+  graphics.fillEllipse(centerX, centerY - 1, 19, 19);
+  graphics.fillStyle(glassDark, 1);
+  graphics.fillEllipse(centerX, centerY - 1, 13, 13);
+  graphics.fillStyle(glassLight, 0.9);
+  graphics.fillEllipse(centerX - 3, centerY - 4, 6, 5);
+  graphics.fillStyle(0x071016, 0.78);
+  graphics.fillEllipse(centerX + 1, centerY + 1, 8, 9);
+  graphics.lineStyle(2, palePlate, 0.46);
+  graphics.strokeCircle(centerX, centerY - 1, 11);
+  graphics.lineStyle(2, darkPlate, 0.8);
+  graphics.strokeCircle(centerX, centerY - 1, 16);
+
+  graphics.fillStyle(0x303743, 1);
+  graphics.fillRoundedRect(centerX - 35, 35, 18, 7, 2);
+  graphics.fillRoundedRect(centerX + 17, 35, 18, 7, 2);
+  graphics.fillStyle(colors.engine, 1);
+  graphics.fillTriangle(centerX - 26, 38, centerX - 16, SHIP_TEXTURE_HEIGHT, centerX - 36, SHIP_TEXTURE_HEIGHT);
+  graphics.fillTriangle(centerX + 26, 38, centerX + 16, SHIP_TEXTURE_HEIGHT, centerX + 36, SHIP_TEXTURE_HEIGHT);
+
+  graphics.lineStyle(1, 0xffffff, 0.35);
+  graphics.strokePoints([
+    { x: left, y: 28 },
+    { x: 42, y: 7 },
+    { x: centerX - 25, y: 18 },
+    { x: centerX - 33, y: 34 },
+    { x: 25, y: 40 },
+  ], true);
+  graphics.strokePoints([
+    { x: right, y: 28 },
+    { x: textureWidth - 42, y: 7 },
+    { x: centerX + 25, y: 18 },
+    { x: centerX + 33, y: 34 },
+    { x: textureWidth - 25, y: 40 },
   ], true);
 
-  graphics.generateTexture(key, textureWidth, SHIP_HEIGHT);
+  graphics.generateTexture(key, textureWidth, SHIP_TEXTURE_HEIGHT);
   graphics.destroy();
 }
 
@@ -1547,14 +1677,13 @@ function getShipMovementTargetAngle(scene) {
 }
 
 function refreshShipSize(scene) {
-  const width = getShipWidth(scene);
-  scene.ship.setScale(1, 1);
+  scene.ship.setScale(SHIP_SCALE, SHIP_SCALE);
   if (isShieldActive(scene)) {
-    scene.ship.body.setSize(SHIELD_BUBBLE_DIAMETER, SHIELD_BUBBLE_DIAMETER, true);
+    scene.ship.body.setSize(SHIELD_BUBBLE_DIAMETER / SHIP_SCALE, SHIELD_BUBBLE_DIAMETER / SHIP_SCALE, true);
     return;
   }
 
-  scene.ship.body.setSize(width, SHIP_HEIGHT, true);
+  scene.ship.body.setSize(SHIP_TEXTURE_WIDTH, SHIP_TEXTURE_HEIGHT, true);
 }
 
 function setShipTextureForCurrentState(scene) {
@@ -1637,14 +1766,15 @@ function getShipHitboxPolygon(scene) {
   const x = scene.ship.x;
   const y = scene.ship.y;
   return [
-    { x, y: y - 15 },
-    { x: x + 30, y: y - 9 },
-    { x: x + 64, y: y + 11 },
-    { x: x + 38, y: y + 16 },
-    { x, y: y + 16 },
-    { x: x - 38, y: y + 16 },
-    { x: x - 64, y: y + 11 },
-    { x: x - 30, y: y - 9 },
+    { x, y: y - 18 },
+    { x: x + 40, y: y - 10 },
+    { x: x + 67, y: y + 5 },
+    { x: x + 44, y: y + 16 },
+    { x: x + 15, y: y + 19 },
+    { x: x - 15, y: y + 19 },
+    { x: x - 44, y: y + 16 },
+    { x: x - 67, y: y + 5 },
+    { x: x - 40, y: y - 10 },
   ];
 }
 
@@ -2710,8 +2840,8 @@ function resetCounters() {
   scoreBoosterLevel = 0;
   energyRefinerLevel = 0;
   energyRefinerLevelBonus = 0;
-  playerTrailTimer = 0;
   enemyTrailTimer = 0;
+  clearShipTrail(this);
   this.nextRedWaveEligibleAt = 0;
   this.nextAsteroidWaveEligibleAt = 0;
   this.obreraSpawnsUnlocked = false;
@@ -2762,6 +2892,7 @@ function clearGameplayVisuals(scene) {
   }
   scene.shipLifeIndicator = null;
   scene.pointPopupSlots = [];
+  clearShipTrail(scene);
 
   if (scene.ship) {
     scene.tweens.killTweensOf(scene.ship);
@@ -3490,10 +3621,8 @@ function isShieldActive(scene) {
   return Boolean(scene.activeShieldBooster);
 }
 
-function getTimedBoosterDuration(level) {
-  if (level <= 0) return MIN_TIMED_BOOSTER_DURATION;
-  const step = (MAX_TIMED_BOOSTER_DURATION - MIN_TIMED_BOOSTER_DURATION) / (MAX_UPGRADE_LEVEL - 1);
-  return Math.round(MIN_TIMED_BOOSTER_DURATION + (level - 1) * step);
+function getTimedBoosterDuration() {
+  return TIMED_BOOSTER_DURATION;
 }
 
 function getLifeBoosterHealAmount() {
@@ -3501,11 +3630,19 @@ function getLifeBoosterHealAmount() {
 }
 
 function getLifeBoosterChance(level = lifeBoosterLevel) {
-  return Math.max(0, level) * LIFE_BOOSTER_CHANCE_PER_LEVEL;
+  return getBoosterChanceForLevel(level);
 }
 
 function getLifeBoosterChancePercent(level = lifeBoosterLevel) {
-  return Math.round(getLifeBoosterChance(level) * 100);
+  return getBoosterChancePercent(level);
+}
+
+function getBoosterChanceForLevel(level) {
+  return Math.max(0, level) * BOOSTER_CHANCE_PER_LEVEL;
+}
+
+function getBoosterChancePercent(level) {
+  return Math.round(getBoosterChanceForLevel(level) * 100);
 }
 
 function canDropLifeBooster() {
@@ -3782,36 +3919,120 @@ function removePointPopupSlot(scene, slot) {
 }
 
 function updateShipPropulsion(scene, delta) {
-  if (!scene.ship) return;
+  if (!scene.ship || !scene.shipTrail) return;
+  if (!scene.shipTrailPoints) scene.shipTrailPoints = [];
 
-  playerTrailTimer += delta;
-  if (playerTrailTimer < 70) return;
-  playerTrailTimer = 0;
+  const now = scene.time ? scene.time.now : 0;
+  const targetX = scene.ship.x;
+  const targetY = scene.ship.y + 14;
+  scene.shipTrailAnchorX = scene.shipTrailAnchorX === undefined
+    ? targetX
+    : Phaser.Math.Linear(scene.shipTrailAnchorX, targetX, SHIP_TRAIL_POSITION_SMOOTHING);
+  scene.shipTrailAnchorY = scene.shipTrailAnchorY === undefined
+    ? targetY
+    : Phaser.Math.Linear(scene.shipTrailAnchorY, targetY, SHIP_TRAIL_POSITION_SMOOTHING);
+  const point = {
+    x: scene.shipTrailAnchorX,
+    y: scene.shipTrailAnchorY,
+    createdAt: now,
+  };
+  const previousPoint = scene.shipTrailPoints && scene.shipTrailPoints[scene.shipTrailPoints.length - 1];
+  if (
+    !previousPoint
+    || Phaser.Math.Distance.Between(previousPoint.x, previousPoint.y, point.x, point.y) >= SHIP_TRAIL_MIN_POINT_DISTANCE
+  ) {
+    scene.shipTrailPoints.push(point);
+  }
 
-  [-22, 22].forEach((offsetX) => {
-    const particle = trackGameplayVisual(scene, scene.add.image(
-      scene.ship.x + offsetX + Phaser.Math.Between(-3, 3),
-      scene.ship.y + 17 + Phaser.Math.Between(-1, 2),
-      'goldTrailParticle'
-    ));
-    particle
-      .setDepth(SHIP_DEPTH - 1)
-      .setTint(0xffd84d)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(Phaser.Math.FloatBetween(0.75, 1.15))
-      .setAlpha(0.78);
+  scene.shipTrailPoints = scene.shipTrailPoints
+    .filter((trailPoint) => now - trailPoint.createdAt <= SHIP_TRAIL_DURATION)
+    .slice(-SHIP_TRAIL_MAX_POINTS);
 
-    scene.tweens.add({
-      targets: particle,
-      y: particle.y + Phaser.Math.Between(12, 22),
-      x: particle.x + Phaser.Math.Between(-5, 5),
-      scale: 0.15,
-      alpha: 0,
-      duration: Phaser.Math.Between(220, 340),
-      ease: 'Sine.easeOut',
-      onComplete: () => particle.destroy(),
-    });
-  });
+  drawShipTrail(scene, now);
+}
+
+function clearShipTrail(scene) {
+  if (!scene) return;
+  scene.shipTrailPoints = [];
+  scene.shipTrailAnchorX = undefined;
+  scene.shipTrailAnchorY = undefined;
+  if (scene.shipTrail) scene.shipTrail.clear();
+}
+
+function drawShipTrail(scene, now) {
+  const graphics = scene.shipTrail;
+  const points = smoothShipTrailPoints(scene.shipTrailPoints || []);
+  graphics.clear();
+  if (points.length < 2) return;
+
+  graphics.setBlendMode(Phaser.BlendModes.ADD);
+
+  for (let i = 1; i < points.length; i += 1) {
+    const previousPoint = points[i - 1];
+    const currentPoint = points[i];
+    const age = now - currentPoint.createdAt;
+    const freshness = Phaser.Math.Clamp(1 - age / SHIP_TRAIL_DURATION, 0, 1);
+    const positionRatio = i / (points.length - 1);
+    const taper = Math.pow(Math.min(freshness, positionRatio), 1.18);
+    const width = Math.max(1.1, SHIP_TRAIL_WIDTH * taper);
+    const alpha = 0.06 + 0.44 * taper;
+    const blueMix = Phaser.Math.Clamp((positionRatio - (1 - SHIP_TRAIL_BLUE_CORE_RATIO)) / SHIP_TRAIL_BLUE_CORE_RATIO, 0, 1);
+    const haloColor = mixRgbColor(0xff9f1c, 0x1269d3, blueMix);
+    const bodyColor = mixRgbColor(0xffc22e, 0x1b8be6, blueMix);
+    const coreColor = mixRgbColor(0xffe06a, 0x5fd7ff, blueMix);
+
+    graphics.lineStyle(width * 1.25, haloColor, alpha * 0.28);
+    graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
+    graphics.fillStyle(haloColor, alpha * 0.22);
+    graphics.fillCircle(currentPoint.x, currentPoint.y, width * 0.58);
+    graphics.lineStyle(width, bodyColor, alpha);
+    graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
+    graphics.fillStyle(bodyColor, alpha * 0.58);
+    graphics.fillCircle(currentPoint.x, currentPoint.y, width * 0.42);
+    graphics.lineStyle(Math.max(0.7, width * 0.22), coreColor, alpha * 0.7);
+    graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
+  }
+}
+
+function smoothShipTrailPoints(points) {
+  if (points.length < 3) return points;
+  let smoothedPoints = points;
+
+  for (let pass = 0; pass < SHIP_TRAIL_CURVE_PASSES; pass += 1) {
+    const nextPoints = [smoothedPoints[0]];
+    for (let i = 0; i < smoothedPoints.length - 1; i += 1) {
+      const currentPoint = smoothedPoints[i];
+      const nextPoint = smoothedPoints[i + 1];
+      nextPoints.push({
+        x: Phaser.Math.Linear(currentPoint.x, nextPoint.x, 0.25),
+        y: Phaser.Math.Linear(currentPoint.y, nextPoint.y, 0.25),
+        createdAt: Phaser.Math.Linear(currentPoint.createdAt, nextPoint.createdAt, 0.25),
+      });
+      nextPoints.push({
+        x: Phaser.Math.Linear(currentPoint.x, nextPoint.x, 0.75),
+        y: Phaser.Math.Linear(currentPoint.y, nextPoint.y, 0.75),
+        createdAt: Phaser.Math.Linear(currentPoint.createdAt, nextPoint.createdAt, 0.75),
+      });
+    }
+    nextPoints.push(smoothedPoints[smoothedPoints.length - 1]);
+    smoothedPoints = nextPoints;
+  }
+
+  return smoothedPoints;
+}
+
+function mixRgbColor(fromColor, toColor, amount) {
+  const mix = Phaser.Math.Clamp(amount, 0, 1);
+  const fromRed = (fromColor >> 16) & 255;
+  const fromGreen = (fromColor >> 8) & 255;
+  const fromBlue = fromColor & 255;
+  const toRed = (toColor >> 16) & 255;
+  const toGreen = (toColor >> 8) & 255;
+  const toBlue = toColor & 255;
+  const red = Math.round(Phaser.Math.Linear(fromRed, toRed, mix));
+  const green = Math.round(Phaser.Math.Linear(fromGreen, toGreen, mix));
+  const blue = Math.round(Phaser.Math.Linear(fromBlue, toBlue, mix));
+  return (red << 16) | (green << 8) | blue;
 }
 
 function updateEnemyPropulsion(scene, delta) {
@@ -3889,7 +4110,7 @@ function emitRedNeedleTrail(scene, needle, horizontalVelocity, scaleMultiplier =
 }
 
 function activateScoreBooster(scene) {
-  const duration = getTimedBoosterDuration(scoreBoosterLevel);
+  const duration = getTimedBoosterDuration();
   scoreMultiplier = 2;
   scene.activeScoreBooster = {
     endsAt: scene.time.now + duration,
@@ -3906,7 +4127,7 @@ function activateScoreBooster(scene) {
 }
 
 function activateShieldBooster(scene) {
-  const duration = getTimedBoosterDuration(shieldBoosterLevel);
+  const duration = getTimedBoosterDuration();
   scene.activeShieldBooster = {
     endsAt: scene.time.now + duration,
     duration,
@@ -5289,25 +5510,33 @@ function getUpgradeConfig(upgradeKind) {
   if (upgradeKind === 'lifeBooster') {
     return {
       label: 'Kit de reparación',
-      getDescription: (level) => 'Aumenta la probabilidad de aparición a ' + getLifeBoosterChancePercent(level) + '%. Repone 1 vida.',
+      getDescription: (level) => getUpgradeDescriptionLines([
+        level === 1 ? 'Desbloquea el Kit de reparación.' : '',
+        'Repone 1 vida.',
+        'Tasa de aparición ' + getLifeBoosterChancePercent(level) + '%.',
+      ]),
       color: '#4dff88',
     };
   }
   if (upgradeKind === 'shieldBooster') {
     return {
       label: 'Barrera protectora',
-      getDescription: (level) => (level === 1
-        ? 'Desbloquea la aparición de barreras protectoras. Proporciona un escudo que protege la nave y daña algunos enemigos al contacto. '
-        : '') + 'Duración ' + formatSeconds(getTimedBoosterDuration(level)) + ' segundos.',
+      getDescription: (level) => getUpgradeDescriptionLines([
+        level === 1 ? 'Desbloquea la barrera protectora.' : '',
+        'Protege del daño y destruye algunos enemigos durante ' + formatSeconds(getTimedBoosterDuration()) + ' segundos.',
+        'Tasa de aparición ' + getBoosterChancePercent(level) + '%.',
+      ]),
       color: '#4da3ff',
     };
   }
   if (upgradeKind === 'scoreBooster') {
     return {
       label: 'Catalizador de energía',
-      getDescription: (level) => (level === 1
-        ? 'Desbloquea la aparición de catalizadores de energía. Duplica los puntos obtenidos al recoger orbes de energía. '
-        : '') + 'Duración ' + formatSeconds(getTimedBoosterDuration(level)) + ' segundos.',
+      getDescription: (level) => getUpgradeDescriptionLines([
+        level === 1 ? 'Desbloquea el catalizador de energía.' : '',
+        'Duplica el valor de los orbes durante ' + formatSeconds(getTimedBoosterDuration()) + ' segundos.',
+        'Tasa de aparición ' + getBoosterChancePercent(level) + '%.',
+      ]),
       color: '#9b5cff',
     };
   }
@@ -5321,6 +5550,10 @@ function getUpgradeConfig(upgradeKind) {
     };
   }
   return { label: 'Mejora', getDescription: () => '', color: '#76ffe8' };
+}
+
+function getUpgradeDescriptionLines(lines) {
+  return lines.filter(Boolean).join('\n');
 }
 
 function formatSeconds(milliseconds) {
@@ -5565,7 +5798,7 @@ function isPreciseShipOverlap(scene, objectA, objectB) {
   if (object.getData('kind') === 'redNeedle') return isRedNeedleOverlappingShip(scene, object);
   if (object.getData('kind') === 'redNeedleLaser') return isRedNeedleLaserOverlappingShip(scene, object);
 
-  if (isShieldActive(scene)) {
+  if (isShieldActive(scene) && isShieldBlockedKind(object.getData('kind'))) {
     return getDistanceToShieldCenter(scene, object) <= SHIELD_BUBBLE_RADIUS + getObjectCollisionRadius(object);
   }
 
@@ -6077,8 +6310,8 @@ function getNextBoosterKind(scene) {
 
   const timedBoosterActive = getActiveTimedBooster(scene);
   const options = [
-    { kind: 'scoreBooster', chance: timedBoosterActive || scoreBoosterLevel <= 0 ? 0 : SCORE_BOOSTER_CHANCE },
-    { kind: 'shieldBooster', chance: timedBoosterActive || shieldBoosterLevel <= 0 ? 0 : SHIELD_BOOSTER_CHANCE },
+    { kind: 'scoreBooster', chance: timedBoosterActive || scoreBoosterLevel <= 0 ? 0 : getBoosterChanceForLevel(scoreBoosterLevel) },
+    { kind: 'shieldBooster', chance: timedBoosterActive || shieldBoosterLevel <= 0 ? 0 : getBoosterChanceForLevel(shieldBoosterLevel) },
     { kind: 'lifeBooster', chance: canDropLifeBooster() ? getLifeBoosterChance() : 0 },
   ];
   const totalChance = options.reduce((sum, option) => sum + option.chance, 0);
