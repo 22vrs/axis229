@@ -96,6 +96,7 @@ const BOSS_ATTACK_GAP = 1500;
 const BOSS_WIDTH = 560;
 const BOSS_HEIGHT = 220;
 const BOSS_LASER_WIDTH = 32;
+const BOSS_HORIZONTAL_LASER_HEIGHT = 30;
 const WAVE_CLEAR_DELAY = 2200;
 const WAVE_POST_DELAY = 900;
 const BOSS_CUE_BAND_HEIGHT = 76;
@@ -106,6 +107,9 @@ const BOSS_LASER_MIN_X_GAP = 90;
 const BOSS_LASER_CHAIN_MIN_X_GAP = SHIP_WIDTH + 34;
 const BOSS_LASER_TRACKING_CHANCE = 0.55;
 const BOSS_LASER_TRACKING_JITTER = 18;
+const BOSS_HORIZONTAL_LASER_MIN_Y_GAP = SHIP_HEIGHT + 32;
+const BOSS_HORIZONTAL_LASER_TRACKING_CHANCE = 0.62;
+const BOSS_HORIZONTAL_LASER_TRACKING_JITTER = 18;
 const RED_ENEMY_SWAY_SPEED = 0.0042;
 const RED_ENEMY_SWAY_MAX_VELOCITY = 24;
 const RED_ENEMY_HITBOX_WIDTH = 30;
@@ -169,6 +173,7 @@ const ASTEROID_WAVE_HORIZONTAL_SPEED_RATIO = 0.58;
 const ASTEROID_WRAP_MARGIN = 28;
 const UPGRADE_POINTS_REQUIRED = 10;
 const SHIELD_BLOCK_SCORE = 10;
+const SPIKE_DRONE_DISABLE_SCORE = 5;
 const INITIAL_HEART_CAPACITY = 3;
 const MAX_UPGRADE_LEVEL = 5;
 const UPGRADE_RESUME_DELAY = 2000;
@@ -345,7 +350,7 @@ function getBossConfigForLevel(level) {
 
   const bossKinds = ['red', 'boss', 'asteroid', 'plasma', 'drones', 'redNeedleBoss'];
   const bossKind = isInfiniteGameMode()
-    ? (bossIndex === 0 ? 'drones' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
+    ? (bossIndex === 0 ? 'boss' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
     : bossKinds[bossIndex % bossKinds.length];
   return createBossConfig(bossKind);
 }
@@ -3346,7 +3351,7 @@ function pauseTimedGameplay(scene) {
   [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activePlasmaWave, scene.activeBossWave]
     .forEach((countdown) => pauseCountdown(scene, countdown));
 
-  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.redNeedleBossPassEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
+  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossHorizontalLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.redNeedleBossPassEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
     if (event) event.paused = true;
   });
   if (scene.bossEnterTween) scene.bossEnterTween.pause();
@@ -3370,7 +3375,7 @@ function resumeTimedGameplay(scene) {
   [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activePlasmaWave, scene.activeBossWave]
     .forEach((countdown) => resumeCountdown(scene, countdown));
 
-  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.redNeedleBossPassEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
+  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossHorizontalLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.redNeedleBossPassEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
     if (event) event.paused = false;
   });
   if (scene.bossEnterTween) scene.bossEnterTween.resume();
@@ -3511,6 +3516,10 @@ function resetBossWave(scene) {
   if (scene.bossLaserEvent) {
     scene.bossLaserEvent.remove(false);
     scene.bossLaserEvent = null;
+  }
+  if (scene.bossHorizontalLaserEvent) {
+    scene.bossHorizontalLaserEvent.remove(false);
+    scene.bossHorizontalLaserEvent = null;
   }
   if (scene.bossLaserClearEvent) {
     scene.bossLaserClearEvent.remove(false);
@@ -4417,7 +4426,13 @@ function updateBossWave(scene) {
   recoverStalledBossWave(scene, bossWave);
   if (scene.activeBossWave !== bossWave) return;
 
-  if (scene.bossLaser && isLaserTouchingShip(scene, scene.bossLaser) && !isShieldActive(scene)) {
+  if (
+    (
+      (scene.bossLaser && isLaserTouchingShip(scene, scene.bossLaser)) ||
+      (scene.bossHorizontalLaser && isLaserTouchingShip(scene, scene.bossHorizontalLaser))
+    ) &&
+    !isShieldActive(scene)
+  ) {
     takeDirectDamage(scene);
   }
 }
@@ -4452,8 +4467,10 @@ function recoverStalledBossWave(scene, bossWave) {
     scene.bossExitTween ||
     scene.bossAttackEvent ||
     scene.bossLaserEvent ||
+    scene.bossHorizontalLaserEvent ||
     scene.bossLaserClearEvent ||
-    scene.bossLaser
+    scene.bossLaser ||
+    scene.bossHorizontalLaser
   ) {
     return;
   }
@@ -4681,12 +4698,14 @@ function beginBossLaserCharge(scene) {
   if (!bossWave || !scene.bossShip) return;
 
   const laserX = getNextBossLaserX(scene, bossWave);
+  const laserY = getNextBossLaserY(scene, bossWave);
   bossWave.currentLaserX = laserX;
+  bossWave.currentLaserY = laserY;
   showBossLaserWarning(scene, laserX);
 
   scene.bossLaserEvent = scene.time.addEvent({
     delay: BOSS_LASER_WARN_DURATION,
-    callback: () => fireBossLaser(scene, laserX),
+    callback: () => fireBossLaser(scene, laserX, laserY),
   });
 }
 
@@ -4728,14 +4747,54 @@ function getNextBossLaserX(scene, bossWave) {
   return Math.abs(rightX - playerX) > Math.abs(leftX - playerX) ? rightX : leftX;
 }
 
+function getNextBossLaserY(scene, bossWave) {
+  const min = getXyShipTopLimit(scene);
+  const max = getXyShipBottomLimit(scene);
+  const blockedY = bossWave.previousHorizontalLaserY;
+  const playerY = scene.ship ? scene.ship.y : getShipY(scene);
+  const requiredGap = BOSS_HORIZONTAL_LASER_MIN_Y_GAP;
+
+  if (Phaser.Math.FloatBetween(0, 1) < BOSS_HORIZONTAL_LASER_TRACKING_CHANCE) {
+    const trackedY = Phaser.Math.Clamp(
+      playerY + Phaser.Math.Between(-BOSS_HORIZONTAL_LASER_TRACKING_JITTER, BOSS_HORIZONTAL_LASER_TRACKING_JITTER),
+      min,
+      max
+    );
+    if (blockedY === undefined || Math.abs(trackedY - blockedY) >= requiredGap) {
+      return trackedY;
+    }
+  }
+
+  const roomyCandidates = [];
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const y = Phaser.Math.Between(min, max);
+    const farFromPrevious = blockedY === undefined || Math.abs(y - blockedY) >= requiredGap;
+    if (farFromPrevious) {
+      roomyCandidates.push(y);
+    }
+  }
+
+  if (roomyCandidates.length) {
+    return Phaser.Utils.Array.GetRandom(roomyCandidates);
+  }
+
+  const anchorY = blockedY === undefined ? playerY : blockedY;
+  const topY = Phaser.Math.Clamp(anchorY - requiredGap, min, max);
+  const bottomY = Phaser.Math.Clamp(anchorY + requiredGap, min, max);
+  return Math.abs(bottomY - playerY) > Math.abs(topY - playerY) ? bottomY : topY;
+}
+
 function showBossLaserWarning(scene, laserX) {
   clearBossWarningParticles(scene);
   scene.bossWarningParticles = [];
+  const minY = 72;
+  const maxY = getGameHeight(scene) - 12;
 
-  for (let i = 0; i < 34; i += 1) {
+  for (let i = 0; i < 42; i += 1) {
     const particle = trackGameplayVisual(scene, scene.add.image(
       laserX + Phaser.Math.Between(-15, 15),
-      172 + Phaser.Math.Between(-10, 22),
+      Phaser.Math.Between(minY, maxY),
       'goldTrailParticle'
     ));
     particle
@@ -4748,7 +4807,7 @@ function showBossLaserWarning(scene, laserX) {
     scene.tweens.add({
       targets: particle,
       x: laserX + Phaser.Math.Between(-5, 5),
-      y: 180 + Phaser.Math.Between(-4, 6),
+      y: Phaser.Math.Between(minY, maxY),
       scale: 0.2,
       alpha: 0.15,
       duration: BOSS_LASER_WARN_DURATION,
@@ -4759,7 +4818,38 @@ function showBossLaserWarning(scene, laserX) {
   }
 }
 
-function fireBossLaser(scene, laserX) {
+function showBossHorizontalLaserWarning(scene, laserY) {
+  scene.bossWarningParticles = scene.bossWarningParticles || [];
+  const width = getGameWidth(scene);
+
+  for (let i = 0; i < 42; i += 1) {
+    const particle = trackGameplayVisual(scene, scene.add.image(
+      Phaser.Math.Between(22, width - 22),
+      laserY + Phaser.Math.Between(-15, 15),
+      'goldTrailParticle'
+    ));
+    particle
+      .setDepth(FX_DEPTH)
+      .setTint(0xff263c)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(Phaser.Math.FloatBetween(0.7, 1.55))
+      .setAlpha(0.82);
+
+    scene.tweens.add({
+      targets: particle,
+      x: Phaser.Math.Between(28, width - 28),
+      y: laserY + Phaser.Math.Between(-5, 5),
+      scale: 0.2,
+      alpha: 0.12,
+      duration: BOSS_LASER_WARN_DURATION,
+      ease: 'Sine.easeIn',
+      onComplete: () => particle.destroy(),
+    });
+    scene.bossWarningParticles.push(particle);
+  }
+}
+
+function fireBossLaser(scene, laserX, laserY) {
   const bossWave = scene.activeBossWave;
   if (!bossWave) return;
 
@@ -4781,6 +4871,11 @@ function fireBossLaser(scene, laserX) {
   scene.bossLaserCore = scene.add.rectangle(laserX, laserCenterY, 9, laserHeight, 0xffedf0, 0.86)
     .setOrigin(0.5, 0.5)
     .setDepth(FX_DEPTH - 1);
+  showBossHorizontalLaserWarning(scene, laserY);
+  scene.bossHorizontalLaserEvent = scene.time.addEvent({
+    delay: BOSS_LASER_WARN_DURATION,
+    callback: () => fireBossHorizontalLaser(scene, laserY),
+  });
   playBossLaserSound(scene);
 
   scene.bossLaserClearEvent = scene.time.addEvent({
@@ -4791,6 +4886,25 @@ function fireBossLaser(scene, laserX) {
   if (bossWave.attacksDone < bossWave.attacksTotal) {
     scheduleBossAttack(scene, BOSS_ATTACK_GAP);
   }
+}
+
+function fireBossHorizontalLaser(scene, laserY) {
+  const bossWave = scene.activeBossWave;
+  if (!bossWave) return;
+
+  scene.bossHorizontalLaserEvent = null;
+  clearBossWarningParticles(scene);
+  bossWave.previousHorizontalLaserY = laserY;
+
+  const laserWidth = getGameWidth(scene);
+  const laserCenterX = laserWidth / 2;
+  scene.bossHorizontalLaser = scene.add.rectangle(laserCenterX, laserY, laserWidth, BOSS_HORIZONTAL_LASER_HEIGHT, 0xff263c, 0.7)
+    .setOrigin(0.5, 0.5)
+    .setDepth(FX_DEPTH - 2);
+  scene.bossHorizontalLaserCore = scene.add.rectangle(laserCenterX, laserY, laserWidth, 8, 0xffedf0, 0.84)
+    .setOrigin(0.5, 0.5)
+    .setDepth(FX_DEPTH - 1);
+  playBossLaserSound(scene);
 }
 
 function finishBossLaserAttack(scene) {
@@ -5316,22 +5430,20 @@ function clearBossLaser(scene) {
     scene.bossLaserCore.destroy();
     scene.bossLaserCore = null;
   }
+  if (scene.bossHorizontalLaser) {
+    scene.bossHorizontalLaser.destroy();
+    scene.bossHorizontalLaser = null;
+  }
+  if (scene.bossHorizontalLaserCore) {
+    scene.bossHorizontalLaserCore.destroy();
+    scene.bossHorizontalLaserCore = null;
+  }
 }
 
 function isLaserTouchingShip(scene, laser) {
-  const halfLaserWidth = BOSS_LASER_WIDTH / 2;
-  const shipHalfWidth = getShipWidth(scene) / 2;
-  const shipTop = scene.ship.y - SHIP_HEIGHT / 2;
-  const shipBottom = scene.ship.y + SHIP_HEIGHT / 2;
-  const laserLeft = laser.x - halfLaserWidth;
-  const laserRight = laser.x + halfLaserWidth;
-
-  return (
-    shipBottom >= 56 &&
-    shipTop <= getGameHeight(scene) &&
-    scene.ship.x + shipHalfWidth >= laserLeft &&
-    scene.ship.x - shipHalfWidth <= laserRight
-  );
+  const width = laser.displayWidth || laser.width || BOSS_LASER_WIDTH;
+  const height = laser.displayHeight || laser.height || getGameHeight(scene);
+  return isRectOverlappingShip(scene, laser.x, laser.y, width, height);
 }
 
 function updateBoosterBar(scene, progress, immediate = false) {
@@ -6102,11 +6214,20 @@ function applySpikeDroneState(drone, stateName, scene) {
 }
 
 function disableSpikeDrone(scene, drone) {
+  const shouldReward = !drone.getData('disableRewardGranted');
+  drone.setData('disableRewardGranted', true);
   applySpikeDroneState(drone, 'disabled', scene);
   drone.setData('nextSpikeStateAt', undefined);
   drone.setData('pausedSpikeRemaining', undefined);
   drone.setAngularVelocity(0);
   playSpikeDroneDisableSound(scene);
+  if (shouldReward) {
+    addScore(scene, SPIKE_DRONE_DISABLE_SCORE, true, {
+      x: drone.x,
+      y: drone.y,
+      color: '#ffd84d',
+    });
+  }
 }
 
 function isSpikeDroneGreenState(stateName) {

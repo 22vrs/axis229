@@ -29,7 +29,7 @@ El juego carga Phaser y Supabase desde CDN, asi que hace falta conexion a intern
 | `JUGAR` | Partida normal con progresion, jefes cada 3 niveles y ranking. | Si |
 | `MODO INFINITO` | Partida libre con amenazas desbloqueadas y jefes aleatorios. | No |
 
-En modo infinito, el primer jefe es `Drones`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
+En modo infinito, el primer jefe es `Centinela`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
 
 ## Progresion
 
@@ -72,7 +72,7 @@ Hay un jefe cada 3 niveles. La rotacion normal es:
 | Nivel | Jefe | Ataque principal | Desbloquea despues |
 | ---: | --- | --- | --- |
 | 3 | Enjambre | Obreras / enemigos rojos con caida frecuente | Obreras en el viaje |
-| 6 | Centinela | Laser vertical con aviso previo | Centinela viajero |
+| 6 | Centinela | Laser vertical con aviso previo y laser horizontal encadenado | Centinela viajero |
 | 9 | Cinturon | Asteroides normales y grandes | Asteroides en el viaje |
 | 12 | Marea de Plasma | Barras horizontales con hueco movil | Barras de plasma en el viaje |
 | 15 | Drones | Drones de pinchos que alternan estados | Drones en el viaje |
@@ -99,7 +99,7 @@ Las probabilidades son por intento de aparicion, no por segundo. En partida norm
 | Jefe | Patron |
 | --- | --- |
 | Enjambre | Spawns de enemigos rojos cada `400 ms`, intentando mantener separacion horizontal minima de `SHIP_WIDTH + 56`. |
-| Centinela | `7` ataques laser en jefe normal y `2` en encuentro viajero. |
+| Centinela | `7` ataques laser en jefe normal y `2` en encuentro viajero. Cada ataque dispara un laser vertical y prepara uno horizontal dentro del rango de movimiento de la nave mientras el vertical sigue activo. |
 | Cinturon | Asteroides cada `760 ms`; 84% normales y 16% grandes. |
 | Marea de Plasma | Barras cada `2100 ms` con hueco movil. |
 | Drones | Drones de pinchos cada `680 ms`. |
