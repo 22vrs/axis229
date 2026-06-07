@@ -14,6 +14,7 @@ const RED_NEEDLE_SHOT_SOUND_PATH = 'assets/red-needle-shot.mp3';
 const STREAK_SUCCESS_SOUND_PATH = 'assets/streak-success.mp3';
 const BACKGROUND_MUSIC_PATH = 'assets/background.mp3';
 const PURPLE_BOOSTER_MUSIC_PATH = 'assets/purple-booster.mp3';
+const PLAYER_SHIP_IMAGE_PATH = 'assets/images/player-ship.svg';
 const SUPABASE_URL = 'https://fqkpwigonxgnsynfdzyw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Up1cBihd6uOftnMkhj3A3w_ZH1q7YOR';
 const SUPABASE_RANKING_TABLE = 'ranking';
@@ -435,7 +436,12 @@ function waitForGameFonts() {
   ]);
 }
 
-function preload() {}
+function preload() {
+  this.load.svg('ship', PLAYER_SHIP_IMAGE_PATH, {
+    width: SHIP_TEXTURE_WIDTH,
+    height: SHIP_TEXTURE_HEIGHT,
+  });
+}
 
 function create() {
   gameScene = this;
@@ -487,6 +493,15 @@ function create() {
   createAsteroidTexture(this);
   createBigAsteroidTexture(this);
 
+  if (!this.textures.exists('ship')) {
+    createShipTexture(this, 'ship', {
+      hull: 0xb8bec8,
+      wing: 0x6f7784,
+      cockpit: 0xf1f4f8,
+      engine: 0xd6dbe3,
+    });
+  }
+
   // Textura del booster de vida
   const lifeGraphics = this.make.graphics({ x: 0, y: 0, add: false });
   lifeGraphics.fillStyle(0x4dff88, 1);
@@ -521,12 +536,6 @@ function create() {
   scoreGraphics.generateTexture('scoreBooster', 36, 36);
   scoreGraphics.destroy();
 
-  createShipTexture(this, 'ship', {
-    hull: 0xb8bec8,
-    wing: 0x6f7784,
-    cockpit: 0xf1f4f8,
-    engine: 0xd6dbe3,
-  });
   createShipTexture(this, 'purpleShip', {
     hull: 0xb8bec8,
     wing: 0x6f7784,
