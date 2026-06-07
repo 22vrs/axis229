@@ -2930,6 +2930,7 @@ function resetCounters() {
   this.travelSentinelUnlocked = false;
   this.nextTravelSentinelEligibleAt = 0;
   this.pendingBossWave = null;
+  this.pendingBossWaves = [];
   resetBossWave(this);
   updatePlayerLevelText(this);
   updateStreakText();
@@ -3347,6 +3348,10 @@ function scheduleNextSpawn(scene, delayOverride = null) {
   if (spawnEvent) {
     spawnEvent.remove(false);
     spawnEvent = null;
+  }
+
+  if (consumePendingBossWave(scene)) {
+    return;
   }
 
   if (scene.activeRedWave && !scene.activeRedWave.isSpawningDamageBoosters) {
@@ -5746,9 +5751,19 @@ function advancePlayerLevel(scene) {
     energyRefinerLevelBonus += 1;
   }
   nextUpgradeScore = getLevelRequirement(playerLevel);
-  scene.pendingBossWave = getBossConfigForLevel(completedLevel);
+  queuePendingBossWave(scene, getBossConfigForLevel(completedLevel));
   increaseDifficulty(scene);
   updatePlayerLevelText(scene);
+}
+
+function queuePendingBossWave(scene, bossConfig) {
+  if (!scene || !bossConfig) return;
+  if (!scene.pendingBossWave) {
+    scene.pendingBossWave = bossConfig;
+    return;
+  }
+  if (!scene.pendingBossWaves) scene.pendingBossWaves = [];
+  scene.pendingBossWaves.push(bossConfig);
 }
 
 function getAvailableUpgradeKinds() {
@@ -5842,7 +5857,7 @@ function chooseUpgrade(scene, upgradeKind) {
   showOverlayScreen(scene, null);
   scene.availableUpgradeChoices = null;
 
-  if (scene.pendingBossWave) {
+  if (hasPendingBossWave(scene)) {
     state = 'paused';
     scene.resumeSpawnDelay = null;
     setPauseOverlayMode(scene, 'normal');
@@ -5877,7 +5892,7 @@ function getUpgradeLevel(upgradeKind) {
 }
 
 function consumePendingBossWave(scene) {
-  if (!scene || !scene.pendingBossWave || state !== 'playing') return false;
+  if (!scene || !hasPendingBossWave(scene) || state !== 'playing') return false;
   if (
     getActiveTimedBooster(scene) ||
     getActiveWaveCountdown(scene) ||
@@ -5887,11 +5902,17 @@ function consumePendingBossWave(scene) {
     hasFallingObjects(scene) ||
     hasActivePlasmaBars(scene)
   ) return false;
-  const bossConfig = scene.pendingBossWave;
-  scene.pendingBossWave = false;
+  const bossConfig = scene.pendingBossWave || scene.pendingBossWaves.shift();
+  scene.pendingBossWave = scene.pendingBossWaves && scene.pendingBossWaves.length
+    ? scene.pendingBossWaves.shift()
+    : null;
   releasePendingStreakRepairKit(scene);
   activateLevelBoss(scene, bossConfig);
   return true;
+}
+
+function hasPendingBossWave(scene) {
+  return Boolean(scene && (scene.pendingBossWave || (scene.pendingBossWaves && scene.pendingBossWaves.length)));
 }
 
 function releasePendingStreakRepairKit(scene) {
@@ -6167,7 +6188,7 @@ function getPointToSegmentDistance(x, y, pointA, pointB) {
 // --- Logica de bolas ---
 
 function spawnBall(scene) {
-  if (isBlockingBossWave(scene) || scene.pendingBossWave) return;
+  if (isBlockingBossWave(scene) || hasPendingBossWave(scene)) return;
 
   if (shouldStartTravelSentinel(scene)) {
     activateTravelSentinel(scene);
@@ -6753,7 +6774,7 @@ function getNextTravelThreatKind(scene) {
 
 function shouldStartTravelSentinel(scene) {
   if (!scene.travelSentinelUnlocked || scene.activeBossWave || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activeCometWave || scene.activePlasmaWave) return false;
-  if (scene.pendingBossWave || getActiveTimedBooster(scene) || hasActivePlasmaBars(scene)) return false;
+  if (hasPendingBossWave(scene) || getActiveTimedBooster(scene) || hasActivePlasmaBars(scene)) return false;
   if (scene.time.now < scene.nextTravelSentinelEligibleAt) return false;
   if (Math.random() >= TRAVEL_SENTINEL_CHANCE) return false;
 
