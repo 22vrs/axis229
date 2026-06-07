@@ -53,6 +53,18 @@ Cada mejora puede subir hasta nivel 5.
 
 Los boosters temporales duran entre `5 s` y `15 s` segun el nivel de la mejora.
 
+## Boosters y probabilidades
+
+Las probabilidades son por intento de aparicion y se comprueban despues de las amenazas viajeras, barras de plasma y asteroides. Solo puede haber un booster cayendo a la vez.
+
+| Booster | Probabilidad | Cuando puede aparecer | Efecto |
+| --- | ---: | --- | --- |
+| Catalizador de energia | 7% | Si la mejora esta desbloqueada y no hay otro booster temporal activo. | Duplica los puntos de los orbes durante `5 s` a `15 s`, segun nivel. |
+| Barrera protectora | 5% | Si la mejora esta desbloqueada y no hay otro booster temporal activo. | Activa un escudo durante `5 s` a `15 s`, segun nivel. |
+| Kit de reparacion | 3% | Si la mejora esta desbloqueada y la nave no esta al maximo de vidas. | Cura tantas vidas como nivel tenga la mejora. |
+
+Si los tres boosters pueden aparecer, la probabilidad total de que el intento genere un booster es `15%`: `7%` catalizador, `5%` barrera y `3%` kit.
+
 ## Jefes del modo normal
 
 Hay un jefe cada 3 niveles. La rotacion normal es:
@@ -74,13 +86,13 @@ Las probabilidades son por intento de aparicion, no por segundo. En partida norm
 
 | Amenaza | Probabilidad | Cuando puede aparecer | Notas |
 | --- | ---: | --- | --- |
-| Obrera / enemigo rojo | 16% | Despues de vencer a Enjambre | No aparece si hay barra de plasma o 3 amenazas hostiles activas. |
+| Obrera / enemigo rojo | 16% | Despues de vencer a Enjambre | Puede aparecer durante el centinela viajero. |
 | Drone de pinchos | 5% | Despues de vencer a Drones | Solo dana cuando esta expandido, salvo contacto con escudo. |
 | Aguja Roja | 5% | Despues de vencer a Aguja Roja | Amenaza horizontal. Solo puede haber una activa. |
-| Asteroide | 10% | Despues de vencer a Cinturon | No aparece si ya hay asteroide, barra de plasma o 3 amenazas hostiles. |
+| Asteroide | 10% | Despues de vencer a Cinturon | Puede solaparse con otros asteroides, barras de plasma y amenazas hostiles. |
 | Asteroide grande | 24% de los asteroides de viaje | Viaje normal | Equivale aprox. a 2,4% por intento si se llega a tirar asteroide. |
-| Barra de plasma | 5% | Despues de vencer a Marea de Plasma | No aparece si hay jefe, otra barra o amenazas hostiles activas. |
-| Centinela viajero | 1,8% | Despues de vencer a Centinela | Tiene cooldown de `26000 ms` y no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. |
+| Barra de plasma | 5% | Despues de vencer a Marea de Plasma | No aparece durante jefes de nivel. Puede solaparse con otras barras y amenazas hostiles. |
+| Centinela viajero | 1,8% | Despues de vencer a Centinela | Tiene cooldown de `26000 ms` y no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. Durante este encuentro pueden caer amenazas de viaje. |
 
 ## Patrones de jefe
 

@@ -6012,9 +6012,8 @@ function getNextSpawnKind(scene) {
 }
 
 function getNextTravelThreatKind(scene) {
-  if ((!scene.obreraSpawnsUnlocked && !scene.droneSpawnsUnlocked && !scene.redNeedleSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || scene.activeBossWave) return null;
-  if (hasActivePlasmaBars(scene)) return null;
-  if (countActiveHostileFallingObjects(scene) >= 3) return null;
+  const isLevelBossActive = scene.activeBossWave && !scene.activeBossWave.isTravelEncounter;
+  if ((!scene.obreraSpawnsUnlocked && !scene.droneSpawnsUnlocked && !scene.redNeedleSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || isLevelBossActive) return null;
 
   if (scene.redNeedleSpawnsUnlocked && !hasActiveRedNeedle(scene) && Math.random() < RED_NEEDLE_SPAWN_CHANCE) return 'redNeedle';
   if (scene.droneSpawnsUnlocked && Math.random() < SPIKE_DRONE_SPAWN_CHANCE) return 'spikeDrone';
@@ -6033,8 +6032,6 @@ function shouldStartTravelSentinel(scene) {
 
 function getNextAsteroidKind(scene) {
   if (!scene.asteroidSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || scene.activeBossWave) return null;
-  if (hasActivePlasmaBars(scene)) return null;
-  if (hasFallingAsteroid(scene) || countActiveHostileFallingObjects(scene) >= 3) return null;
 
   if (Math.random() >= TRAVEL_ASTEROID_CHANCE) return null;
   return Math.random() < 0.24 ? 'bigAsteroid' : 'asteroid';
@@ -6042,8 +6039,6 @@ function getNextAsteroidKind(scene) {
 
 function getNextPlasmaKind(scene) {
   if (!scene.plasmaSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || scene.activeBossWave) return null;
-  if (hasActivePlasmaBars(scene)) return null;
-  if (countActiveHostileFallingObjects(scene) > 0) return null;
 
   return Math.random() < TRAVEL_PLASMA_CHANCE ? 'plasmaBar' : null;
 }
