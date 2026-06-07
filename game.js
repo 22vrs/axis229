@@ -121,6 +121,7 @@ const SHIP_TRAIL_MIN_POINT_DISTANCE = 4;
 const SHIP_TRAIL_WIDTH = 18;
 const SHIP_TRAIL_POSITION_SMOOTHING = 0.34;
 const SHIP_TRAIL_CURVE_PASSES = 2;
+const SHIP_TRAIL_BLUE_CORE_RATIO = 0.34;
 const SHIP_RESUME_TOUCH_PADDING_X = 12;
 const SHIP_RESUME_TOUCH_PADDING_Y = 24;
 const XY_CONTROL_RADIUS = 34;
@@ -3851,16 +3852,20 @@ function drawShipTrail(scene, now) {
     const taper = Math.pow(Math.min(freshness, positionRatio), 1.18);
     const width = Math.max(1.1, SHIP_TRAIL_WIDTH * taper);
     const alpha = 0.06 + 0.44 * taper;
+    const blueMix = Phaser.Math.Clamp((positionRatio - (1 - SHIP_TRAIL_BLUE_CORE_RATIO)) / SHIP_TRAIL_BLUE_CORE_RATIO, 0, 1);
+    const haloColor = mixRgbColor(0xff9f1c, 0x1269d3, blueMix);
+    const bodyColor = mixRgbColor(0xffc22e, 0x1b8be6, blueMix);
+    const coreColor = mixRgbColor(0xffe06a, 0x5fd7ff, blueMix);
 
-    graphics.lineStyle(width * 1.25, 0xff9f1c, alpha * 0.28);
+    graphics.lineStyle(width * 1.25, haloColor, alpha * 0.28);
     graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
-    graphics.fillStyle(0xff9f1c, alpha * 0.22);
+    graphics.fillStyle(haloColor, alpha * 0.22);
     graphics.fillCircle(currentPoint.x, currentPoint.y, width * 0.58);
-    graphics.lineStyle(width, 0xffc22e, alpha);
+    graphics.lineStyle(width, bodyColor, alpha);
     graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
-    graphics.fillStyle(0xffc22e, alpha * 0.58);
+    graphics.fillStyle(bodyColor, alpha * 0.58);
     graphics.fillCircle(currentPoint.x, currentPoint.y, width * 0.42);
-    graphics.lineStyle(Math.max(0.7, width * 0.22), 0xffe06a, alpha * 0.7);
+    graphics.lineStyle(Math.max(0.7, width * 0.22), coreColor, alpha * 0.7);
     graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
   }
 }
@@ -3890,6 +3895,20 @@ function smoothShipTrailPoints(points) {
   }
 
   return smoothedPoints;
+}
+
+function mixRgbColor(fromColor, toColor, amount) {
+  const mix = Phaser.Math.Clamp(amount, 0, 1);
+  const fromRed = (fromColor >> 16) & 255;
+  const fromGreen = (fromColor >> 8) & 255;
+  const fromBlue = fromColor & 255;
+  const toRed = (toColor >> 16) & 255;
+  const toGreen = (toColor >> 8) & 255;
+  const toBlue = toColor & 255;
+  const red = Math.round(Phaser.Math.Linear(fromRed, toRed, mix));
+  const green = Math.round(Phaser.Math.Linear(fromGreen, toGreen, mix));
+  const blue = Math.round(Phaser.Math.Linear(fromBlue, toBlue, mix));
+  return (red << 16) | (green << 8) | blue;
 }
 
 function updateEnemyPropulsion(scene, delta) {
