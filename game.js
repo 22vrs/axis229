@@ -155,7 +155,7 @@ const ASTEROID_WAVE_HORIZONTAL_SPEED_RATIO = 0.58;
 const ASTEROID_WRAP_MARGIN = 28;
 const UPGRADE_POINTS_REQUIRED = 10;
 const SHIELD_BLOCK_SCORE = 10;
-const INITIAL_HEART_CAPACITY = 5;
+const INITIAL_HEART_CAPACITY = 3;
 const MAX_UPGRADE_LEVEL = 5;
 const UPGRADE_RESUME_DELAY = 2000;
 const MAGNET_BASE_RADIUS_RATIO = 0.14;
@@ -5580,7 +5580,7 @@ function isPreciseShipOverlap(scene, objectA, objectB) {
   if (object.getData('kind') === 'redNeedle') return isRedNeedleOverlappingShip(scene, object);
   if (object.getData('kind') === 'redNeedleLaser') return isRedNeedleLaserOverlappingShip(scene, object);
 
-  if (isShieldActive(scene)) {
+  if (isShieldActive(scene) && isShieldBlockedKind(object.getData('kind'))) {
     return getDistanceToShieldCenter(scene, object) <= SHIELD_BUBBLE_RADIUS + getObjectCollisionRadius(object);
   }
 
