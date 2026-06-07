@@ -69,6 +69,26 @@ En modo infinito, el primer jefe es `Lluvia de estrellas`; despues los jefes se 
 - Al encadenar `50` orbes de energia sin recibir dano se concede una recompensa de racha.
 - La recompensa base de racha es de `50` puntos y crece con cada bloque de `50`.
 
+## Velocidad del juego
+
+La velocidad principal depende del nivel del jugador y se recalcula al subir de nivel:
+
+| Nivel | Multiplicador | Gravedad de orbes | Intervalo normal |
+| ---: | ---: | ---: | ---: |
+| 1 | `1.00x` | `220` | `1500 ms` |
+| 2 | `1.50x` | `330` | `~829 ms` |
+| 3+ | `2.00x` | `440` | `600 ms` |
+
+Como funciona:
+
+- La gravedad base es `220` y solo los orbes normales usan directamente la velocidad principal.
+- El multiplicador sube de `1.00x` a `2.00x` entre los niveles `1` y `3`; desde el nivel `3` queda en el maximo.
+- El intervalo de aparicion normal baja de `1500 ms` a `600 ms` usando una curva suavizada (`SPAWN_DELAY_EASING = 1.8`), asi que el salto intermedio no es lineal.
+- Los boosters que caen usan el `80%` de la velocidad principal (`BOOSTER_GRAVITY_RATIO = 0.8`), por eso el HUD muestra tambien `BOOST`.
+- Al cambiar la velocidad, los objetos que ya estan cayendo actualizan su velocidad para adaptarse al nuevo ritmo.
+- Las oleadas y jefes pueden usar sus propios intervalos fijos, por ejemplo Enjambre cada `400 ms`, Drones cada `680 ms`, Asteroides cada `760 ms`, Cometas cada `520 ms` y Plasma cada `2100 ms`.
+- Algunas amenazas no escalan con la velocidad principal y usan ratios o valores propios, como asteroides, drones, cometas, lasers y barras de plasma.
+
 ## Mejoras
 
 | Mejora | Efecto |
