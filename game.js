@@ -5292,21 +5292,33 @@ function getUpgradeConfig(upgradeKind) {
   if (upgradeKind === 'lifeBooster') {
     return {
       label: 'Kit de reparación',
-      getDescription: (level) => 'Aumenta la probabilidad de aparición a ' + getLifeBoosterChancePercent(level) + '%. Repone 1 vida.',
+      getDescription: (level) => getUpgradeDescriptionLines([
+        level === 1 ? 'Desbloquea el Kit de reparación.' : '',
+        'Repone 1 vida.',
+        'Tasa de aparición ' + getLifeBoosterChancePercent(level) + '%.',
+      ]),
       color: '#4dff88',
     };
   }
   if (upgradeKind === 'shieldBooster') {
     return {
       label: 'Barrera protectora',
-      getDescription: (level) => 'Aumenta la probabilidad de aparición a ' + getBoosterChancePercent(level) + '%. Dura ' + formatSeconds(getTimedBoosterDuration()) + ' segundos.',
+      getDescription: (level) => getUpgradeDescriptionLines([
+        level === 1 ? 'Desbloquea la barrera protectora.' : '',
+        'Protege del daño y destruye algunos enemigos durante ' + formatSeconds(getTimedBoosterDuration()) + ' segundos.',
+        'Tasa de aparición ' + getBoosterChancePercent(level) + '%.',
+      ]),
       color: '#4da3ff',
     };
   }
   if (upgradeKind === 'scoreBooster') {
     return {
       label: 'Catalizador de energía',
-      getDescription: (level) => 'Aumenta la probabilidad de aparición a ' + getBoosterChancePercent(level) + '%. Dura ' + formatSeconds(getTimedBoosterDuration()) + ' segundos.',
+      getDescription: (level) => getUpgradeDescriptionLines([
+        level === 1 ? 'Desbloquea el catalizador de energía.' : '',
+        'Duplica el valor de los orbes durante ' + formatSeconds(getTimedBoosterDuration()) + ' segundos.',
+        'Tasa de aparición ' + getBoosterChancePercent(level) + '%.',
+      ]),
       color: '#9b5cff',
     };
   }
@@ -5320,6 +5332,10 @@ function getUpgradeConfig(upgradeKind) {
     };
   }
   return { label: 'Mejora', getDescription: () => '', color: '#76ffe8' };
+}
+
+function getUpgradeDescriptionLines(lines) {
+  return lines.filter(Boolean).join('\n');
 }
 
 function formatSeconds(milliseconds) {
