@@ -31,8 +31,11 @@ const STARFIELD_SPEED_RATIO = 0.32;
 const MAX_STARFIELD_SPEED_MULTIPLIER = 2.6;
 const BOOSTER_GRAVITY_RATIO = 0.8;
 const SHIP_SIDE_HIDE_RATIO = 1 / 3;
-const SHIP_WIDTH = 156;
-const SHIP_HEIGHT = 46;
+const SHIP_TEXTURE_WIDTH = 156;
+const SHIP_TEXTURE_HEIGHT = 46;
+const SHIP_SCALE = 142 / SHIP_TEXTURE_WIDTH;
+const SHIP_WIDTH = Math.round(SHIP_TEXTURE_WIDTH * SHIP_SCALE);
+const SHIP_HEIGHT = Math.round(SHIP_TEXTURE_HEIGHT * SHIP_SCALE);
 const SHIP_RADIUS = 8;
 const SHIELD_BUBBLE_RADIUS = 82;
 const SHIELD_BUBBLE_DIAMETER = SHIELD_BUBBLE_RADIUS * 2;
@@ -748,14 +751,14 @@ function createEnergyBallTexture(scene, ballKey, colors) {
   ballGraphics.destroy();
 }
 
-function createShipTexture(scene, key, colors, textureWidth = SHIP_WIDTH) {
+function createShipTexture(scene, key, colors, textureWidth = SHIP_TEXTURE_WIDTH) {
   const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
   const centerX = textureWidth / 2;
-  const centerY = SHIP_HEIGHT / 2;
+  const centerY = SHIP_TEXTURE_HEIGHT / 2;
   const left = 2;
   const right = textureWidth - 2;
   const hullTop = 3;
-  const hullBottom = SHIP_HEIGHT - 7;
+  const hullBottom = SHIP_TEXTURE_HEIGHT - 7;
   const darkPlate = 0x252a31;
   const shadowPlate = 0x414852;
   const midPlate = 0x8d96a2;
@@ -772,14 +775,14 @@ function createShipTexture(scene, key, colors, textureWidth = SHIP_WIDTH) {
     { x: 41, y: 4 },
     { x: centerX - 18, y: 14 },
     { x: centerX - 20, y: 34 },
-    { x: 44, y: SHIP_HEIGHT - 4 },
+    { x: 44, y: SHIP_TEXTURE_HEIGHT - 4 },
   ], true);
   graphics.fillPoints([
     { x: right - 5, y: 30 },
     { x: textureWidth - 41, y: 4 },
     { x: centerX + 18, y: 14 },
     { x: centerX + 20, y: 34 },
-    { x: textureWidth - 44, y: SHIP_HEIGHT - 4 },
+    { x: textureWidth - 44, y: SHIP_TEXTURE_HEIGHT - 4 },
   ], true);
 
   graphics.fillStyle(colors.wing, 1);
@@ -908,35 +911,26 @@ function createShipTexture(scene, key, colors, textureWidth = SHIP_WIDTH) {
   graphics.strokeLineShape(new Phaser.Geom.Line(centerX + 40, 15, centerX + 18, 35));
 
   graphics.fillStyle(0x161a1f, 1);
-  graphics.fillEllipse(centerX, centerY - 1, 30, 30);
-  graphics.fillStyle(shadowPlate, 1);
   graphics.fillEllipse(centerX, centerY - 1, 24, 24);
+  graphics.fillStyle(shadowPlate, 1);
+  graphics.fillEllipse(centerX, centerY - 1, 19, 19);
   graphics.fillStyle(glassDark, 1);
-  graphics.fillEllipse(centerX, centerY - 1, 17, 17);
+  graphics.fillEllipse(centerX, centerY - 1, 13, 13);
   graphics.fillStyle(glassLight, 0.9);
-  graphics.fillEllipse(centerX - 4, centerY - 5, 8, 7);
+  graphics.fillEllipse(centerX - 3, centerY - 4, 6, 5);
   graphics.fillStyle(0x071016, 0.78);
-  graphics.fillEllipse(centerX + 2, centerY + 1, 10, 12);
+  graphics.fillEllipse(centerX + 1, centerY + 1, 8, 9);
   graphics.lineStyle(2, palePlate, 0.46);
-  graphics.strokeCircle(centerX, centerY - 1, 14);
+  graphics.strokeCircle(centerX, centerY - 1, 11);
   graphics.lineStyle(2, darkPlate, 0.8);
-  graphics.strokeCircle(centerX, centerY - 1, 20);
-
-  graphics.fillStyle(0x1a1f25, 1);
-  graphics.fillRoundedRect(centerX - 14, 31, 28, 9, 2);
-  graphics.fillStyle(0x090c10, 0.9);
-  for (let i = 0; i < 6; i += 1) {
-    graphics.fillRect(centerX - 11 + i * 4, 33, 2, 5);
-  }
-  graphics.lineStyle(1, accent, 0.45);
-  graphics.strokeRoundedRect(centerX - 14, 31, 28, 9, 2);
+  graphics.strokeCircle(centerX, centerY - 1, 16);
 
   graphics.fillStyle(0x303743, 1);
   graphics.fillRoundedRect(centerX - 35, 35, 18, 7, 2);
   graphics.fillRoundedRect(centerX + 17, 35, 18, 7, 2);
   graphics.fillStyle(colors.engine, 1);
-  graphics.fillTriangle(centerX - 26, 38, centerX - 16, SHIP_HEIGHT, centerX - 36, SHIP_HEIGHT);
-  graphics.fillTriangle(centerX + 26, 38, centerX + 16, SHIP_HEIGHT, centerX + 36, SHIP_HEIGHT);
+  graphics.fillTriangle(centerX - 26, 38, centerX - 16, SHIP_TEXTURE_HEIGHT, centerX - 36, SHIP_TEXTURE_HEIGHT);
+  graphics.fillTriangle(centerX + 26, 38, centerX + 16, SHIP_TEXTURE_HEIGHT, centerX + 36, SHIP_TEXTURE_HEIGHT);
 
   graphics.lineStyle(1, 0xffffff, 0.35);
   graphics.strokePoints([
@@ -954,7 +948,7 @@ function createShipTexture(scene, key, colors, textureWidth = SHIP_WIDTH) {
     { x: textureWidth - 25, y: 40 },
   ], true);
 
-  graphics.generateTexture(key, textureWidth, SHIP_HEIGHT);
+  graphics.generateTexture(key, textureWidth, SHIP_TEXTURE_HEIGHT);
   graphics.destroy();
 }
 
@@ -1674,14 +1668,13 @@ function getShipMovementTargetAngle(scene) {
 }
 
 function refreshShipSize(scene) {
-  const width = getShipWidth(scene);
-  scene.ship.setScale(1, 1);
+  scene.ship.setScale(SHIP_SCALE, SHIP_SCALE);
   if (isShieldActive(scene)) {
-    scene.ship.body.setSize(SHIELD_BUBBLE_DIAMETER, SHIELD_BUBBLE_DIAMETER, true);
+    scene.ship.body.setSize(SHIELD_BUBBLE_DIAMETER / SHIP_SCALE, SHIELD_BUBBLE_DIAMETER / SHIP_SCALE, true);
     return;
   }
 
-  scene.ship.body.setSize(width, SHIP_HEIGHT, true);
+  scene.ship.body.setSize(SHIP_TEXTURE_WIDTH, SHIP_TEXTURE_HEIGHT, true);
 }
 
 function setShipTextureForCurrentState(scene) {
@@ -1764,15 +1757,15 @@ function getShipHitboxPolygon(scene) {
   const x = scene.ship.x;
   const y = scene.ship.y;
   return [
-    { x, y: y - 20 },
-    { x: x + 44, y: y - 12 },
-    { x: x + 74, y: y + 6 },
-    { x: x + 48, y: y + 18 },
-    { x: x + 16, y: y + 21 },
-    { x: x - 16, y: y + 21 },
-    { x: x - 48, y: y + 18 },
-    { x: x - 74, y: y + 6 },
-    { x: x - 44, y: y - 12 },
+    { x, y: y - 18 },
+    { x: x + 40, y: y - 10 },
+    { x: x + 67, y: y + 5 },
+    { x: x + 44, y: y + 16 },
+    { x: x + 15, y: y + 19 },
+    { x: x - 15, y: y + 19 },
+    { x: x - 44, y: y + 16 },
+    { x: x - 67, y: y + 5 },
+    { x: x - 40, y: y - 10 },
   ];
 }
 
