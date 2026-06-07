@@ -1707,12 +1707,19 @@ function updateShieldBubble(scene) {
   }
 
   scene.shieldBubble.setVisible(true);
-  scene.shieldBubble.fillStyle(0x4da3ff, 0.14);
-  scene.shieldBubble.fillCircle(scene.ship.x, scene.ship.y, SHIELD_BUBBLE_RADIUS);
-  scene.shieldBubble.lineStyle(3, 0x9fd9ff, 0.58);
-  scene.shieldBubble.strokeCircle(scene.ship.x, scene.ship.y, SHIELD_BUBBLE_RADIUS);
-  scene.shieldBubble.lineStyle(1, 0xffffff, 0.32);
-  scene.shieldBubble.strokeCircle(scene.ship.x, scene.ship.y, SHIELD_BUBBLE_RADIUS - 10);
+  for (let i = 0; i < 12; i += 1) {
+    const t = i / 11;
+    const radius = SHIELD_BUBBLE_RADIUS * (1 - t * 0.58);
+    const alpha = 0.018 + t * 0.022;
+    scene.shieldBubble.fillStyle(0x4da3ff, alpha);
+    scene.shieldBubble.fillCircle(scene.ship.x, scene.ship.y, radius);
+  }
+  scene.shieldBubble.lineStyle(5, 0x4da3ff, 0.08);
+  scene.shieldBubble.strokeCircle(scene.ship.x, scene.ship.y, SHIELD_BUBBLE_RADIUS + 3);
+  scene.shieldBubble.lineStyle(3, 0x9fd9ff, 0.34);
+  scene.shieldBubble.strokeCircle(scene.ship.x, scene.ship.y, SHIELD_BUBBLE_RADIUS - 2);
+  scene.shieldBubble.lineStyle(1, 0xffffff, 0.2);
+  scene.shieldBubble.strokeCircle(scene.ship.x, scene.ship.y, SHIELD_BUBBLE_RADIUS - 12);
 }
 
 function getShipHitboxPolygon(scene) {
