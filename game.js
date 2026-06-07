@@ -115,6 +115,12 @@ const SHIP_TILT_FULL_SPEED = 1.1;
 const SHIP_XY_DIRECTION_MAX_TILT = 32;
 const SHIP_XY_DIRECTION_VERTICAL_WEIGHT = 0.72;
 const SHIP_TILT_IDLE_DELAY = 170;
+const SHIP_TRAIL_DURATION = 620;
+const SHIP_TRAIL_MAX_POINTS = 38;
+const SHIP_TRAIL_MIN_POINT_DISTANCE = 4;
+const SHIP_TRAIL_WIDTH = 18;
+const SHIP_TRAIL_POSITION_SMOOTHING = 0.34;
+const SHIP_TRAIL_CURVE_PASSES = 2;
 const SHIP_RESUME_TOUCH_PADDING_X = 12;
 const SHIP_RESUME_TOUCH_PADDING_Y = 24;
 const XY_CONTROL_RADIUS = 34;
@@ -239,7 +245,6 @@ let gameScene = null;
 let scoreMultiplier = 1;
 let isDraggingShip = false;
 let pausedMusicTime = 0;
-let playerTrailTimer = 0;
 let enemyTrailTimer = 0;
 let energyRefinerLevelBonus = 0;
 let hud = null;
@@ -602,6 +607,9 @@ function create() {
   this.ship.body.setImmovable(true);
   this.ship.body.setAllowGravity(false);
   refreshShipSize(this);
+
+  this.shipTrail = this.add.graphics().setDepth(SHIP_DEPTH - 1);
+  this.shipTrailPoints = [];
 
   this.xyControl = this.add.image(0, 0, 'xyControl')
     .setDepth(SHIP_DEPTH - 1)
@@ -2707,8 +2715,8 @@ function resetCounters() {
   scoreBoosterLevel = 0;
   energyRefinerLevel = 0;
   energyRefinerLevelBonus = 0;
-  playerTrailTimer = 0;
   enemyTrailTimer = 0;
+  clearShipTrail(this);
   this.nextRedWaveEligibleAt = 0;
   this.nextAsteroidWaveEligibleAt = 0;
   this.obreraSpawnsUnlocked = false;
@@ -2759,6 +2767,7 @@ function clearGameplayVisuals(scene) {
   }
   scene.shipLifeIndicator = null;
   scene.pointPopupSlots = [];
+  clearShipTrail(scene);
 
   if (scene.ship) {
     scene.tweens.killTweensOf(scene.ship);
@@ -3785,36 +3794,102 @@ function removePointPopupSlot(scene, slot) {
 }
 
 function updateShipPropulsion(scene, delta) {
-  if (!scene.ship) return;
+  if (!scene.ship || !scene.shipTrail) return;
+  if (!scene.shipTrailPoints) scene.shipTrailPoints = [];
 
-  playerTrailTimer += delta;
-  if (playerTrailTimer < 70) return;
-  playerTrailTimer = 0;
+  const now = scene.time ? scene.time.now : 0;
+  const targetX = scene.ship.x;
+  const targetY = scene.ship.y + 14;
+  scene.shipTrailAnchorX = scene.shipTrailAnchorX === undefined
+    ? targetX
+    : Phaser.Math.Linear(scene.shipTrailAnchorX, targetX, SHIP_TRAIL_POSITION_SMOOTHING);
+  scene.shipTrailAnchorY = scene.shipTrailAnchorY === undefined
+    ? targetY
+    : Phaser.Math.Linear(scene.shipTrailAnchorY, targetY, SHIP_TRAIL_POSITION_SMOOTHING);
+  const point = {
+    x: scene.shipTrailAnchorX,
+    y: scene.shipTrailAnchorY,
+    createdAt: now,
+  };
+  const previousPoint = scene.shipTrailPoints && scene.shipTrailPoints[scene.shipTrailPoints.length - 1];
+  if (
+    !previousPoint
+    || Phaser.Math.Distance.Between(previousPoint.x, previousPoint.y, point.x, point.y) >= SHIP_TRAIL_MIN_POINT_DISTANCE
+  ) {
+    scene.shipTrailPoints.push(point);
+  }
 
-  [-22, 22].forEach((offsetX) => {
-    const particle = trackGameplayVisual(scene, scene.add.image(
-      scene.ship.x + offsetX + Phaser.Math.Between(-3, 3),
-      scene.ship.y + 17 + Phaser.Math.Between(-1, 2),
-      'goldTrailParticle'
-    ));
-    particle
-      .setDepth(SHIP_DEPTH - 1)
-      .setTint(0xffd84d)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(Phaser.Math.FloatBetween(0.75, 1.15))
-      .setAlpha(0.78);
+  scene.shipTrailPoints = scene.shipTrailPoints
+    .filter((trailPoint) => now - trailPoint.createdAt <= SHIP_TRAIL_DURATION)
+    .slice(-SHIP_TRAIL_MAX_POINTS);
 
-    scene.tweens.add({
-      targets: particle,
-      y: particle.y + Phaser.Math.Between(12, 22),
-      x: particle.x + Phaser.Math.Between(-5, 5),
-      scale: 0.15,
-      alpha: 0,
-      duration: Phaser.Math.Between(220, 340),
-      ease: 'Sine.easeOut',
-      onComplete: () => particle.destroy(),
-    });
-  });
+  drawShipTrail(scene, now);
+}
+
+function clearShipTrail(scene) {
+  if (!scene) return;
+  scene.shipTrailPoints = [];
+  scene.shipTrailAnchorX = undefined;
+  scene.shipTrailAnchorY = undefined;
+  if (scene.shipTrail) scene.shipTrail.clear();
+}
+
+function drawShipTrail(scene, now) {
+  const graphics = scene.shipTrail;
+  const points = smoothShipTrailPoints(scene.shipTrailPoints || []);
+  graphics.clear();
+  if (points.length < 2) return;
+
+  graphics.setBlendMode(Phaser.BlendModes.ADD);
+
+  for (let i = 1; i < points.length; i += 1) {
+    const previousPoint = points[i - 1];
+    const currentPoint = points[i];
+    const age = now - currentPoint.createdAt;
+    const freshness = Phaser.Math.Clamp(1 - age / SHIP_TRAIL_DURATION, 0, 1);
+    const positionRatio = i / (points.length - 1);
+    const taper = Math.pow(Math.min(freshness, positionRatio), 1.18);
+    const width = Math.max(1.1, SHIP_TRAIL_WIDTH * taper);
+    const alpha = 0.06 + 0.44 * taper;
+
+    graphics.lineStyle(width * 1.25, 0xff9f1c, alpha * 0.28);
+    graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
+    graphics.fillStyle(0xff9f1c, alpha * 0.22);
+    graphics.fillCircle(currentPoint.x, currentPoint.y, width * 0.58);
+    graphics.lineStyle(width, 0xffc22e, alpha);
+    graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
+    graphics.fillStyle(0xffc22e, alpha * 0.58);
+    graphics.fillCircle(currentPoint.x, currentPoint.y, width * 0.42);
+    graphics.lineStyle(Math.max(0.7, width * 0.22), 0xffe06a, alpha * 0.7);
+    graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
+  }
+}
+
+function smoothShipTrailPoints(points) {
+  if (points.length < 3) return points;
+  let smoothedPoints = points;
+
+  for (let pass = 0; pass < SHIP_TRAIL_CURVE_PASSES; pass += 1) {
+    const nextPoints = [smoothedPoints[0]];
+    for (let i = 0; i < smoothedPoints.length - 1; i += 1) {
+      const currentPoint = smoothedPoints[i];
+      const nextPoint = smoothedPoints[i + 1];
+      nextPoints.push({
+        x: Phaser.Math.Linear(currentPoint.x, nextPoint.x, 0.25),
+        y: Phaser.Math.Linear(currentPoint.y, nextPoint.y, 0.25),
+        createdAt: Phaser.Math.Linear(currentPoint.createdAt, nextPoint.createdAt, 0.25),
+      });
+      nextPoints.push({
+        x: Phaser.Math.Linear(currentPoint.x, nextPoint.x, 0.75),
+        y: Phaser.Math.Linear(currentPoint.y, nextPoint.y, 0.75),
+        createdAt: Phaser.Math.Linear(currentPoint.createdAt, nextPoint.createdAt, 0.75),
+      });
+    }
+    nextPoints.push(smoothedPoints[smoothedPoints.length - 1]);
+    smoothedPoints = nextPoints;
+  }
+
+  return smoothedPoints;
 }
 
 function updateEnemyPropulsion(scene, delta) {
