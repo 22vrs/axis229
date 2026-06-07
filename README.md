@@ -1,147 +1,224 @@
 # Horizonte Infinito
 
-Juego arcade hecho con HTML, CSS, JavaScript y Phaser 3. Controlas una nave en una pantalla vertical, recoges orbes de energia, encadenas rachas, eliges mejoras y sobrevives a oleadas de amenazas cada vez mas agresivas.
+Juego arcade vertical hecho con HTML, CSS, JavaScript y Phaser 3. Controlas una nave, recoges orbes de energia, encadenas rachas, eliges mejoras y sobrevives a oleadas de amenazas cada vez mas agresivas.
 
-## Como jugar
+Ultima revision del README: 2026-06-07.
 
-Abre `index.html` en el navegador o sirve la carpeta con un servidor local sencillo.
+## Estado actual
+
+- Proyecto web estatico: no requiere instalacion, bundler ni compilacion.
+- Resolucion base del juego: `390 x 700`.
+- Motor: Phaser `3.60.0` cargado desde CDN.
+- Ranking online: Supabase JS v2 cargado desde CDN.
+- Audio e imagenes locales: carpeta `assets/`.
+- El juego puede abrirse directamente con `index.html`, aunque se recomienda usar un servidor local.
+
+## Como ejecutar
+
+Desde la carpeta del proyecto:
 
 ```powershell
 python -m http.server 8000
 ```
 
-Despues entra en `http://localhost:8000`.
+Despues abre:
 
-El juego carga Phaser y Supabase desde CDN, asi que hace falta conexion a internet para jugar con todas las funciones. Los sonidos y la musica estan en `assets/`.
+```text
+http://localhost:8000
+```
+
+Tambien puedes abrir `index.html` directamente en el navegador. Para jugar con ranking y librerias externas hace falta conexion a internet porque Phaser, Supabase y las fuentes de Google se cargan desde CDN.
 
 ## Controles
 
 - Arrastra la nave para moverla libremente en X-Y dentro de la pantalla.
 - Recoge orbes amarillos para sumar puntos y llenar la barra de progreso.
-- Evita enemigos, asteroides, lasers y barras de plasma.
-- Usa el boton de pausa del HUD para pausar, rendirte o abrir opciones.
-- En opciones puedes activar o desactivar efectos y musica. La preferencia se guarda en `localStorage`.
+- Evita enemigos, asteroides, lasers, cometas, drones y barras de plasma.
+- Usa el boton de pausa del HUD para volver, rendirte o abrir opciones.
+- En opciones puedes activar/desactivar efectos y musica y ajustar sus volumenes por separado.
+- Las preferencias de audio se guardan en `localStorage`.
 
-## Modos
+Claves usadas en `localStorage`:
 
-| Modo | Descripcion | Ranking |
-| --- | --- | --- |
-| `JUGAR` | Partida normal con progresion, jefes cada 3 niveles y ranking. | Si |
-| `MODO INFINITO` | Partida libre con amenazas desbloqueadas y jefes aleatorios. | No |
+| Clave | Uso |
+| --- | --- |
+| `jueguito_sfx_enabled` | Efectos activados o desactivados. |
+| `jueguito_music_enabled` | Musica activada o desactivada. |
+| `jueguito_sfx_volume` | Volumen de efectos, de `0` a `1`. |
+| `jueguito_music_volume` | Volumen de musica, de `0` a `1`. |
 
-En modo infinito, el primer jefe es `Drones`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
+## Modos de juego
+
+| Modo | Boton | Descripcion | Ranking |
+| --- | --- | --- | --- |
+| Normal | `JUGAR` | Partida con progresion, mejoras, jefes cada 3 niveles y ranking. | Si |
+| Infinito | `MODO INFINITO` | Partida libre con amenazas desbloqueadas y jefes aleatorios. | No |
+
+En modo infinito, el primer jefe es `Lluvia de estrellas`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
 
 ## Progresion
 
-- La partida empieza con 3 vidas.
-- La dificultad sube con el nivel: la gravedad de los orbes escala desde `1.00x` hasta `2.00x`.
-- El intervalo entre apariciones empieza en `1500 ms` y baja hasta `600 ms`.
-- Cada vez que llenas la barra de progreso subes de nivel y, si hay mejoras disponibles, eliges entre 2 opciones.
-- Hay un jefe cada 3 niveles.
-- Al encadenar 50 orbes de energia sin recibir dano se concede una recompensa de racha. La recompensa base es de 50 puntos y crece con cada bloque de 50 de racha.
+- La partida empieza con `3` vidas.
+- Cada `10` puntos de progreso se sube de nivel al inicio.
+- Cada subida de nivel permite elegir entre `2` mejoras si quedan mejoras disponibles.
+- Cada mejora puede subir hasta nivel `5`.
+- Hay un jefe cada `3` niveles.
+- La gravedad base de los orbes es `220`.
+- La velocidad escala hasta `2.00x`.
+- El intervalo de aparicion empieza en `1500 ms` y baja hasta `600 ms`.
+- Al encadenar `50` orbes de energia sin recibir dano se concede una recompensa de racha.
+- La recompensa base de racha es de `50` puntos y crece con cada bloque de `50`.
 
 ## Mejoras
 
-Cada mejora puede subir hasta nivel 5.
-
 | Mejora | Efecto |
 | --- | --- |
-| Kit de reparacion | Desbloquea kits verdes. Cada kit cura 1 vida y su probabilidad aumenta 2 puntos porcentuales por nivel. |
-| Barrera protectora | Desbloquea escudos azules temporales. Bloquea amenazas y suma puntos al destruirlas por contacto. Su probabilidad aumenta 2 puntos porcentuales por nivel. |
-| Catalizador de energia | Desbloquea boosters morados temporales. Duplica los puntos obtenidos por orbes mientras esta activo. Su probabilidad aumenta 2 puntos porcentuales por nivel. |
-| Refinador de energia | Aumenta el valor de cada orbe. Al nivel maximo suma +1 extra por cada nivel superado. |
+| Kit de reparacion | Desbloquea kits verdes. Cada kit cura `1` vida y su probabilidad aumenta `2` puntos porcentuales por nivel. |
+| Barrera protectora | Desbloquea escudos azules temporales. Bloquea amenazas y suma puntos al destruirlas por contacto. Su probabilidad aumenta `2` puntos porcentuales por nivel. |
+| Catalizador de energia | Desbloquea boosters morados temporales. Duplica los puntos obtenidos por orbes mientras esta activo. Su probabilidad aumenta `2` puntos porcentuales por nivel. |
+| Refinador de energia | Aumenta el valor de cada orbe. Al nivel maximo suma `+1` extra por cada nivel superado. |
 
-Los boosters temporales duran siempre `10 s`.
+Los boosters temporales duran `10 s`.
 
-## Boosters y probabilidades
+## Boosters
 
-Las probabilidades son por intento de aparicion y se comprueban despues de las amenazas viajeras, barras de plasma y asteroides. Solo puede haber un booster cayendo a la vez.
+Las probabilidades son por intento de aparicion. Solo puede haber un booster cayendo a la vez.
 
-| Booster | Probabilidad | Cuando puede aparecer | Efecto |
+| Booster | Probabilidad | Condicion | Efecto |
 | --- | ---: | --- | --- |
-| Catalizador de energia | 2% por nivel (`2%`, `4%`, `6%`, `8%`, `10%`) | Si la mejora esta desbloqueada y no hay otro booster temporal activo. | Duplica los puntos de los orbes durante `10 s`. |
-| Barrera protectora | 2% por nivel (`2%`, `4%`, `6%`, `8%`, `10%`) | Si la mejora esta desbloqueada y no hay otro booster temporal activo. | Activa un escudo durante `10 s`. |
-| Kit de reparacion | 2% por nivel (`2%`, `4%`, `6%`, `8%`, `10%`) | Si la mejora esta desbloqueada y la nave no esta al maximo de vidas. | Cura 1 vida. |
+| Catalizador de energia | `2%` por nivel, hasta `10%` | Mejora desbloqueada y sin otro booster temporal activo. | Duplica los puntos de los orbes durante `10 s`. |
+| Barrera protectora | `2%` por nivel, hasta `10%` | Mejora desbloqueada y sin otro booster temporal activo. | Activa un escudo durante `10 s`. |
+| Kit de reparacion | `2%` por nivel, hasta `10%` | Mejora desbloqueada y nave por debajo del maximo de vidas. | Cura `1` vida. |
 
-Si los tres boosters pueden aparecer, la probabilidad total de que el intento genere un booster depende de sus niveles: desde `6%` con los tres a nivel 1 hasta `30%` con los tres a nivel 5.
+Si los tres boosters pueden aparecer, la probabilidad total por intento va de `6%` con los tres a nivel 1 hasta `30%` con los tres a nivel 5.
 
-## Jefes del modo normal
+## Jefes
 
-Hay un jefe cada 3 niveles. La rotacion normal es:
+Hay un jefe cada 3 niveles en modo normal. Despues del nivel 21, la rotacion se repite cada 21 niveles.
 
-| Nivel | Jefe | Ataque principal | Desbloquea despues |
+| Nivel | Jefe | Patron principal | Desbloquea despues |
 | ---: | --- | --- | --- |
-| 3 | Enjambre | Obreras / enemigos rojos con caida frecuente | Obreras en el viaje |
-| 6 | Centinela | Laser vertical con aviso previo | Centinela viajero |
-| 9 | Cinturon | Asteroides normales y grandes | Asteroides en el viaje |
-| 12 | Marea de Plasma | Barras horizontales con hueco movil | Barras de plasma en el viaje |
-| 15 | Drones | Drones de pinchos que alternan estados | Drones en el viaje |
-| 18 | Aguja Roja | Pasadas horizontales con disparos laser | Aguja Roja en el viaje |
+| 3 | Enjambre | Enemigos rojos cada `400 ms`. | Obreras en viaje normal. |
+| 6 | Centinela | Laser vertical con aviso y laser horizontal encadenado. | Centinela viajero. |
+| 9 | Cinturon | Asteroides normales y grandes cada `760 ms`. | Asteroides en viaje normal. |
+| 12 | Marea de Plasma | Barras horizontales con hueco movil cada `2100 ms`. | Barras de plasma en viaje normal. |
+| 15 | Drones | Drones de pinchos cada `680 ms`. | Drones en viaje normal. |
+| 18 | Aguja Roja | `6` pasadas horizontales con disparos laser. | Aguja Roja en viaje normal. |
+| 21 | Lluvia de estrellas | Cometas diagonales cada `520 ms`. | Cometas en viaje normal. |
 
-Despues del nivel 18 la rotacion se repite cada 18 niveles: nivel 21 Enjambre, nivel 24 Centinela, nivel 27 Cinturon, etc.
+Duraciones principales:
 
-## Amenazas y probabilidades
+| Oleada | Duracion |
+| --- | ---: |
+| Enjambre | `15000 ms` |
+| Cinturon | `15000 ms` |
+| Marea de Plasma | `15000 ms` |
+| Drones | `15000 ms` |
+| Lluvia de estrellas | `15000 ms` |
+| Centinela / Aguja Roja | `30000 ms` |
 
-Las probabilidades son por intento de aparicion, no por segundo. En partida normal el tiempo entre intentos depende de la dificultad. Durante jefes algunas amenazas usan su propio intervalo.
+## Amenazas de viaje
 
-| Amenaza | Probabilidad | Cuando puede aparecer | Notas |
+Las probabilidades son por intento de aparicion. Algunas solo se desbloquean tras vencer a su jefe.
+
+| Amenaza | Probabilidad | Condicion | Notas |
 | --- | ---: | --- | --- |
-| Obrera / enemigo rojo | 16% | Despues de vencer a Enjambre | Puede aparecer durante el centinela viajero. |
-| Drone de pinchos | 5% | Despues de vencer a Drones | Solo dana cuando esta expandido, salvo contacto con escudo. |
-| Aguja Roja | 5% | Despues de vencer a Aguja Roja | Amenaza horizontal. Solo puede haber una activa. |
-| Asteroide | 10% | Despues de vencer a Cinturon | Puede solaparse con otros asteroides, barras de plasma y amenazas hostiles. |
-| Asteroide grande | 24% de los asteroides de viaje | Viaje normal | Equivale aprox. a 2,4% por intento si se llega a tirar asteroide. |
-| Barra de plasma | 5% | Despues de vencer a Marea de Plasma | No aparece durante jefes de nivel. Puede solaparse con otras barras y amenazas hostiles. |
-| Centinela viajero | 1,8% | Despues de vencer a Centinela | Tiene cooldown de `26000 ms` y no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. Durante este encuentro pueden caer amenazas de viaje. |
+| Obrera / enemigo rojo | `16%` | Tras vencer a Enjambre. | Puede aparecer durante el centinela viajero. |
+| Drone de pinchos | `5%` | Tras vencer a Drones. | Solo dana cuando esta expandido, salvo contacto con escudo. |
+| Aguja Roja | `5%` | Tras vencer a Aguja Roja. | Solo puede haber una activa. |
+| Cometa | `20%` | Tras vencer a Lluvia de estrellas. | Entra desde arriba con deriva diagonal y estela. |
+| Asteroide | `10%` | Tras vencer a Cinturon. | Puede aparecer como normal o grande. |
+| Asteroide grande | `24%` de los asteroides de viaje | Si aparece asteroide. | Aproximadamente `2.4%` por intento total. |
+| Barra de plasma | `5%` | Tras vencer a Marea de Plasma. | No aparece durante jefes de nivel. |
+| Centinela viajero | `1.8%` | Tras vencer a Centinela. | Cooldown de `26000 ms`; no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. |
 
-## Patrones de jefe
-
-| Jefe | Patron |
-| --- | --- |
-| Enjambre | Spawns de enemigos rojos cada `400 ms`, intentando mantener separacion horizontal minima de `SHIP_WIDTH + 56`. |
-| Centinela | `7` ataques laser en jefe normal y `2` en encuentro viajero. |
-| Cinturon | Asteroides cada `760 ms`; 84% normales y 16% grandes. |
-| Marea de Plasma | Barras cada `2100 ms` con hueco movil. |
-| Drones | Drones de pinchos cada `680 ms`. |
-| Aguja Roja | `6` pasadas alternando izquierda/derecha; las primeras son repartidas y las siguientes usan patrones especiales. |
-
-## Orden de aparicion
-
-En viaje normal, el juego decide la siguiente aparicion en este orden:
+Orden de decision en viaje normal:
 
 1. Centinela viajero, si cumple condiciones.
 2. Amenaza viajera: Aguja Roja, drone de pinchos u obrera.
 3. Barra de plasma.
-4. Asteroide.
-5. Booster.
-6. Orbe normal, si nada anterior aparece.
+4. Cometa.
+5. Asteroide.
+6. Booster.
+7. Orbe normal, si nada anterior aparece.
 
-Esto significa que las probabilidades de plasma, asteroides y boosters son condicionales: solo se comprueban si las decisiones anteriores no generaron nada.
+Esto hace que varias probabilidades sean condicionales: se comprueban solo si las decisiones anteriores no generaron nada.
 
 ## Ranking
 
-El ranking usa Supabase y guarda:
+El ranking usa Supabase.
 
-- nombre del jugador,
-- puntos,
-- nivel alcanzado,
-- racha maxima.
+Configuracion actual en `game.js`:
 
-La tabla configurada es `ranking`; las columnas principales usadas por el juego son `nombre`, `puntos`, `nivel` y `racha`.
-
-## Estructura
-
-| Archivo | Uso |
+| Dato | Valor |
 | --- | --- |
-| `index.html` | Estructura del juego, HUD, overlays y carga de librerias. |
-| `styles.css` | Estilos del HUD, menus, ranking, pausa, opciones y pantalla de mejoras. |
-| `game.js` | Logica completa del juego, Phaser, progresion, jefes, spawns, audio y ranking. |
-| `assets/` | Musica y efectos de sonido. |
+| Tabla | `ranking` |
+| Columna de puntos | `puntos` |
+| Columna de racha | `racha` |
+| Nombre por defecto | `Anónimo` |
+
+Datos guardados:
+
+- Nombre del jugador.
+- Puntos.
+- Nivel alcanzado.
+- Racha maxima.
+
+Si Supabase no esta disponible o no esta configurado, el juego muestra un aviso y permite seguir jugando sin guardar ranking.
+
+## Estructura del proyecto
+
+| Ruta | Uso |
+| --- | --- |
+| `index.html` | Estructura del juego, HUD, overlays, menus y carga de librerias. |
+| `styles.css` | Estilos del HUD, menus, ranking, pausa, opciones, mejoras y responsive. |
+| `game.js` | Logica completa: Phaser, progresion, jefes, spawns, audio, controles y ranking. |
+| `assets/` | Musica, efectos de sonido e imagenes. |
+| `assets/images/player-ship.svg` | Sprite SVG de la nave del jugador. |
+
+## Assets actuales
+
+| Asset | Uso |
+| --- | --- |
+| `assets/menu-music.mp3` | Musica del menu, ranking y fin de partida. |
+| `assets/game-music.mp3` | Musica durante la partida. |
+| `assets/catch.mp3` | Recoger orbes. |
+| `assets/booster.mp3` | Recoger boosters. |
+| `assets/bad.mp3` | Recibir dano. |
+| `assets/button.mp3` | Botones del menu y overlays. |
+| `assets/level-up.mp3` | Subida de nivel. |
+| `assets/red-wave.mp3` | Entrada de oleada Enjambre. |
+| `assets/boss-laser.mp3` | Laser del Centinela. |
+| `assets/shield-block.mp3` | Bloqueo con escudo. |
+| `assets/spike-drone.mp3` | Drone de pinchos. |
+| `assets/spike-drone-disable.mp3` | Drone desactivado. |
+| `assets/spike-drone-beep.mp3` | Aviso del drone. |
+| `assets/red-needle-shot.mp3` | Disparo de Aguja Roja. |
+| `assets/streak-success.mp3` | Recompensa de racha. |
+| `assets/images/player-ship.svg` | Imagen de la nave. |
+
+### Asset pendiente
+
+`game.js` referencia `assets/purple-booster.mp3` para la musica del booster morado, pero ese archivo no existe actualmente en `assets/`. El juego puede funcionar sin ese archivo, pero el navegador puede mostrar un error 404 cuando intente reproducir esa pista.
+
+## Dependencias externas
+
+Se cargan desde `index.html`:
+
+| Dependencia | Origen |
+| --- | --- |
+| Phaser `3.60.0` | `https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js` |
+| Supabase JS v2 | `https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2` |
+| Fuentes `Orbitron` y `Rajdhani` | Google Fonts |
 
 ## Constantes principales
 
 | Constante | Valor |
 | --- | ---: |
+| `GAME_WIDTH` | `390` |
+| `GAME_HEIGHT` | `700` |
+| `INITIAL_HEART_CAPACITY` | `3` |
+| `BASE_GRAVITY` | `220` |
 | `INITIAL_SPAWN_DELAY` | `1500 ms` |
 | `MIN_SPAWN_DELAY` | `600 ms` |
 | `MAX_SPEED_MULTIPLIER` | `2` |
@@ -149,11 +226,22 @@ La tabla configurada es `ranking`; las columnas principales usadas por el juego 
 | `MAX_UPGRADE_LEVEL` | `5` |
 | `ENERGY_STREAK_REWARD_TARGET` | `50` |
 | `ENERGY_STREAK_REWARD_SCORE` | `50` |
-| `DRONE_WAVE_SPAWN_DELAY` | `680 ms` |
-| `RED_WAVE_SPAWN_DELAY` | `400 ms` |
-| `ASTEROID_WAVE_SPAWN_DELAY` | `760 ms` |
-| `PLASMA_WAVE_SPAWN_DELAY` | `2100 ms` |
-| `RED_NEEDLE_SPAWN_CHANCE` | `0.05` |
-| `SPIKE_DRONE_SPAWN_CHANCE` | `0.05` |
 | `TIMED_BOOSTER_DURATION` | `10000 ms` |
 | `BOOSTER_CHANCE_PER_LEVEL` | `0.02` |
+| `BOSS_WAVE_ATTACKS` | `7` |
+| `TRAVEL_SENTINEL_ATTACKS` | `2` |
+| `TRAVEL_SENTINEL_CHANCE` | `0.018` |
+| `TRAVEL_SENTINEL_COOLDOWN` | `26000 ms` |
+| `OBRERA_SPAWN_CHANCE` | `0.16` |
+| `SPIKE_DRONE_SPAWN_CHANCE` | `0.05` |
+| `RED_NEEDLE_SPAWN_CHANCE` | `0.05` |
+| `TRAVEL_ASTEROID_CHANCE` | `0.1` |
+| `TRAVEL_COMET_CHANCE` | `0.2` |
+| `TRAVEL_PLASMA_CHANCE` | `0.05` |
+
+## Notas de mantenimiento
+
+- El titulo visible del menu es `HORIZONTE INFINITO`.
+- El `<title>` del documento aun dice `Juego de recoger bolas`; conviene cambiarlo si quieres que la pestana del navegador coincida con el nombre del juego.
+- Si se cambia el nombre de columnas de Supabase, tambien hay que actualizar las constantes `SUPABASE_SCORE_COLUMN` y `SUPABASE_STREAK_COLUMN` en `game.js`.
+- Si se anade `assets/purple-booster.mp3`, el README ya contempla esa pista como musica del booster morado.

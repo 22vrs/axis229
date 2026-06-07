@@ -12,7 +12,8 @@ const SPIKE_DRONE_SOUND_PATH = 'assets/spike-drone.mp3';
 const SPIKE_DRONE_DISABLE_SOUND_PATH = 'assets/spike-drone-disable.mp3';
 const RED_NEEDLE_SHOT_SOUND_PATH = 'assets/red-needle-shot.mp3';
 const STREAK_SUCCESS_SOUND_PATH = 'assets/streak-success.mp3';
-const BACKGROUND_MUSIC_PATH = 'assets/background.mp3';
+const MENU_MUSIC_PATH = 'assets/menu-music.mp3';
+const GAMEPLAY_MUSIC_PATH = 'assets/game-music.mp3';
 const PURPLE_BOOSTER_MUSIC_PATH = 'assets/purple-booster.mp3';
 const PLAYER_SHIP_IMAGE_PATH = 'assets/images/player-ship.svg';
 const SUPABASE_URL = 'https://fqkpwigonxgnsynfdzyw.supabase.co';
@@ -52,6 +53,20 @@ const DRONE_WAVE_SPAWN_DELAY = 680;
 const ASTEROID_WAVE_DURATION = 15000;
 const ASTEROID_WAVE_SPAWN_DELAY = 760;
 const TRAVEL_ASTEROID_CHANCE = 0.1;
+const COMET_WAVE_DURATION = 15000;
+const COMET_WAVE_SPAWN_DELAY = 520;
+const TRAVEL_COMET_CHANCE = 0.2;
+const COMET_GRAVITY_RATIO = 1.02;
+const COMET_HORIZONTAL_SPEED_RATIO = 0.96;
+const COMET_WAVE_GRAVITY_RATIO = 0.96;
+const COMET_WAVE_HORIZONTAL_SPEED_RATIO = 0.92;
+const COMET_TRAIL_LIFETIME = 560;
+const COMET_TRAIL_HITBOX = 12;
+const COMET_TRAIL_MAX_POINTS = 28;
+const COMET_TRAIL_MIN_POINT_DISTANCE = 4;
+const COMET_TRAIL_WIDTH = 18;
+const COMET_WAVE_MIN_SPAWN_SPACING = SHIP_WIDTH + 44;
+const COMET_OFFSCREEN_MARGIN = 62;
 const TRAVEL_PLASMA_CHANCE = 0.05;
 const SPIKE_DRONE_SPAWN_CHANCE = 0.05;
 const SPIKE_DRONE_FOLDED_RADIUS = 18;
@@ -96,6 +111,7 @@ const BOSS_ATTACK_GAP = 1500;
 const BOSS_WIDTH = 560;
 const BOSS_HEIGHT = 220;
 const BOSS_LASER_WIDTH = 32;
+const BOSS_HORIZONTAL_LASER_HEIGHT = 30;
 const WAVE_CLEAR_DELAY = 2200;
 const WAVE_POST_DELAY = 900;
 const BOSS_CUE_BAND_HEIGHT = 76;
@@ -106,8 +122,14 @@ const BOSS_LASER_MIN_X_GAP = 90;
 const BOSS_LASER_CHAIN_MIN_X_GAP = SHIP_WIDTH + 34;
 const BOSS_LASER_TRACKING_CHANCE = 0.55;
 const BOSS_LASER_TRACKING_JITTER = 18;
+const BOSS_HORIZONTAL_LASER_MIN_Y_GAP = SHIP_HEIGHT + 32;
+const BOSS_HORIZONTAL_LASER_TRACKING_CHANCE = 0.62;
+const BOSS_HORIZONTAL_LASER_TRACKING_JITTER = 18;
 const RED_ENEMY_SWAY_SPEED = 0.0042;
 const RED_ENEMY_SWAY_MAX_VELOCITY = 24;
+const RED_ENEMY_HITBOX_WIDTH = 30;
+const RED_ENEMY_HITBOX_HEIGHT = 36;
+const RED_ENEMY_SHIELD_RADIUS = 16;
 const SHIP_MAX_TILT = 24;
 const SHIP_TILT_SMOOTHING = 0.16;
 const SHIP_TILT_RETURN_SMOOTHING = 0.08;
@@ -166,11 +188,10 @@ const ASTEROID_WAVE_HORIZONTAL_SPEED_RATIO = 0.58;
 const ASTEROID_WRAP_MARGIN = 28;
 const UPGRADE_POINTS_REQUIRED = 10;
 const SHIELD_BLOCK_SCORE = 10;
+const SPIKE_DRONE_DISABLE_SCORE = 5;
 const INITIAL_HEART_CAPACITY = 3;
 const MAX_UPGRADE_LEVEL = 5;
 const UPGRADE_RESUME_DELAY = 2000;
-const MAGNET_BASE_RADIUS_RATIO = 0.14;
-const MAGNET_PULL_RATIO = 0.75;
 const UPGRADE_BAR_TWEEN_DURATION = 260;
 const BOOSTER_CHANCE_PER_LEVEL = 0.02;
 const FONT_FAMILY = '"Orbitron", "Rajdhani", "Trebuchet MS", Arial, sans-serif';
@@ -239,7 +260,6 @@ let lives = INITIAL_HEART_CAPACITY;
 let nextUpgradeScore = UPGRADE_POINTS_REQUIRED;
 let levelProgressScore = 0;
 let playerLevel = 1;
-let magnetLevel = 0;
 let lifeBoosterLevel = 0;
 let shieldBoosterLevel = 0;
 let scoreBoosterLevel = 0;
@@ -259,6 +279,11 @@ let lastScoreSaved = false;
 let currentGameMode = 'xy';
 let soundEffectsEnabled = true;
 let musicEnabled = true;
+let soundEffectsVolume = 1;
+let musicVolume = 1;
+let audioUnlockListenersBound = false;
+let audioUnlocked = false;
+let musicPlaybackBlocked = false;
 
 loadAudioSettings();
 
@@ -343,9 +368,9 @@ function getBossConfigForLevel(level) {
   const bossIndex = getBossIndexForLevel(level);
   if (bossIndex === -1) return null;
 
-  const bossKinds = ['red', 'boss', 'asteroid', 'plasma', 'drones', 'redNeedleBoss'];
+  const bossKinds = ['red', 'boss', 'asteroid', 'plasma', 'drones', 'redNeedleBoss', 'comet'];
   const bossKind = isInfiniteGameMode()
-    ? (bossIndex === 0 ? 'drones' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
+    ? (bossIndex === 0 ? 'comet' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
     : bossKinds[bossIndex % bossKinds.length];
   return createBossConfig(bossKind);
 }
@@ -363,6 +388,13 @@ function createBossConfig(kind) {
       kind: 'asteroid',
       name: 'Cinturón',
       duration: ASTEROID_WAVE_DURATION,
+    };
+  }
+  if (kind === 'comet') {
+    return {
+      kind: 'comet',
+      name: 'Lluvia de estrellas',
+      duration: COMET_WAVE_DURATION,
     };
   }
   if (kind === 'drones') {
@@ -492,6 +524,8 @@ function create() {
   createBossShipTexture(this);
   createAsteroidTexture(this);
   createBigAsteroidTexture(this);
+  createCometTexture(this);
+  createCometTrailTexture(this);
 
   if (!this.textures.exists('ship')) {
     createShipTexture(this, 'ship', {
@@ -536,60 +570,6 @@ function create() {
   scoreGraphics.generateTexture('scoreBooster', 36, 36);
   scoreGraphics.destroy();
 
-  createShipTexture(this, 'purpleShip', {
-    hull: 0xb8bec8,
-    wing: 0x6f7784,
-    wingAccent: 0x8f55ff,
-    cockpit: 0xf1f4f8,
-    engine: 0xd8a8ff,
-  });
-  createShipTexture(this, 'greenShip', {
-    hull: 0xb8bec8,
-    hullSideAccent: 0x4dff88,
-    wing: 0x6f7784,
-    cockpit: 0xf1f4f8,
-    engine: 0xd6dbe3,
-  });
-  createShipTexture(this, 'greenPurpleShip', {
-    hull: 0xb8bec8,
-    hullSideAccent: 0x4dff88,
-    wing: 0x6f7784,
-    wingAccent: 0x8f55ff,
-    cockpit: 0xf1f4f8,
-    engine: 0xd8a8ff,
-  });
-  createShipTexture(this, 'blueShip', {
-    hull: 0xb8bec8,
-    hullAccent: 0x66bfff,
-    wing: 0x6f7784,
-    cockpit: 0xe7f7ff,
-    engine: 0xd6dbe3,
-  });
-  createShipTexture(this, 'blueGreenShip', {
-    hull: 0xb8bec8,
-    hullAccent: 0x66bfff,
-    hullSideAccent: 0x4dff88,
-    wing: 0x6f7784,
-    cockpit: 0xe7f7ff,
-    engine: 0xd6dbe3,
-  });
-  createShipTexture(this, 'bluePurpleShip', {
-    hull: 0xb8bec8,
-    hullAccent: 0x66bfff,
-    wing: 0x6f7784,
-    wingAccent: 0x8f55ff,
-    cockpit: 0xe7f7ff,
-    engine: 0xd8a8ff,
-  });
-  createShipTexture(this, 'blueGreenPurpleShip', {
-    hull: 0xb8bec8,
-    hullAccent: 0x66bfff,
-    hullSideAccent: 0x4dff88,
-    wing: 0x6f7784,
-    wingAccent: 0x8f55ff,
-    cockpit: 0xe7f7ff,
-    engine: 0xd8a8ff,
-  });
   createXyControlTexture(this);
   createShipTexture(this, 'redShip', {
     hull: 0xff5366,
@@ -635,17 +615,14 @@ function create() {
     .setDepth(SHIP_DEPTH + 3)
     .setVisible(false);
 
-  this.energyRefinerModule = this.add.graphics()
-    .setDepth(SHIP_DEPTH + 2)
-    .setVisible(false);
-  updateShipEquipmentModules(this);
-
   this.shieldBubble = this.add.graphics()
     .setDepth(SHIP_DEPTH + 1)
     .setVisible(false);
   updateShieldBubble(this);
 
   setUiDepth(this);
+
+  this.cometTrailGraphics = this.add.graphics().setDepth(FALLING_OBJECT_DEPTH);
 
   // Grupo de bolas
   this.balls = this.physics.add.group();
@@ -668,6 +645,7 @@ function create() {
   this.gameOverContainer = createGameOver(this);
   this.rankingContainer = createRanking(this);
   updateAudioOptionButtons(this);
+  bindAudioUnlockListeners(this);
   setUiDepth(this);
   layoutScene(this);
 
@@ -998,50 +976,100 @@ function createXyControlTexture(scene) {
 function createEnemyShipTexture(scene) {
   const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
 
-  graphics.fillStyle(0x6b0f1b, 1);
+  graphics.fillStyle(0x3a0712, 1);
   graphics.fillPoints([
-    { x: 24, y: 46 },
-    { x: 5, y: 36 },
-    { x: 12, y: 18 },
-    { x: 3, y: 9 },
-    { x: 19, y: 13 },
     { x: 24, y: 2 },
-    { x: 29, y: 13 },
-    { x: 45, y: 9 },
-    { x: 36, y: 18 },
-    { x: 43, y: 36 },
+    { x: 31, y: 15 },
+    { x: 46, y: 8 },
+    { x: 38, y: 28 },
+    { x: 45, y: 37 },
+    { x: 31, y: 34 },
+    { x: 27, y: 46 },
+    { x: 24, y: 48 },
+    { x: 21, y: 46 },
+    { x: 17, y: 34 },
+    { x: 3, y: 37 },
+    { x: 10, y: 28 },
+    { x: 2, y: 8 },
+    { x: 17, y: 15 },
   ], true);
 
-  graphics.fillStyle(0xf23b4f, 1);
+  graphics.fillStyle(0x8d1725, 1);
   graphics.fillPoints([
-    { x: 24, y: 6 },
-    { x: 34, y: 27 },
-    { x: 30, y: 40 },
-    { x: 24, y: 44 },
-    { x: 18, y: 40 },
-    { x: 14, y: 27 },
+    { x: 24, y: 4 },
+    { x: 30, y: 19 },
+    { x: 26, y: 42 },
+    { x: 24, y: 45 },
+    { x: 22, y: 42 },
+    { x: 18, y: 19 },
   ], true);
 
-  graphics.fillStyle(0xff8090, 0.78);
-  graphics.fillTriangle(12, 19, 4, 29, 16, 28);
-  graphics.fillTriangle(36, 19, 44, 29, 32, 28);
+  graphics.fillStyle(0xd73346, 1);
+  graphics.fillPoints([
+    { x: 24, y: 7 },
+    { x: 29, y: 21 },
+    { x: 27, y: 35 },
+    { x: 24, y: 41 },
+    { x: 21, y: 35 },
+    { x: 19, y: 21 },
+  ], true);
 
-  graphics.fillStyle(0xffedf0, 0.88);
-  graphics.fillEllipse(24, 24, 12, 15);
-  graphics.fillStyle(0x250711, 0.42);
-  graphics.fillEllipse(24, 25, 6, 9);
+  graphics.fillStyle(0x2a030d, 0.78);
+  graphics.fillTriangle(17, 10, 21, 18, 14, 17);
+  graphics.fillTriangle(31, 10, 27, 18, 34, 17);
+  graphics.fillStyle(0xffc05a, 0.95);
+  graphics.fillTriangle(17, 9, 20, 0, 13, 5);
+  graphics.fillTriangle(31, 9, 28, 0, 35, 5);
+  graphics.fillStyle(0x5fb8ff, 0.76);
+  graphics.fillTriangle(22, 8, 24, 0, 26, 8);
 
-  graphics.fillStyle(0xffc15a, 0.95);
-  graphics.fillTriangle(18, 39, 22, 47, 13, 44);
-  graphics.fillTriangle(30, 39, 26, 47, 35, 44);
-  graphics.lineStyle(2, 0xffc0ca, 0.42);
+  graphics.fillStyle(0xb52635, 0.96);
+  graphics.fillTriangle(18, 16, 5, 11, 12, 27);
+  graphics.fillTriangle(30, 16, 43, 11, 36, 27);
+  graphics.fillStyle(0xe0505b, 0.7);
+  graphics.fillTriangle(14, 19, 7, 27, 17, 26);
+  graphics.fillTriangle(34, 19, 41, 27, 31, 26);
+
+  graphics.fillStyle(0x0d121f, 0.86);
+  graphics.fillRoundedRect(10, 18, 7, 3, 1);
+  graphics.fillRoundedRect(31, 18, 7, 3, 1);
+  graphics.fillStyle(0xff6d3f, 0.92);
+  graphics.fillRoundedRect(11, 19, 4, 1, 1);
+  graphics.fillRoundedRect(33, 19, 4, 1, 1);
+
+  graphics.fillStyle(0xf26068, 0.72);
+  graphics.fillCircle(16, 13, 1.7);
+  graphics.fillCircle(32, 13, 1.7);
+
+  graphics.fillStyle(0xb9e8ff, 0.88);
+  graphics.fillEllipse(24, 23, 15, 17);
+  graphics.fillStyle(0x1d2834, 0.92);
+  graphics.fillEllipse(24, 24, 11, 12);
+  graphics.fillStyle(0x6ee9ff, 0.46);
+  graphics.fillEllipse(22, 22, 6, 5);
+  graphics.fillStyle(0x0b0d14, 0.88);
+  graphics.fillCircle(24, 24, 4.2);
+  graphics.lineStyle(1, 0xf3fbff, 0.55);
+  graphics.strokeEllipse(24, 23, 15, 17);
+  graphics.lineStyle(1, 0x6ee9ff, 0.48);
+  graphics.strokeCircle(24, 24, 6.5);
+
+  graphics.lineStyle(1, 0xffa2ad, 0.44);
   graphics.strokePoints([
-    { x: 24, y: 6 },
-    { x: 34, y: 27 },
-    { x: 30, y: 40 },
-    { x: 24, y: 44 },
-    { x: 18, y: 40 },
-    { x: 14, y: 27 },
+    { x: 24, y: 2 },
+    { x: 31, y: 15 },
+    { x: 46, y: 8 },
+    { x: 38, y: 28 },
+    { x: 45, y: 37 },
+    { x: 31, y: 34 },
+    { x: 27, y: 46 },
+    { x: 24, y: 48 },
+    { x: 21, y: 46 },
+    { x: 17, y: 34 },
+    { x: 3, y: 37 },
+    { x: 10, y: 28 },
+    { x: 2, y: 8 },
+    { x: 17, y: 15 },
   ], true);
 
   graphics.generateTexture('enemyShipSmall', 48, 48);
@@ -1406,6 +1434,42 @@ function createBigAsteroidTexture(scene) {
   graphics.destroy();
 }
 
+function createCometTexture(scene) {
+  const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+
+  graphics.fillStyle(0xff3f2c, 0.14);
+  graphics.fillCircle(20, 20, 19);
+  graphics.fillStyle(0xff6a32, 0.3);
+  graphics.fillCircle(20, 20, 14);
+  graphics.fillStyle(0xff4a36, 0.88);
+  graphics.fillCircle(20, 20, 9);
+  graphics.fillStyle(0xfff1ce, 0.94);
+  graphics.fillCircle(18, 18, 4);
+  graphics.lineStyle(1, 0xffb46a, 0.5);
+  graphics.strokeCircle(20, 20, 10);
+
+  graphics.generateTexture('comet', 40, 40);
+  graphics.destroy();
+}
+
+function createCometTrailTexture(scene) {
+  const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+
+  graphics.fillStyle(0x5fbfff, 0.08);
+  graphics.fillEllipse(60, 13, 118, 24);
+  graphics.fillStyle(0x73deff, 0.17);
+  graphics.fillEllipse(48, 13, 84, 15);
+  graphics.fillStyle(0xaaffff, 0.34);
+  graphics.fillEllipse(68, 13, 56, 7);
+  graphics.fillStyle(0xff6a38, 0.28);
+  graphics.fillEllipse(94, 13, 34, 10);
+  graphics.fillStyle(0xff372f, 0.55);
+  graphics.fillEllipse(108, 13, 16, 5);
+
+  graphics.generateTexture('cometTrail', 120, 26);
+  graphics.destroy();
+}
+
 function isPointerOverShip(scene, pointer) {
   return isGamePointOverShip(scene, pointer.x, pointer.y);
 }
@@ -1570,10 +1634,12 @@ function update(time, delta) {
   updateRedWave(this);
   updateDroneWave(this);
   updateAsteroidWave(this);
+  updateCometWave(this);
   updatePlasmaWave(this);
   updatePlasmaBars(this, delta);
+  updateComets(this, delta);
+  updateCometTrails(this);
   updateBossWave(this);
-  updateMagnetPull(this);
   recoverGameplaySpawning(this);
 
   // Comprobar si alguna bola ha llegado al fondo
@@ -1587,6 +1653,8 @@ function update(time, delta) {
       } else {
         ball.destroy();
       }
+    } else if (ball.active && isCometKind(ball.getData('kind')) && isCometOutOfBounds(this, ball)) {
+      ball.destroy();
     } else if (ball.active && isAsteroidKind(ball.getData('kind'))) {
       wrapAsteroidHorizontally(this, ball);
     }
@@ -1623,7 +1691,6 @@ function moveShipTo(scene, x, y = scene.ship ? scene.ship.y : getShipY(scene)) {
     );
     scene.lastShipMoveAt = now;
   }
-  updateShipEquipmentModules(scene);
   updateShieldBubble(scene);
   updateShipLifeIndicator(scene);
   if (usesXyControlHandle(scene) && scene.xyControl && scene.xyControl.visible && !isDraggingShip) {
@@ -1689,43 +1756,7 @@ function refreshShipSize(scene) {
 function setShipTextureForCurrentState(scene) {
   if (!scene.ship) return;
 
-  const hasLifeBooster = lifeBoosterLevel > 0;
-  const hasShieldBooster = shieldBoosterLevel > 0;
-  const hasScoreBooster = scoreBoosterLevel > 0;
-
-  if (hasShieldBooster && hasScoreBooster) {
-    scene.ship.setTexture(hasLifeBooster ? 'blueGreenPurpleShip' : 'bluePurpleShip');
-  } else if (hasScoreBooster) {
-    scene.ship.setTexture(hasLifeBooster ? 'greenPurpleShip' : 'purpleShip');
-  } else if (hasShieldBooster) {
-    scene.ship.setTexture(hasLifeBooster ? 'blueGreenShip' : 'blueShip');
-  } else {
-    scene.ship.setTexture(hasLifeBooster ? 'greenShip' : 'ship');
-  }
-}
-
-function updateShipEquipmentModules(scene) {
-  updateEnergyRefinerModule(scene);
-}
-
-function updateEnergyRefinerModule(scene) {
-  if (!scene.energyRefinerModule || !scene.ship) return;
-
-  scene.energyRefinerModule.clear();
-  if (energyRefinerLevel <= 0) {
-    scene.energyRefinerModule.setVisible(false);
-    return;
-  }
-
-  const x = scene.ship.x;
-  const y = scene.ship.y;
-  scene.energyRefinerModule.setVisible(true);
-  scene.energyRefinerModule.fillStyle(0xffd84d, 0.95);
-  scene.energyRefinerModule.fillRoundedRect(x - 18, y - 4, 36, 8, 4);
-  scene.energyRefinerModule.fillStyle(0xffffff, 0.92);
-  scene.energyRefinerModule.fillCircle(x, y, 3 + energyRefinerLevel);
-  scene.energyRefinerModule.lineStyle(2, 0xfff0a8, 0.75);
-  scene.energyRefinerModule.strokeCircle(x, y, 6 + energyRefinerLevel * 1.5);
+  scene.ship.setTexture('ship');
 }
 
 function getGameWidth(scene) {
@@ -1754,12 +1785,19 @@ function updateShieldBubble(scene) {
   }
 
   scene.shieldBubble.setVisible(true);
-  scene.shieldBubble.fillStyle(0x4da3ff, 0.14);
-  scene.shieldBubble.fillCircle(scene.ship.x, scene.ship.y, SHIELD_BUBBLE_RADIUS);
-  scene.shieldBubble.lineStyle(3, 0x9fd9ff, 0.58);
-  scene.shieldBubble.strokeCircle(scene.ship.x, scene.ship.y, SHIELD_BUBBLE_RADIUS);
-  scene.shieldBubble.lineStyle(1, 0xffffff, 0.32);
-  scene.shieldBubble.strokeCircle(scene.ship.x, scene.ship.y, SHIELD_BUBBLE_RADIUS - 10);
+  for (let i = 0; i < 12; i += 1) {
+    const t = i / 11;
+    const radius = SHIELD_BUBBLE_RADIUS * (1 - t * 0.58);
+    const alpha = 0.018 + t * 0.022;
+    scene.shieldBubble.fillStyle(0x4da3ff, alpha);
+    scene.shieldBubble.fillCircle(scene.ship.x, scene.ship.y, radius);
+  }
+  scene.shieldBubble.lineStyle(5, 0x4da3ff, 0.08);
+  scene.shieldBubble.strokeCircle(scene.ship.x, scene.ship.y, SHIELD_BUBBLE_RADIUS + 3);
+  scene.shieldBubble.lineStyle(3, 0x9fd9ff, 0.34);
+  scene.shieldBubble.strokeCircle(scene.ship.x, scene.ship.y, SHIELD_BUBBLE_RADIUS - 2);
+  scene.shieldBubble.lineStyle(1, 0xffffff, 0.2);
+  scene.shieldBubble.strokeCircle(scene.ship.x, scene.ship.y, SHIELD_BUBBLE_RADIUS - 12);
 }
 
 function getShipHitboxPolygon(scene) {
@@ -2513,8 +2551,23 @@ function createOptionsOverlay(scene) {
     } else if (scene.optionsReturnScreen === 'pause' || state === 'playing' || state === 'paused') {
       resumeCurrentMusic(scene);
     } else {
-      playBackgroundMusic(scene);
+      playMusicForCurrentState(scene);
     }
+  });
+
+  const sfxVolumeSlider = bindVolumeSlider('sfx-volume-slider', (value) => {
+    soundEffectsVolume = value;
+    saveAudioSettings();
+    applyAudioVolumes(scene);
+    updateAudioOptionButtons(scene);
+  });
+
+  const musicVolumeSlider = bindVolumeSlider('music-volume-slider', (value) => {
+    musicVolume = value;
+    saveAudioSettings();
+    applyAudioVolumes(scene);
+    updateAudioOptionButtons(scene);
+    if (musicEnabled) playMusicForCurrentState(scene);
   });
 
   bindScreenClick('options', 'options-back-button', () => {
@@ -2524,7 +2577,29 @@ function createOptionsOverlay(scene) {
 
   overlay.toggleSfxButton = toggleSfxButton;
   overlay.toggleMusicButton = toggleMusicButton;
+  overlay.sfxVolumeSlider = sfxVolumeSlider;
+  overlay.musicVolumeSlider = musicVolumeSlider;
+  overlay.sfxVolumeValue = document.getElementById('sfx-volume-value');
+  overlay.musicVolumeValue = document.getElementById('music-volume-value');
   return overlay;
+}
+
+function bindVolumeSlider(id, onInput) {
+  const slider = document.getElementById(id);
+  if (!slider) return null;
+
+  slider.addEventListener('input', () => {
+    onInput(getSliderVolume(slider));
+  });
+  slider.addEventListener('change', () => {
+    onInput(getSliderVolume(slider));
+  });
+  return slider;
+}
+
+function getSliderVolume(slider) {
+  const nextVolume = Number(slider.value) / 100;
+  return Number.isFinite(nextVolume) ? Phaser.Math.Clamp(nextVolume, 0, 1) : 1;
 }
 
 function bindSingleClick(id, handler) {
@@ -2662,7 +2737,6 @@ function setUiDepth(scene) {
   });
 
   if (scene.shieldBubble) scene.shieldBubble.setDepth(SHIP_DEPTH + 1);
-  if (scene.energyRefinerModule) scene.energyRefinerModule.setDepth(SHIP_DEPTH + 2);
 }
 
 // --- Control de estados ---
@@ -2688,11 +2762,12 @@ function showMenu() {
   resetRedWave(this);
   resetDroneWave(this);
   resetAsteroidWave(this);
+  resetCometWave(this);
   resetPlasmaWave(this);
   resetBossWave(this);
   this.resumeSpawnDelay = null;
   clearGameplayVisuals(this);
-  stopBackgroundMusic(this);
+  playMenuMusic(this);
   showOverlayScreen(this, 'menu');
   resetCounters.call(this);
   setHudVisible(this, false);
@@ -2706,7 +2781,7 @@ function showRanking() {
   setXyControlVisible(this, false);
   this.optionsReturnScreen = null;
   this.input.setDefaultCursor('default');
-  stopBackgroundMusic(this);
+  playMenuMusic(this);
   setHudVisible(this, false);
   showOverlayScreen(this, 'ranking');
   loadRankingInto(this.rankingContainer && this.rankingContainer.list, this.rankingContainer && this.rankingContainer.status, 10);
@@ -2735,6 +2810,7 @@ function startGame(options = {}) {
   resetRedWave(this);
   resetDroneWave(this);
   resetAsteroidWave(this);
+  resetCometWave(this);
   resetPlasmaWave(this);
   resetBossWave(this);
   this.resumeSpawnDelay = null;
@@ -2779,13 +2855,14 @@ function endGame() {
   resetRedWave(this);
   resetDroneWave(this);
   resetAsteroidWave(this);
+  resetCometWave(this);
   resetPlasmaWave(this);
   resetBossWave(this);
   this.resumeSpawnDelay = null;
   clearPendingStreakReward(this);
   stopNonMusicAudio(this);
   clearGameplayVisuals(this);
-  playBackgroundMusic(this);
+  playMenuMusic(this);
   setHudVisible(this, false);
   showOverlayScreen(this, 'gameover');
   if (isXyInfiniteGameMode()) {
@@ -2802,6 +2879,7 @@ function enableInfiniteModeThreats(scene) {
   scene.obreraSpawnsUnlocked = true;
   scene.droneSpawnsUnlocked = true;
   scene.asteroidSpawnsUnlocked = true;
+  scene.cometSpawnsUnlocked = true;
   scene.plasmaSpawnsUnlocked = true;
   scene.redNeedleSpawnsUnlocked = true;
   scene.travelSentinelUnlocked = true;
@@ -2834,7 +2912,6 @@ function resetCounters() {
   levelProgressScore = 0;
   playerLevel = 1;
   nextUpgradeScore = getLevelRequirement(playerLevel);
-  magnetLevel = 0;
   lifeBoosterLevel = 0;
   shieldBoosterLevel = 0;
   scoreBoosterLevel = 0;
@@ -2847,6 +2924,7 @@ function resetCounters() {
   this.obreraSpawnsUnlocked = false;
   this.droneSpawnsUnlocked = false;
   this.asteroidSpawnsUnlocked = false;
+  this.cometSpawnsUnlocked = false;
   this.plasmaSpawnsUnlocked = false;
   this.redNeedleSpawnsUnlocked = false;
   this.travelSentinelUnlocked = false;
@@ -2860,7 +2938,6 @@ function resetCounters() {
   updateUpgradeStatusIcons(this);
   updateLivesText(this);
   setShipTextureForCurrentState(this);
-  updateShipEquipmentModules(this);
 }
 
 function trackGameplayVisual(scene, object) {
@@ -2893,6 +2970,7 @@ function clearGameplayVisuals(scene) {
   scene.shipLifeIndicator = null;
   scene.pointPopupSlots = [];
   clearShipTrail(scene);
+  clearCometTrailGraphics(scene);
 
   if (scene.ship) {
     scene.tweens.killTweensOf(scene.ship);
@@ -2904,7 +2982,6 @@ function clearGameplayVisuals(scene) {
   }
 
   if (scene.shieldBubble) scene.shieldBubble.setVisible(false);
-  if (scene.energyRefinerModule) scene.energyRefinerModule.setVisible(false);
   hideXyBottomFriction(scene);
 }
 
@@ -3284,6 +3361,10 @@ function scheduleNextSpawn(scene, delayOverride = null) {
     return;
   }
 
+  if (scene.activeCometWave && !scene.activeCometWave.isSpawningComets) {
+    return;
+  }
+
   if (scene.activePlasmaWave) {
     return;
   }
@@ -3317,6 +3398,7 @@ function recoverGameplaySpawning(scene) {
   if (scene.activeRedWave && !scene.activeRedWave.isSpawningDamageBoosters) return;
   if (scene.activeDroneWave && !scene.activeDroneWave.isSpawningDrones) return;
   if (scene.activeAsteroidWave && !scene.activeAsteroidWave.isSpawningAsteroids) return;
+  if (scene.activeCometWave && !scene.activeCometWave.isSpawningComets) return;
   if (isBlockingBossWave(scene)) return;
 
   scheduleNextSpawn(scene);
@@ -3377,6 +3459,7 @@ function resumeGameplaySpawning(scene, delayOverride = null) {
   if (scene.activeRedWave && !scene.activeRedWave.isSpawningDamageBoosters) return;
   if (scene.activeDroneWave && !scene.activeDroneWave.isSpawningDrones) return;
   if (scene.activeAsteroidWave && !scene.activeAsteroidWave.isSpawningAsteroids) return;
+  if (scene.activeCometWave && !scene.activeCometWave.isSpawningComets) return;
   if (isBlockingBossWave(scene)) return;
 
   if (!spawnEvent) {
@@ -3387,10 +3470,10 @@ function resumeGameplaySpawning(scene, delayOverride = null) {
 function pauseTimedGameplay(scene) {
   scene.tweens.pauseAll();
   pauseSpikeDrones(scene);
-  [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activePlasmaWave, scene.activeBossWave]
+  [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activeCometWave, scene.activePlasmaWave, scene.activeBossWave]
     .forEach((countdown) => pauseCountdown(scene, countdown));
 
-  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.redNeedleBossPassEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
+  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossHorizontalLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.redNeedleBossPassEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
     if (event) event.paused = true;
   });
   if (scene.bossEnterTween) scene.bossEnterTween.pause();
@@ -3411,10 +3494,10 @@ function pauseTimedGameplay(scene) {
 function resumeTimedGameplay(scene) {
   scene.tweens.resumeAll();
   resumeSpikeDrones(scene);
-  [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activePlasmaWave, scene.activeBossWave]
+  [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activeCometWave, scene.activePlasmaWave, scene.activeBossWave]
     .forEach((countdown) => resumeCountdown(scene, countdown));
 
-  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.redNeedleBossPassEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
+  [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossHorizontalLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.redNeedleBossPassEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
     if (event) event.paused = false;
   });
   if (scene.bossEnterTween) scene.bossEnterTween.resume();
@@ -3459,7 +3542,6 @@ function resetTimedBoosters(scene) {
 
   clearScoreBoosterBallColor(scene);
   updateLivesText(scene);
-  updateShipEquipmentModules(scene);
 
   if (scene.ship) {
     refreshShipSize(scene);
@@ -3531,6 +3613,18 @@ function resetAsteroidWave(scene) {
   }
 }
 
+function resetCometWave(scene) {
+  scene.activeCometWave = null;
+  clearWaveTimers(scene);
+  clearBossCue(scene);
+
+  if (scene.ship) {
+    setShipTextureForCurrentState(scene);
+    refreshShipSize(scene);
+    moveShipTo(scene, clampShipX(scene, scene.ship.x));
+  }
+}
+
 function resetPlasmaWave(scene) {
   scene.activePlasmaWave = null;
   if (scene.plasmaSpawnEvent) {
@@ -3556,6 +3650,10 @@ function resetBossWave(scene) {
   if (scene.bossLaserEvent) {
     scene.bossLaserEvent.remove(false);
     scene.bossLaserEvent = null;
+  }
+  if (scene.bossHorizontalLaserEvent) {
+    scene.bossHorizontalLaserEvent.remove(false);
+    scene.bossHorizontalLaserEvent = null;
   }
   if (scene.bossLaserClearEvent) {
     scene.bossLaserClearEvent.remove(false);
@@ -3596,6 +3694,7 @@ function getActiveWaveCountdown(scene) {
   if (scene.activeRedWave && scene.activeRedWave.hasStarted) return scene.activeRedWave;
   if (scene.activeDroneWave && scene.activeDroneWave.hasStarted) return scene.activeDroneWave;
   if (scene.activeAsteroidWave && scene.activeAsteroidWave.hasStarted) return scene.activeAsteroidWave;
+  if (scene.activeCometWave && scene.activeCometWave.hasStarted) return scene.activeCometWave;
   if (scene.activePlasmaWave && scene.activePlasmaWave.hasStarted) return scene.activePlasmaWave;
   if (scene.activeBossWave && scene.activeBossWave.hasStarted) return scene.activeBossWave;
   return null;
@@ -4118,7 +4217,6 @@ function activateScoreBooster(scene) {
   };
 
   setShipTextureForCurrentState(scene);
-  updateShipEquipmentModules(scene);
   applyScoreBoosterBallColor(scene);
   playPurpleBoosterMusic(scene);
 
@@ -4134,7 +4232,6 @@ function activateShieldBooster(scene) {
   };
 
   setShipTextureForCurrentState(scene);
-  updateShipEquipmentModules(scene);
   refreshShipSize(scene);
   moveShipTo(scene, clampShipX(scene, scene.ship.x));
   updateShieldBubble(scene);
@@ -4158,7 +4255,6 @@ function updateScoreBooster(scene) {
   scoreMultiplier = 1;
   clearScoreBoosterBallColor(scene);
   setShipTextureForCurrentState(scene);
-  updateShipEquipmentModules(scene);
   playBackgroundMusic(scene);
   setHudBoosterVisible(false);
   updateBoosterBar(scene, 0);
@@ -4190,7 +4286,6 @@ function updateShieldBooster(scene) {
 
   scene.activeShieldBooster = null;
   setShipTextureForCurrentState(scene);
-  updateShipEquipmentModules(scene);
   refreshShipSize(scene);
   moveShipTo(scene, clampShipX(scene, scene.ship.x));
   updateShieldBubble(scene);
@@ -4238,6 +4333,11 @@ function clearAllFallingObjects(scene) {
   if (!scene.balls) return;
   scene.balls.clear(true, true);
   clearPlasmaBars(scene);
+  clearCometTrailGraphics(scene);
+}
+
+function clearCometTrailGraphics(scene) {
+  if (scene && scene.cometTrailGraphics) scene.cometTrailGraphics.clear();
 }
 
 function updateRedWave(scene) {
@@ -4357,6 +4457,44 @@ function updateAsteroidWave(scene) {
   finishWaveSpawning(scene, asteroidWave, 'asteroid');
 }
 
+function activateCometWave(scene, bossConfig = createBossConfig('comet')) {
+  resetTimedBoosters(scene);
+  playBackgroundMusic(scene);
+  scene.activeCometWave = {
+    endsAt: null,
+    duration: bossConfig.duration || COMET_WAVE_DURATION,
+    isSpawningComets: false,
+    hasStarted: false,
+    isDraining: false,
+    spawnCount: 0,
+    bossName: bossConfig.name || 'Lluvia de estrellas',
+  };
+
+  setShipTextureForCurrentState(scene);
+  refreshShipSize(scene);
+  moveShipTo(scene, clampShipX(scene, scene.ship.x));
+
+  hideWaveBar(scene);
+
+  if (spawnEvent) {
+    spawnEvent.remove(false);
+    spawnEvent = null;
+  }
+
+  scheduleWaveStart(scene, 'comet');
+}
+
+function updateCometWave(scene) {
+  const cometWave = scene.activeCometWave;
+  if (!cometWave) return;
+  if (!cometWave.hasStarted) return;
+
+  const remaining = Math.max(0, cometWave.endsAt - scene.time.now);
+  if (remaining > 0) return;
+
+  finishWaveSpawning(scene, cometWave, 'comet');
+}
+
 function updatePlasmaWave(scene) {
   const plasmaWave = scene.activePlasmaWave;
   if (!plasmaWave) return;
@@ -4445,6 +4583,8 @@ function activateLevelBoss(scene, bossConfig) {
     activateDroneWave(scene, bossConfig);
   } else if (bossConfig.kind === 'asteroid') {
     activateAsteroidWave(scene, bossConfig);
+  } else if (bossConfig.kind === 'comet') {
+    activateCometWave(scene, bossConfig);
   } else if (bossConfig.kind === 'plasma') {
     activatePlasmaWave(scene, bossConfig);
   } else if (bossConfig.kind === 'redNeedleBoss') {
@@ -4466,7 +4606,13 @@ function updateBossWave(scene) {
   recoverStalledBossWave(scene, bossWave);
   if (scene.activeBossWave !== bossWave) return;
 
-  if (scene.bossLaser && isLaserTouchingShip(scene, scene.bossLaser) && !isShieldActive(scene)) {
+  if (
+    (
+      (scene.bossLaser && isLaserTouchingShip(scene, scene.bossLaser)) ||
+      (scene.bossHorizontalLaser && isLaserTouchingShip(scene, scene.bossHorizontalLaser))
+    ) &&
+    !isShieldActive(scene)
+  ) {
     takeDirectDamage(scene);
   }
 }
@@ -4501,8 +4647,10 @@ function recoverStalledBossWave(scene, bossWave) {
     scene.bossExitTween ||
     scene.bossAttackEvent ||
     scene.bossLaserEvent ||
+    scene.bossHorizontalLaserEvent ||
     scene.bossLaserClearEvent ||
-    scene.bossLaser
+    scene.bossLaser ||
+    scene.bossHorizontalLaser
   ) {
     return;
   }
@@ -4730,12 +4878,14 @@ function beginBossLaserCharge(scene) {
   if (!bossWave || !scene.bossShip) return;
 
   const laserX = getNextBossLaserX(scene, bossWave);
+  const laserY = getNextBossLaserY(scene, bossWave);
   bossWave.currentLaserX = laserX;
+  bossWave.currentLaserY = laserY;
   showBossLaserWarning(scene, laserX);
 
   scene.bossLaserEvent = scene.time.addEvent({
     delay: BOSS_LASER_WARN_DURATION,
-    callback: () => fireBossLaser(scene, laserX),
+    callback: () => fireBossLaser(scene, laserX, laserY),
   });
 }
 
@@ -4777,14 +4927,54 @@ function getNextBossLaserX(scene, bossWave) {
   return Math.abs(rightX - playerX) > Math.abs(leftX - playerX) ? rightX : leftX;
 }
 
+function getNextBossLaserY(scene, bossWave) {
+  const min = getXyShipTopLimit(scene);
+  const max = getXyShipBottomLimit(scene);
+  const blockedY = bossWave.previousHorizontalLaserY;
+  const playerY = scene.ship ? scene.ship.y : getShipY(scene);
+  const requiredGap = BOSS_HORIZONTAL_LASER_MIN_Y_GAP;
+
+  if (Phaser.Math.FloatBetween(0, 1) < BOSS_HORIZONTAL_LASER_TRACKING_CHANCE) {
+    const trackedY = Phaser.Math.Clamp(
+      playerY + Phaser.Math.Between(-BOSS_HORIZONTAL_LASER_TRACKING_JITTER, BOSS_HORIZONTAL_LASER_TRACKING_JITTER),
+      min,
+      max
+    );
+    if (blockedY === undefined || Math.abs(trackedY - blockedY) >= requiredGap) {
+      return trackedY;
+    }
+  }
+
+  const roomyCandidates = [];
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const y = Phaser.Math.Between(min, max);
+    const farFromPrevious = blockedY === undefined || Math.abs(y - blockedY) >= requiredGap;
+    if (farFromPrevious) {
+      roomyCandidates.push(y);
+    }
+  }
+
+  if (roomyCandidates.length) {
+    return Phaser.Utils.Array.GetRandom(roomyCandidates);
+  }
+
+  const anchorY = blockedY === undefined ? playerY : blockedY;
+  const topY = Phaser.Math.Clamp(anchorY - requiredGap, min, max);
+  const bottomY = Phaser.Math.Clamp(anchorY + requiredGap, min, max);
+  return Math.abs(bottomY - playerY) > Math.abs(topY - playerY) ? bottomY : topY;
+}
+
 function showBossLaserWarning(scene, laserX) {
   clearBossWarningParticles(scene);
   scene.bossWarningParticles = [];
+  const minY = 72;
+  const maxY = getGameHeight(scene) - 12;
 
-  for (let i = 0; i < 34; i += 1) {
+  for (let i = 0; i < 42; i += 1) {
     const particle = trackGameplayVisual(scene, scene.add.image(
       laserX + Phaser.Math.Between(-15, 15),
-      172 + Phaser.Math.Between(-10, 22),
+      Phaser.Math.Between(minY, maxY),
       'goldTrailParticle'
     ));
     particle
@@ -4797,7 +4987,7 @@ function showBossLaserWarning(scene, laserX) {
     scene.tweens.add({
       targets: particle,
       x: laserX + Phaser.Math.Between(-5, 5),
-      y: 180 + Phaser.Math.Between(-4, 6),
+      y: Phaser.Math.Between(minY, maxY),
       scale: 0.2,
       alpha: 0.15,
       duration: BOSS_LASER_WARN_DURATION,
@@ -4808,7 +4998,38 @@ function showBossLaserWarning(scene, laserX) {
   }
 }
 
-function fireBossLaser(scene, laserX) {
+function showBossHorizontalLaserWarning(scene, laserY) {
+  scene.bossWarningParticles = scene.bossWarningParticles || [];
+  const width = getGameWidth(scene);
+
+  for (let i = 0; i < 42; i += 1) {
+    const particle = trackGameplayVisual(scene, scene.add.image(
+      Phaser.Math.Between(22, width - 22),
+      laserY + Phaser.Math.Between(-15, 15),
+      'goldTrailParticle'
+    ));
+    particle
+      .setDepth(FX_DEPTH)
+      .setTint(0xff263c)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(Phaser.Math.FloatBetween(0.7, 1.55))
+      .setAlpha(0.82);
+
+    scene.tweens.add({
+      targets: particle,
+      x: Phaser.Math.Between(28, width - 28),
+      y: laserY + Phaser.Math.Between(-5, 5),
+      scale: 0.2,
+      alpha: 0.12,
+      duration: BOSS_LASER_WARN_DURATION,
+      ease: 'Sine.easeIn',
+      onComplete: () => particle.destroy(),
+    });
+    scene.bossWarningParticles.push(particle);
+  }
+}
+
+function fireBossLaser(scene, laserX, laserY) {
   const bossWave = scene.activeBossWave;
   if (!bossWave) return;
 
@@ -4830,6 +5051,11 @@ function fireBossLaser(scene, laserX) {
   scene.bossLaserCore = scene.add.rectangle(laserX, laserCenterY, 9, laserHeight, 0xffedf0, 0.86)
     .setOrigin(0.5, 0.5)
     .setDepth(FX_DEPTH - 1);
+  showBossHorizontalLaserWarning(scene, laserY);
+  scene.bossHorizontalLaserEvent = scene.time.addEvent({
+    delay: BOSS_LASER_WARN_DURATION,
+    callback: () => fireBossHorizontalLaser(scene, laserY),
+  });
   playBossLaserSound(scene);
 
   scene.bossLaserClearEvent = scene.time.addEvent({
@@ -4840,6 +5066,25 @@ function fireBossLaser(scene, laserX) {
   if (bossWave.attacksDone < bossWave.attacksTotal) {
     scheduleBossAttack(scene, BOSS_ATTACK_GAP);
   }
+}
+
+function fireBossHorizontalLaser(scene, laserY) {
+  const bossWave = scene.activeBossWave;
+  if (!bossWave) return;
+
+  scene.bossHorizontalLaserEvent = null;
+  clearBossWarningParticles(scene);
+  bossWave.previousHorizontalLaserY = laserY;
+
+  const laserWidth = getGameWidth(scene);
+  const laserCenterX = laserWidth / 2;
+  scene.bossHorizontalLaser = scene.add.rectangle(laserCenterX, laserY, laserWidth, BOSS_HORIZONTAL_LASER_HEIGHT, 0xff263c, 0.7)
+    .setOrigin(0.5, 0.5)
+    .setDepth(FX_DEPTH - 2);
+  scene.bossHorizontalLaserCore = scene.add.rectangle(laserCenterX, laserY, laserWidth, 8, 0xffedf0, 0.84)
+    .setOrigin(0.5, 0.5)
+    .setDepth(FX_DEPTH - 1);
+  playBossLaserSound(scene);
 }
 
 function finishBossLaserAttack(scene) {
@@ -4917,7 +5162,9 @@ function startWaveAfterCue(scene, waveKind) {
       ? scene.activeDroneWave
       : waveKind === 'asteroid'
         ? scene.activeAsteroidWave
-        : scene.activePlasmaWave;
+        : waveKind === 'comet'
+          ? scene.activeCometWave
+          : scene.activePlasmaWave;
   if (!wave || wave.hasStarted) return;
 
   wave.hasStarted = true;
@@ -4928,6 +5175,8 @@ function startWaveAfterCue(scene, waveKind) {
     wave.isSpawningDrones = true;
   } else if (waveKind === 'asteroid') {
     wave.isSpawningAsteroids = true;
+  } else if (waveKind === 'comet') {
+    wave.isSpawningComets = true;
   } else if (waveKind === 'plasma') {
     wave.isSpawningPlasma = true;
   }
@@ -4997,6 +5246,7 @@ function getWaveBossName(scene, waveKind) {
   if (waveKind === 'red' && scene.activeRedWave) return scene.activeRedWave.bossName || 'Enjambre';
   if (waveKind === 'drones' && scene.activeDroneWave) return scene.activeDroneWave.bossName || 'Drones';
   if (waveKind === 'asteroid' && scene.activeAsteroidWave) return scene.activeAsteroidWave.bossName || 'Cinturón';
+  if (waveKind === 'comet' && scene.activeCometWave) return scene.activeCometWave.bossName || 'Lluvia de estrellas';
   if (waveKind === 'plasma' && scene.activePlasmaWave) return scene.activePlasmaWave.bossName || 'Marea de Plasma';
   if (waveKind === 'boss' && scene.activeBossWave) return scene.activeBossWave.bossName || 'Centinela';
   return 'Jefe';
@@ -5044,6 +5294,8 @@ function finishWaveSpawning(scene, wave, waveKind) {
     wave.isSpawningDrones = false;
   } else if (waveKind === 'asteroid') {
     wave.isSpawningAsteroids = false;
+  } else if (waveKind === 'comet') {
+    wave.isSpawningComets = false;
   } else if (waveKind === 'plasma') {
     wave.isSpawningPlasma = false;
     if (scene.plasmaSpawnEvent) {
@@ -5069,9 +5321,11 @@ function endWaveAfterPause(scene, waveKind) {
       ? scene.activeDroneWave
       : waveKind === 'asteroid'
         ? scene.activeAsteroidWave
-        : waveKind === 'plasma'
-          ? scene.activePlasmaWave
-          : scene.activeBossWave;
+        : waveKind === 'comet'
+          ? scene.activeCometWave
+          : waveKind === 'plasma'
+            ? scene.activePlasmaWave
+            : scene.activeBossWave;
   if (!currentWave) return;
 
   hideWaveBar(scene);
@@ -5085,6 +5339,9 @@ function endWaveAfterPause(scene, waveKind) {
   } else if (waveKind === 'asteroid') {
     scene.asteroidSpawnsUnlocked = true;
     scene.activeAsteroidWave = null;
+  } else if (waveKind === 'comet') {
+    scene.cometSpawnsUnlocked = true;
+    scene.activeCometWave = null;
   } else if (waveKind === 'plasma') {
     scene.plasmaSpawnsUnlocked = true;
     scene.activePlasmaWave = null;
@@ -5365,22 +5622,20 @@ function clearBossLaser(scene) {
     scene.bossLaserCore.destroy();
     scene.bossLaserCore = null;
   }
+  if (scene.bossHorizontalLaser) {
+    scene.bossHorizontalLaser.destroy();
+    scene.bossHorizontalLaser = null;
+  }
+  if (scene.bossHorizontalLaserCore) {
+    scene.bossHorizontalLaserCore.destroy();
+    scene.bossHorizontalLaserCore = null;
+  }
 }
 
 function isLaserTouchingShip(scene, laser) {
-  const halfLaserWidth = BOSS_LASER_WIDTH / 2;
-  const shipHalfWidth = getShipWidth(scene) / 2;
-  const shipTop = scene.ship.y - SHIP_HEIGHT / 2;
-  const shipBottom = scene.ship.y + SHIP_HEIGHT / 2;
-  const laserLeft = laser.x - halfLaserWidth;
-  const laserRight = laser.x + halfLaserWidth;
-
-  return (
-    shipBottom >= 56 &&
-    shipTop <= getGameHeight(scene) &&
-    scene.ship.x + shipHalfWidth >= laserLeft &&
-    scene.ship.x - shipHalfWidth <= laserRight
-  );
+  const width = laser.displayWidth || laser.width || BOSS_LASER_WIDTH;
+  const height = laser.displayHeight || laser.height || getGameHeight(scene);
+  return isRectOverlappingShip(scene, laser.x, laser.y, width, height);
 }
 
 function updateBoosterBar(scene, progress, immediate = false) {
@@ -5583,7 +5838,6 @@ function chooseUpgrade(scene, upgradeKind) {
   updateUpgradeBar(scene);
   updateUpgradeStatusIcons(scene);
   setShipTextureForCurrentState(scene);
-  updateShipEquipmentModules(scene);
   showOverlayScreen(scene, null);
   scene.availableUpgradeChoices = null;
 
@@ -5748,35 +6002,6 @@ function resumeFallingObjects(scene) {
   }
 }
 
-function updateMagnetPull(scene) {
-  if (magnetLevel <= 0) return;
-
-  const pullRadius = getGameWidth(scene) * MAGNET_BASE_RADIUS_RATIO * magnetLevel;
-  const pullRatio = MAGNET_PULL_RATIO + magnetLevel * 0.08;
-  scene.balls.getChildren().forEach((ball) => {
-    if (state !== 'playing') return;
-    if (!ball.active || ball.getData('kind') !== 'ball') return;
-
-    const hitboxDistance = getDistanceToShipHitbox(scene, ball);
-    if (hitboxDistance <= getObjectCollisionRadius(ball)) {
-      catchBall(ball, scene);
-      return;
-    }
-
-    const distanceX = scene.ship.x - ball.x;
-    const distanceY = scene.ship.y - ball.y;
-    const centerDistance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
-    if (centerDistance > pullRadius || centerDistance === 0) {
-      ball.body.setVelocityX(0);
-      return;
-    }
-
-    const closeness = 1 - centerDistance / pullRadius;
-    const pullSpeed = currentGravity * pullRatio * (0.5 + closeness);
-    ball.body.setVelocityX((distanceX / centerDistance) * pullSpeed);
-  });
-}
-
 function getDistanceToShipHitbox(scene, object) {
   const polygon = getShipHitboxPolygon(scene);
   if (isPointInPolygon(object.x, object.y, polygon)) return 0;
@@ -5797,6 +6022,7 @@ function isPreciseShipOverlap(scene, objectA, objectB) {
   }
   if (object.getData('kind') === 'redNeedle') return isRedNeedleOverlappingShip(scene, object);
   if (object.getData('kind') === 'redNeedleLaser') return isRedNeedleLaserOverlappingShip(scene, object);
+  if (object.getData('kind') === 'damageBooster') return isDamageBoosterOverlappingShip(scene, object);
 
   if (isShieldActive(scene) && isShieldBlockedKind(object.getData('kind'))) {
     return getDistanceToShieldCenter(scene, object) <= SHIELD_BUBBLE_RADIUS + getObjectCollisionRadius(object);
@@ -5817,6 +6043,10 @@ function isRedNeedleOverlappingShip(scene, needle, scale = needle.scaleX || 1) {
     (RED_NEEDLE_WIDTH - 12) * Math.abs(scale),
     (RED_NEEDLE_HEIGHT - 6) * Math.abs(scale)
   );
+}
+
+function isDamageBoosterOverlappingShip(scene, enemy) {
+  return isRectOverlappingShip(scene, enemy.x, enemy.y, RED_ENEMY_HITBOX_WIDTH, RED_ENEMY_HITBOX_HEIGHT);
 }
 
 function isRectOverlappingShip(scene, x, y, width, height) {
@@ -5866,7 +6096,9 @@ function getObjectCollisionRadius(object) {
   const kind = object.getData('kind');
   if (kind === 'redNeedle') return RED_NEEDLE_WIDTH / 2;
   if (kind === 'redNeedleLaser') return RED_NEEDLE_LASER_WIDTH / 2;
-  if (kind === 'damageBooster') return 11;
+  if (kind === 'cometTrail') return 0;
+  if (kind === 'comet') return 10;
+  if (kind === 'damageBooster') return RED_ENEMY_SHIELD_RADIUS;
   if (kind === 'spikeDrone') return object.getData('collisionRadius') || SPIKE_DRONE_FOLDED_RADIUS;
   if (kind === 'bigAsteroid') return 34;
   if (kind === 'asteroid') return 18;
@@ -5928,6 +6160,10 @@ function spawnBall(scene) {
   }
   if (kind === 'redNeedle') {
     spawnRedNeedle(scene);
+    return;
+  }
+  if (kind === 'comet') {
+    spawnComet(scene);
     return;
   }
   spawnFallingKind(scene, kind);
@@ -6050,6 +6286,194 @@ function spawnRedNeedleLaser(scene, x, y) {
   laser.body.setVelocityX(0);
   laser.body.setVelocityY(RED_NEEDLE_LASER_SPEED);
   playRedNeedleShotSound(scene);
+}
+
+function spawnComet(scene) {
+  const startX = getCometSpawnX(scene);
+  const targetX = scene.activeCometWave && scene.ship ? scene.ship.x : getGameWidth(scene) / 2;
+  const direction = Math.abs(startX - targetX) < 28
+    ? (Math.random() < 0.5 ? 1 : -1)
+    : (startX < targetX ? 1 : -1);
+  const comet = scene.balls.create(startX, getCometSpawnY(scene), 'comet');
+  comet.setData('kind', 'comet');
+  comet.setData('horizontalVelocity', getCometHorizontalVelocity(scene, direction));
+  comet.setData('fallVelocity', getCometFallingVelocity(scene));
+  comet.setData('trailPoints', []);
+  comet.setOrigin(0.5);
+  comet.setDepth(FALLING_OBJECT_DEPTH + 1);
+  comet.setScale(0.82);
+  comet.setAngle(direction > 0 ? 50 : -50);
+  setFallingObjectBody(comet, 'comet');
+  comet.body.setAllowGravity(false);
+  comet.body.setCollideWorldBounds(false);
+  comet.body.setVelocityX(comet.getData('horizontalVelocity'));
+  comet.body.setVelocityY(comet.getData('fallVelocity'));
+
+}
+
+function getCometSpawnX(scene) {
+  const width = getGameWidth(scene);
+  const safeMin = 28;
+  const safeMax = width - 28;
+  if (!scene.activeCometWave) return Phaser.Math.Between(safeMin, safeMax);
+
+  scene.activeCometWave.spawnCount = (scene.activeCometWave.spawnCount || 0) + 1;
+  const pressureX = getCometPressureSpawnX(scene, scene.activeCometWave.spawnCount, safeMin, safeMax);
+  if (pressureX !== null) {
+    scene.activeCometWave.lastSpawnX = pressureX;
+    return pressureX;
+  }
+
+  const lastX = scene.activeCometWave.lastSpawnX;
+  const recentComets = scene.balls
+    ? scene.balls.getChildren().filter((ball) => (
+      ball.active &&
+      ball.getData('kind') === 'comet' &&
+      ball.y < 230
+    ))
+    : [];
+  const candidates = [];
+  for (let i = 0; i < 16; i += 1) {
+    const x = Phaser.Math.Between(safeMin, safeMax);
+    const hasRoomFromLast = lastX === undefined || Math.abs(x - lastX) >= COMET_WAVE_MIN_SPAWN_SPACING;
+    const hasRoomFromRecent = recentComets.every((comet) => Math.abs(comet.x - x) >= COMET_WAVE_MIN_SPAWN_SPACING);
+    if (hasRoomFromLast && hasRoomFromRecent) candidates.push(x);
+  }
+  if (candidates.length) {
+    const x = Phaser.Utils.Array.GetRandom(candidates);
+    scene.activeCometWave.lastSpawnX = x;
+    return x;
+  }
+
+  const fallbackCandidates = [];
+  for (let i = 0; i < 8; i += 1) {
+    fallbackCandidates.push(Phaser.Math.Linear(safeMin, safeMax, i / 7));
+  }
+  fallbackCandidates.sort((a, b) => (
+    getClosestEnemyDistance(b, recentComets) - getClosestEnemyDistance(a, recentComets)
+  ));
+  const fallbackX = Phaser.Math.Clamp(fallbackCandidates[0] || width / 2, safeMin, safeMax);
+  scene.activeCometWave.lastSpawnX = fallbackX;
+  return fallbackX;
+}
+
+function getCometPressureSpawnX(scene, spawnCount, safeMin, safeMax) {
+  if (spawnCount % 3 !== 0 || !scene.ship) return null;
+
+  const offset = (spawnCount % 2 === 0 ? -1 : 1) * Phaser.Math.Between(42, 72);
+  const x = Phaser.Math.Clamp(scene.ship.x + offset, safeMin, safeMax);
+  const recentComets = scene.balls
+    ? scene.balls.getChildren().filter((ball) => (
+      ball.active &&
+      ball.getData('kind') === 'comet' &&
+      ball.y < 180
+    ))
+    : [];
+  const hasRoom = recentComets.every((comet) => Math.abs(comet.x - x) >= SHIP_WIDTH + 12);
+  return hasRoom ? x : null;
+}
+
+function getCometSpawnY(scene) {
+  return scene.activeCometWave
+    ? Phaser.Math.Between(-96, -28)
+    : Phaser.Math.Between(-76, -24);
+}
+
+function getCometFallingVelocity(scene) {
+  const ratio = scene.activeCometWave ? COMET_WAVE_GRAVITY_RATIO : COMET_GRAVITY_RATIO;
+  return Math.round(BASE_GRAVITY * ratio);
+}
+
+function getCometHorizontalVelocity(scene, direction) {
+  const ratio = scene.activeCometWave ? COMET_WAVE_HORIZONTAL_SPEED_RATIO : COMET_HORIZONTAL_SPEED_RATIO;
+  return Math.round(BASE_GRAVITY * ratio) * direction;
+}
+
+function updateComets(scene) {
+  scene.balls.getChildren().forEach((comet) => {
+    if (!comet.active || comet.getData('kind') !== 'comet') return;
+    if (!comet.body) return;
+
+    comet.body.setVelocityX(comet.getData('horizontalVelocity') || getCometHorizontalVelocity(scene, 1));
+    comet.body.setVelocityY(comet.getData('fallVelocity') || getCometFallingVelocity(scene));
+    keepCometInsideHorizontalBounds(scene, comet);
+    updateCometTrailPoint(scene, comet);
+  });
+}
+
+function keepCometInsideHorizontalBounds(scene, comet) {
+  const margin = 16;
+  const width = getGameWidth(scene);
+  let horizontalVelocity = comet.getData('horizontalVelocity') || 0;
+
+  if (comet.x <= margin && horizontalVelocity < 0) {
+    comet.x = margin;
+    horizontalVelocity = Math.abs(horizontalVelocity);
+  } else if (comet.x >= width - margin && horizontalVelocity > 0) {
+    comet.x = width - margin;
+    horizontalVelocity = -Math.abs(horizontalVelocity);
+  } else {
+    return;
+  }
+
+  comet.setData('horizontalVelocity', horizontalVelocity);
+  comet.body.setVelocityX(horizontalVelocity);
+  comet.setAngle(horizontalVelocity > 0 ? 50 : -50);
+}
+
+function updateCometTrailPoint(scene, comet) {
+  const now = scene.time ? scene.time.now : 0;
+  const points = comet.getData('trailPoints') || [];
+  const previousPoint = points[points.length - 1];
+  const point = { x: comet.x, y: comet.y, createdAt: now };
+
+  if (!previousPoint || Phaser.Math.Distance.Between(previousPoint.x, previousPoint.y, point.x, point.y) >= COMET_TRAIL_MIN_POINT_DISTANCE) {
+    points.push(point);
+  }
+
+  comet.setData('trailPoints', points
+    .filter((trailPoint) => now - trailPoint.createdAt <= COMET_TRAIL_LIFETIME)
+    .slice(-COMET_TRAIL_MAX_POINTS));
+}
+
+function updateCometTrails(scene) {
+  drawCometTrails(scene);
+}
+
+function drawCometTrails(scene) {
+  const graphics = scene.cometTrailGraphics;
+  if (!graphics || !scene.balls) return;
+
+  const now = scene.time ? scene.time.now : 0;
+  graphics.clear();
+  graphics.setBlendMode(Phaser.BlendModes.ADD);
+
+  scene.balls.getChildren().forEach((comet) => {
+    if (!comet.active || comet.getData('kind') !== 'comet') return;
+    const points = smoothShipTrailPoints(comet.getData('trailPoints') || []);
+    if (points.length < 2) return;
+
+    for (let i = 1; i < points.length; i += 1) {
+      const previousPoint = points[i - 1];
+      const currentPoint = points[i];
+      const age = now - currentPoint.createdAt;
+      const freshness = Phaser.Math.Clamp(1 - age / COMET_TRAIL_LIFETIME, 0, 1);
+      const positionRatio = i / (points.length - 1);
+      const taper = Math.pow(Math.min(freshness, positionRatio), 1.08);
+      const width = Math.max(0.8, COMET_TRAIL_WIDTH * taper);
+      const alpha = 0.06 + 0.38 * taper;
+      const haloColor = mixRgbColor(0x4da3ff, 0xff4a36, positionRatio);
+      const bodyColor = mixRgbColor(0x83fff1, 0xff6a32, positionRatio);
+      const coreColor = mixRgbColor(0xd9ffff, 0xfff1ce, positionRatio);
+
+      graphics.lineStyle(width * 1.35, haloColor, alpha * 0.22);
+      graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
+      graphics.lineStyle(width, bodyColor, alpha);
+      graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
+      graphics.lineStyle(Math.max(0.7, width * 0.24), coreColor, alpha * 0.7);
+      graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
+    }
+  });
 }
 
 function setupRedEnemySway(enemy) {
@@ -6176,11 +6600,20 @@ function applySpikeDroneState(drone, stateName, scene) {
 }
 
 function disableSpikeDrone(scene, drone) {
+  const shouldReward = !drone.getData('disableRewardGranted');
+  drone.setData('disableRewardGranted', true);
   applySpikeDroneState(drone, 'disabled', scene);
   drone.setData('nextSpikeStateAt', undefined);
   drone.setData('pausedSpikeRemaining', undefined);
   drone.setAngularVelocity(0);
   playSpikeDroneDisableSound(scene);
+  if (shouldReward) {
+    addScore(scene, SPIKE_DRONE_DISABLE_SCORE, true, {
+      x: drone.x,
+      y: drone.y,
+      color: '#ffd84d',
+    });
+  }
 }
 
 function isSpikeDroneGreenState(stateName) {
@@ -6220,13 +6653,23 @@ function setFallingObjectBody(object, kind) {
     return;
   }
 
+  if (kind === 'cometTrail') {
+    object.body.setCircle(COMET_TRAIL_HITBOX / 2, 0, 0);
+    return;
+  }
+
+  if (kind === 'comet') {
+    object.body.setCircle(10, 10, 10);
+    return;
+  }
+
   if (kind === 'redNeedleLaser') {
     object.body.setSize(RED_NEEDLE_LASER_WIDTH, RED_NEEDLE_LASER_HEIGHT, true);
     return;
   }
 
   if (kind === 'damageBooster') {
-    object.body.setCircle(11, 13, 13);
+    object.body.setSize(RED_ENEMY_HITBOX_WIDTH, RED_ENEMY_HITBOX_HEIGHT, true);
     return;
   }
 
@@ -6258,6 +6701,7 @@ function getNextSpawnKind(scene) {
   if (scene.activeRedWave && scene.activeRedWave.isSpawningDamageBoosters) return 'damageBooster';
   if (scene.activeDroneWave && scene.activeDroneWave.isSpawningDrones) return 'spikeDrone';
   if (scene.activeBossWave && scene.activeBossWave.isSpawningEnemies) return 'damageBooster';
+  if (scene.activeCometWave && scene.activeCometWave.isSpawningComets) return 'comet';
   if (scene.activeAsteroidWave && scene.activeAsteroidWave.isSpawningAsteroids) {
     return Math.random() < ASTEROID_WAVE_BIG_ASTEROID_CHANCE ? 'bigAsteroid' : 'asteroid';
   }
@@ -6266,6 +6710,8 @@ function getNextSpawnKind(scene) {
   if (threatKind) return threatKind;
   const plasmaKind = getNextPlasmaKind(scene);
   if (plasmaKind) return plasmaKind;
+  const cometKind = getNextCometKind(scene);
+  if (cometKind) return cometKind;
   const asteroidKind = getNextAsteroidKind(scene);
   if (asteroidKind) return asteroidKind;
   const boosterKind = getNextBoosterKind(scene);
@@ -6275,7 +6721,7 @@ function getNextSpawnKind(scene) {
 
 function getNextTravelThreatKind(scene) {
   const isLevelBossActive = scene.activeBossWave && !scene.activeBossWave.isTravelEncounter;
-  if ((!scene.obreraSpawnsUnlocked && !scene.droneSpawnsUnlocked && !scene.redNeedleSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || isLevelBossActive) return null;
+  if ((!scene.obreraSpawnsUnlocked && !scene.droneSpawnsUnlocked && !scene.redNeedleSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activeCometWave || scene.activePlasmaWave || isLevelBossActive) return null;
 
   if (scene.redNeedleSpawnsUnlocked && !hasActiveRedNeedle(scene) && Math.random() < RED_NEEDLE_SPAWN_CHANCE) return 'redNeedle';
   if (scene.droneSpawnsUnlocked && Math.random() < SPIKE_DRONE_SPAWN_CHANCE) return 'spikeDrone';
@@ -6284,7 +6730,7 @@ function getNextTravelThreatKind(scene) {
 }
 
 function shouldStartTravelSentinel(scene) {
-  if (!scene.travelSentinelUnlocked || scene.activeBossWave || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave) return false;
+  if (!scene.travelSentinelUnlocked || scene.activeBossWave || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activeCometWave || scene.activePlasmaWave) return false;
   if (scene.pendingBossWave || getActiveTimedBooster(scene) || hasActivePlasmaBars(scene)) return false;
   if (scene.time.now < scene.nextTravelSentinelEligibleAt) return false;
   if (Math.random() >= TRAVEL_SENTINEL_CHANCE) return false;
@@ -6293,16 +6739,22 @@ function shouldStartTravelSentinel(scene) {
 }
 
 function getNextAsteroidKind(scene) {
-  if (!scene.asteroidSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || scene.activeBossWave) return null;
+  if (!scene.asteroidSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activeCometWave || scene.activePlasmaWave || scene.activeBossWave) return null;
 
   if (Math.random() >= TRAVEL_ASTEROID_CHANCE) return null;
   return Math.random() < 0.24 ? 'bigAsteroid' : 'asteroid';
 }
 
 function getNextPlasmaKind(scene) {
-  if (!scene.plasmaSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || scene.activeBossWave) return null;
+  if (!scene.plasmaSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activeCometWave || scene.activePlasmaWave || scene.activeBossWave) return null;
 
   return Math.random() < TRAVEL_PLASMA_CHANCE ? 'plasmaBar' : null;
+}
+
+function getNextCometKind(scene) {
+  if (!scene.cometSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activeCometWave || scene.activePlasmaWave || scene.activeBossWave) return null;
+
+  return Math.random() < TRAVEL_COMET_CHANCE ? 'comet' : null;
 }
 
 function getNextBoosterKind(scene) {
@@ -6355,6 +6807,8 @@ function hasActiveRedNeedle(scene) {
 function getTextureForKind(kind) {
   if (kind === 'redNeedle') return 'redNeedleShip';
   if (kind === 'redNeedleLaser') return 'redNeedleLaser';
+  if (kind === 'comet') return 'comet';
+  if (kind === 'cometTrail') return 'cometTrail';
   if (kind === 'bigAsteroid') return 'bigAsteroid';
   if (isAsteroidKind(kind)) return 'asteroid';
   if (kind === 'damageBooster') return 'enemyShipSmall';
@@ -6381,8 +6835,17 @@ function isAsteroidKind(kind) {
   return kind === 'asteroid' || kind === 'bigAsteroid';
 }
 
+function isCometKind(kind) {
+  return kind === 'comet';
+}
+
 function isShieldBlockedKind(kind) {
-  return kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || isAsteroidKind(kind);
+  return kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || kind === 'comet' || isAsteroidKind(kind);
+}
+
+function isCometOutOfBounds(scene, comet) {
+  const margin = COMET_OFFSCREEN_MARGIN;
+  return comet.y > getGameHeight(scene) + margin;
 }
 
 function findSpawnX(scene) {
@@ -6543,6 +7006,8 @@ function getFallingVelocity(kind, scene, object = null) {
 
   if (kind === 'redNeedle') return 0;
   if (kind === 'redNeedleLaser') return RED_NEEDLE_LASER_SPEED;
+  if (kind === 'cometTrail') return object && object.body ? object.body.velocity.y : 0;
+  if (kind === 'comet') return getCometFallingVelocity(scene);
 
   if (kind === 'spikeDrone') {
     return Math.round(BASE_GRAVITY * SPIKE_DRONE_GRAVITY_RATIO);
@@ -6567,6 +7032,12 @@ function getHorizontalVelocity(kind, scene, object = null) {
   }
 
   if (kind === 'redNeedleLaser') return 0;
+  if (kind === 'cometTrail') return object && object.body ? object.body.velocity.x : 0;
+  if (kind === 'comet') {
+    if (object && object.getData('horizontalVelocity')) return object.getData('horizontalVelocity');
+    const direction = Math.random() < 0.5 ? -1 : 1;
+    return getCometHorizontalVelocity(scene, direction);
+  }
 
   if (!isAsteroidKind(kind)) return 0;
 
@@ -6585,6 +7056,7 @@ function getHorizontalVelocity(kind, scene, object = null) {
 function getCurrentSpawnDelay(scene) {
   if (scene.activePlasmaWave) return PLASMA_WAVE_SPAWN_DELAY;
   if (scene.activeDroneWave) return DRONE_WAVE_SPAWN_DELAY;
+  if (scene.activeCometWave) return COMET_WAVE_SPAWN_DELAY;
   if (scene.activeAsteroidWave) return ASTEROID_WAVE_SPAWN_DELAY;
   return scene.activeRedWave ? RED_WAVE_SPAWN_DELAY : currentSpawnDelay;
 }
@@ -6683,9 +7155,10 @@ function playCatchSound(scene) {
   if (!soundEffectsEnabled) return;
   if (!scene.catchAudio) {
     scene.catchAudio = new Audio(CATCH_SOUND_PATH);
-    scene.catchAudio.volume = 0.45;
+    scene.catchAudio.baseVolume = 0.45;
   }
 
+  scene.catchAudio.volume = getSoundEffectVolume(scene.catchAudio.baseVolume);
   scene.catchAudio.currentTime = 0;
   scene.catchAudio.play().catch(() => {});
 }
@@ -6739,15 +7212,24 @@ function playStreakSuccessSound(scene) {
 }
 
 function playBackgroundMusic(scene) {
+  playGameplayMusic(scene);
+}
+
+function playGameplayMusic(scene) {
   if (!musicEnabled) return;
-  playMusicTrack(scene, 'backgroundMusic', BACKGROUND_MUSIC_PATH, 0.28);
+  playMusicTrack(scene, 'gameplayMusic', GAMEPLAY_MUSIC_PATH, 0.28);
+}
+
+function playMenuMusic(scene) {
+  if (!musicEnabled) return;
+  playMusicTrack(scene, 'menuMusic', MENU_MUSIC_PATH, 0.25);
 }
 
 function restartBackgroundMusic(scene) {
   pausedMusicTime = 0;
   stopCurrentMusic(scene);
   scene.currentMusicKey = null;
-  playBackgroundMusic(scene);
+  playGameplayMusic(scene);
 }
 
 function playPurpleBoosterMusic(scene) {
@@ -6757,20 +7239,84 @@ function playPurpleBoosterMusic(scene) {
 
 function playMusicTrack(scene, audioKey, path, volume) {
   if (!musicEnabled) return;
-  if (scene.currentMusicKey === audioKey && scene[audioKey] && !scene[audioKey].paused) return;
+  if (scene.currentMusicKey === audioKey && scene[audioKey] && !scene[audioKey].paused && !musicPlaybackBlocked) return;
 
   stopCurrentMusic(scene);
 
   if (!scene[audioKey]) {
     scene[audioKey] = new Audio(path);
     scene[audioKey].loop = true;
-    scene[audioKey].volume = volume;
   }
 
+  scene[audioKey].baseVolume = volume;
+  scene[audioKey].volume = getMusicVolume(volume);
   scene.currentMusicKey = audioKey;
   scene[audioKey].currentTime = pausedMusicTime > 0 ? pausedMusicTime : 0;
   pausedMusicTime = 0;
-  scene[audioKey].play().catch(() => {});
+  scene[audioKey].play()
+    .then(() => {
+      audioUnlocked = true;
+      musicPlaybackBlocked = false;
+    })
+    .catch(() => {
+      musicPlaybackBlocked = true;
+    });
+}
+
+function bindAudioUnlockListeners(scene) {
+  if (audioUnlockListenersBound) return;
+  audioUnlockListenersBound = true;
+
+  const unlockAudio = () => {
+    if ((audioUnlocked && !musicPlaybackBlocked) || !musicEnabled) return;
+    const targetScene = scene || gameScene;
+    if (!targetScene) return;
+    playMusicForCurrentState(targetScene);
+  };
+
+  ['pointerdown', 'touchstart', 'keydown'].forEach((eventName) => {
+    window.addEventListener(eventName, unlockAudio, { capture: true, passive: true });
+  });
+}
+
+function getSoundEffectVolume(baseVolume = 1) {
+  return Phaser.Math.Clamp(baseVolume * soundEffectsVolume, 0, 1);
+}
+
+function getMusicVolume(baseVolume = 1) {
+  return Phaser.Math.Clamp(baseVolume * musicVolume, 0, 1);
+}
+
+function applyAudioVolumes(scene) {
+  if (!scene) return;
+
+  [
+    'catchAudio',
+    'boosterAudio',
+    'badAudio',
+    'buttonAudio',
+    'levelUpAudio',
+    'redWaveAudio',
+    'bossLaserAudio',
+    'shieldBlockAudio',
+    'streakSuccessAudio',
+  ].forEach((audioKey) => {
+    const audio = scene[audioKey];
+    if (audio) audio.volume = getSoundEffectVolume(audio.baseVolume || 1);
+  });
+
+  ['spikeDroneAudios', 'spikeDroneDisableAudios', 'redNeedleShotAudios'].forEach((collectionKey) => {
+    const collection = scene[collectionKey];
+    if (!collection) return;
+    collection.forEach((audio) => {
+      audio.volume = getSoundEffectVolume(audio.baseVolume || 1);
+    });
+  });
+
+  ['menuMusic', 'gameplayMusic', 'purpleBoosterMusic', 'backgroundMusic'].forEach((audioKey) => {
+    const audio = scene[audioKey];
+    if (audio) audio.volume = getMusicVolume(audio.baseVolume || 1);
+  });
 }
 
 function stopBackgroundMusic(scene) {
@@ -6833,16 +7379,31 @@ function resumeCurrentMusic(scene) {
     playPurpleBoosterMusic(scene);
     return;
   }
-  playBackgroundMusic(scene);
+  if (currentKey === 'menuMusic') {
+    playMenuMusic(scene);
+    return;
+  }
+  playGameplayMusic(scene);
+}
+
+function playMusicForCurrentState(scene) {
+  if (!musicEnabled) return;
+  if (state === 'playing' || state === 'paused' || (scene && scene.optionsReturnScreen === 'pause')) {
+    resumeCurrentMusic(scene);
+    if (!scene.currentMusicKey) playGameplayMusic(scene);
+    return;
+  }
+  playMenuMusic(scene);
 }
 
 function playAudioFile(scene, audioKey, path, volume) {
   if (!soundEffectsEnabled) return;
   if (!scene[audioKey]) {
     scene[audioKey] = new Audio(path);
-    scene[audioKey].volume = volume;
   }
 
+  scene[audioKey].baseVolume = volume;
+  scene[audioKey].volume = getSoundEffectVolume(volume);
   scene[audioKey].currentTime = 0;
   scene[audioKey].play().catch(() => {});
 }
@@ -6852,7 +7413,8 @@ function playOverlappingAudioFile(scene, audioCollectionKey, path, volume) {
   if (!scene[audioCollectionKey]) scene[audioCollectionKey] = [];
 
   const audio = new Audio(path);
-  audio.volume = volume;
+  audio.baseVolume = volume;
+  audio.volume = getSoundEffectVolume(volume);
   scene[audioCollectionKey].push(audio);
 
   const removeAudio = () => {
@@ -6869,9 +7431,10 @@ function playLoopingAudioFile(scene, audioKey, path, volume) {
   if (!scene[audioKey]) {
     scene[audioKey] = new Audio(path);
     scene[audioKey].loop = true;
-    scene[audioKey].volume = volume;
   }
 
+  scene[audioKey].baseVolume = volume;
+  scene[audioKey].volume = getSoundEffectVolume(volume);
   scene[audioKey].currentTime = 0;
   scene[audioKey].play().catch(() => {});
 }
@@ -6934,17 +7497,35 @@ function updateAudioOptionButtons(scene = gameScene) {
   if (optionsOverlay.toggleMusicButton) {
     optionsOverlay.toggleMusicButton.textContent = 'MUSICA: ' + (musicEnabled ? 'ON' : 'OFF');
   }
+  if (optionsOverlay.sfxVolumeSlider) {
+    optionsOverlay.sfxVolumeSlider.value = String(Math.round(soundEffectsVolume * 100));
+  }
+  if (optionsOverlay.musicVolumeSlider) {
+    optionsOverlay.musicVolumeSlider.value = String(Math.round(musicVolume * 100));
+  }
+  if (optionsOverlay.sfxVolumeValue) {
+    optionsOverlay.sfxVolumeValue.textContent = Math.round(soundEffectsVolume * 100) + '%';
+  }
+  if (optionsOverlay.musicVolumeValue) {
+    optionsOverlay.musicVolumeValue.textContent = Math.round(musicVolume * 100) + '%';
+  }
 }
 
 function loadAudioSettings() {
   try {
     const sfx = window.localStorage.getItem('jueguito_sfx_enabled');
     const music = window.localStorage.getItem('jueguito_music_enabled');
+    const sfxVolume = window.localStorage.getItem('jueguito_sfx_volume');
+    const musicVolumeValue = window.localStorage.getItem('jueguito_music_volume');
     if (sfx !== null) soundEffectsEnabled = sfx === '1';
     if (music !== null) musicEnabled = music === '1';
+    if (sfxVolume !== null) soundEffectsVolume = normalizeStoredVolume(sfxVolume);
+    if (musicVolumeValue !== null) musicVolume = normalizeStoredVolume(musicVolumeValue);
   } catch (error) {
     soundEffectsEnabled = true;
     musicEnabled = true;
+    soundEffectsVolume = 1;
+    musicVolume = 1;
   }
 }
 
@@ -6952,9 +7533,16 @@ function saveAudioSettings() {
   try {
     window.localStorage.setItem('jueguito_sfx_enabled', soundEffectsEnabled ? '1' : '0');
     window.localStorage.setItem('jueguito_music_enabled', musicEnabled ? '1' : '0');
+    window.localStorage.setItem('jueguito_sfx_volume', String(soundEffectsVolume));
+    window.localStorage.setItem('jueguito_music_volume', String(musicVolume));
   } catch (error) {
     // Ignorar si el navegador no permite persistir.
   }
+}
+
+function normalizeStoredVolume(value) {
+  const parsedVolume = Number(value);
+  return Number.isFinite(parsedVolume) ? Phaser.Math.Clamp(parsedVolume, 0, 1) : 1;
 }
 
 function showAbsorbEffect(scene, x, y, kind, isPurpleEnergy = false) {

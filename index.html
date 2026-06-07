@@ -116,7 +116,17 @@
           <h2>OPCIONES</h2>
           <div class="ui-options-actions">
             <button id="toggle-sfx-button" class="ui-button ui-button-secondary" type="button">EFECTOS: ON</button>
+            <label class="ui-volume-control" for="sfx-volume-slider">
+              <span>Volumen efectos</span>
+              <strong id="sfx-volume-value">100%</strong>
+              <input id="sfx-volume-slider" class="ui-range" type="range" min="0" max="100" step="1" value="100" />
+            </label>
             <button id="toggle-music-button" class="ui-button ui-button-secondary" type="button">MUSICA: ON</button>
+            <label class="ui-volume-control" for="music-volume-slider">
+              <span>Volumen musica</span>
+              <strong id="music-volume-value">100%</strong>
+              <input id="music-volume-slider" class="ui-range" type="range" min="0" max="100" step="1" value="100" />
+            </label>
           </div>
           <button id="options-back-button" class="ui-button ui-button-primary" type="button">VOLVER</button>
         </div>
@@ -137,6 +147,6 @@
   </div>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="game.js?v=spike-drone-1"></script>
+  <script src="game.js?v=background-music-3"></script>
 </body>
 </html>
