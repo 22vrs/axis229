@@ -29,7 +29,7 @@ El juego carga Phaser y Supabase desde CDN, asi que hace falta conexion a intern
 | `JUGAR` | Partida normal con progresion, jefes cada 3 niveles y ranking. | Si |
 | `MODO INFINITO` | Partida libre con amenazas desbloqueadas y jefes aleatorios. | No |
 
-En modo infinito, el primer jefe es `Centinela`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
+En modo infinito, el primer jefe es `Lluvia de estrellas`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
 
 ## Progresion
 
@@ -55,7 +55,7 @@ Los boosters temporales duran siempre `10 s`.
 
 ## Boosters y probabilidades
 
-Las probabilidades son por intento de aparicion y se comprueban despues de las amenazas viajeras, barras de plasma y asteroides. Solo puede haber un booster cayendo a la vez.
+Las probabilidades son por intento de aparicion y se comprueban despues de las amenazas viajeras, barras de plasma, cometas y asteroides. Solo puede haber un booster cayendo a la vez.
 
 | Booster | Probabilidad | Cuando puede aparecer | Efecto |
 | --- | ---: | --- | --- |
@@ -77,8 +77,9 @@ Hay un jefe cada 3 niveles. La rotacion normal es:
 | 12 | Marea de Plasma | Barras horizontales con hueco movil | Barras de plasma en el viaje |
 | 15 | Drones | Drones de pinchos que alternan estados | Drones en el viaje |
 | 18 | Aguja Roja | Pasadas horizontales con disparos laser | Aguja Roja en el viaje |
+| 21 | Lluvia de estrellas | Cometas diagonales con estela visual | Cometas en el viaje |
 
-Despues del nivel 18 la rotacion se repite cada 18 niveles: nivel 21 Enjambre, nivel 24 Centinela, nivel 27 Cinturon, etc.
+Despues del nivel 21 la rotacion se repite cada 21 niveles: nivel 24 Enjambre, nivel 27 Centinela, nivel 30 Cinturon, etc.
 
 ## Amenazas y probabilidades
 
@@ -89,6 +90,7 @@ Las probabilidades son por intento de aparicion, no por segundo. En partida norm
 | Obrera / enemigo rojo | 16% | Despues de vencer a Enjambre | Puede aparecer durante el centinela viajero. |
 | Drone de pinchos | 5% | Despues de vencer a Drones | Solo dana cuando esta expandido, salvo contacto con escudo. |
 | Aguja Roja | 5% | Despues de vencer a Aguja Roja | Amenaza horizontal. Solo puede haber una activa. |
+| Cometa | 20% | Despues de vencer a Lluvia de estrellas | Entra desde arriba, cae con deriva diagonal y deja una estela visual temporal. |
 | Asteroide | 10% | Despues de vencer a Cinturon | Puede solaparse con otros asteroides, barras de plasma y amenazas hostiles. |
 | Asteroide grande | 24% de los asteroides de viaje | Viaje normal | Equivale aprox. a 2,4% por intento si se llega a tirar asteroide. |
 | Barra de plasma | 5% | Despues de vencer a Marea de Plasma | No aparece durante jefes de nivel. Puede solaparse con otras barras y amenazas hostiles. |
@@ -104,6 +106,7 @@ Las probabilidades son por intento de aparicion, no por segundo. En partida norm
 | Marea de Plasma | Barras cada `2100 ms` con hueco movil. |
 | Drones | Drones de pinchos cada `680 ms`. |
 | Aguja Roja | `6` pasadas alternando izquierda/derecha; las primeras son repartidas y las siguientes usan patrones especiales. |
+| Lluvia de estrellas | Cometas cada `520 ms`, con separacion horizontal minima para dejar huecos de esquiva. |
 
 ## Orden de aparicion
 
@@ -112,9 +115,10 @@ En viaje normal, el juego decide la siguiente aparicion en este orden:
 1. Centinela viajero, si cumple condiciones.
 2. Amenaza viajera: Aguja Roja, drone de pinchos u obrera.
 3. Barra de plasma.
-4. Asteroide.
-5. Booster.
-6. Orbe normal, si nada anterior aparece.
+4. Cometa.
+5. Asteroide.
+6. Booster.
+7. Orbe normal, si nada anterior aparece.
 
 Esto significa que las probabilidades de plasma, asteroides y boosters son condicionales: solo se comprueban si las decisiones anteriores no generaron nada.
 
@@ -152,6 +156,8 @@ La tabla configurada es `ranking`; las columnas principales usadas por el juego 
 | `DRONE_WAVE_SPAWN_DELAY` | `680 ms` |
 | `RED_WAVE_SPAWN_DELAY` | `400 ms` |
 | `ASTEROID_WAVE_SPAWN_DELAY` | `760 ms` |
+| `COMET_WAVE_SPAWN_DELAY` | `520 ms` |
+| `TRAVEL_COMET_CHANCE` | `0.2` |
 | `PLASMA_WAVE_SPAWN_DELAY` | `2100 ms` |
 | `RED_NEEDLE_SPAWN_CHANCE` | `0.05` |
 | `SPIKE_DRONE_SPAWN_CHANCE` | `0.05` |
