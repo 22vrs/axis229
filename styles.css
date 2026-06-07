@@ -698,6 +698,36 @@ canvas {
   margin-top: 0;
 }
 
+.ui-volume-control {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 12px;
+  width: 100%;
+  padding: 12px 13px;
+  border: 1px solid rgba(74, 197, 255, 0.42);
+  border-radius: var(--ui-radius-control);
+  background: rgba(8, 31, 64, 0.42);
+  color: #ecf7ff;
+  font: 700 12px/1 "Rajdhani", "Trebuchet MS", Arial, sans-serif;
+  text-align: left;
+  box-shadow: inset 0 0 14px rgba(74, 197, 255, 0.08);
+}
+
+.ui-volume-control strong {
+  color: #ffd84d;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.ui-range {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: #ffd84d;
+  cursor: pointer;
+}
+
 .score-form {
   display: grid;
   gap: 9px;
