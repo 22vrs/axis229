@@ -14,7 +14,7 @@ const RED_NEEDLE_SHOT_SOUND_PATH = 'assets/red-needle-shot.mp3';
 const STREAK_SUCCESS_SOUND_PATH = 'assets/streak-success.mp3';
 const MENU_MUSIC_PATH = 'assets/menu-music.mp3';
 const GAMEPLAY_MUSIC_PATH = 'assets/game-music.mp3';
-const PURPLE_BOOSTER_MUSIC_PATH = 'assets/purple-booster.mp3';
+const PURPLE_BOOSTER_MUSIC_PATH = null;
 const PLAYER_SHIP_IMAGE_PATH = 'assets/images/player-ship.svg';
 const SUPABASE_URL = 'https://fqkpwigonxgnsynfdzyw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Up1cBihd6uOftnMkhj3A3w_ZH1q7YOR';
@@ -7234,6 +7234,10 @@ function restartBackgroundMusic(scene) {
 
 function playPurpleBoosterMusic(scene) {
   if (!musicEnabled) return;
+  if (!PURPLE_BOOSTER_MUSIC_PATH) {
+    playGameplayMusic(scene);
+    return;
+  }
   playMusicTrack(scene, 'purpleBoosterMusic', PURPLE_BOOSTER_MUSIC_PATH, 0.32);
 }
 
@@ -7241,20 +7245,24 @@ function playMusicTrack(scene, audioKey, path, volume) {
   if (!musicEnabled) return;
   if (scene.currentMusicKey === audioKey && scene[audioKey] && !scene[audioKey].paused && !musicPlaybackBlocked) return;
 
-  stopCurrentMusic(scene);
-
   if (!scene[audioKey]) {
     scene[audioKey] = new Audio(path);
     scene[audioKey].loop = true;
   }
 
+  const previousMusicKey = scene.currentMusicKey;
+  const previousMusic = previousMusicKey && previousMusicKey !== audioKey ? scene[previousMusicKey] : null;
   scene[audioKey].baseVolume = volume;
   scene[audioKey].volume = getMusicVolume(volume);
-  scene.currentMusicKey = audioKey;
   scene[audioKey].currentTime = pausedMusicTime > 0 ? pausedMusicTime : 0;
   pausedMusicTime = 0;
   scene[audioKey].play()
     .then(() => {
+      if (previousMusic) {
+        previousMusic.pause();
+        previousMusic.currentTime = 0;
+      }
+      scene.currentMusicKey = audioKey;
       audioUnlocked = true;
       musicPlaybackBlocked = false;
     })

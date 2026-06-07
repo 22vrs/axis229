@@ -197,9 +197,9 @@ Si Supabase no esta disponible o no esta configurado, el juego muestra un aviso 
 | `assets/streak-success.mp3` | Recompensa de racha. |
 | `assets/images/player-ship.svg` | Imagen de la nave. |
 
-### Asset pendiente
+### Asset opcional
 
-`game.js` referencia `assets/purple-booster.mp3` para la musica del booster morado, pero ese archivo no existe actualmente en `assets/`. El juego puede funcionar sin ese archivo, pero el navegador puede mostrar un error 404 cuando intente reproducir esa pista.
+El catalizador de energia usa la musica de partida si no hay una pista propia configurada. Si se anade una pista dedicada para el booster morado, puede conectarse en `PURPLE_BOOSTER_MUSIC_PATH`.
 
 ## Dependencias externas
 
