@@ -14,7 +14,7 @@ const RED_NEEDLE_SHOT_SOUND_PATH = 'assets/red-needle-shot.mp3';
 const STREAK_SUCCESS_SOUND_PATH = 'assets/streak-success.mp3';
 const MENU_MUSIC_PATH = 'assets/menu-music.mp3';
 const GAMEPLAY_MUSIC_PATH = 'assets/game-music.mp3';
-const PURPLE_BOOSTER_MUSIC_PATH = 'assets/purple-booster.mp3';
+const PURPLE_BOOSTER_MUSIC_PATH = null;
 const PLAYER_SHIP_IMAGE_PATH = 'assets/images/player-ship.svg';
 const SUPABASE_URL = 'https://fqkpwigonxgnsynfdzyw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Up1cBihd6uOftnMkhj3A3w_ZH1q7YOR';
@@ -47,15 +47,15 @@ const RED_WAVE_SPAWN_DELAY = 400;
 const RED_WAVE_ENEMY_GRAVITY_RATIO = 0.72;
 const RED_WAVE_MIN_ENEMY_SPACING = SHIP_WIDTH + 56;
 const RED_WAVE_RECENT_ENEMY_HEIGHT = 230;
-const OBRERA_SPAWN_CHANCE = 0.16;
+const OBRERA_SPAWN_CHANCE = 0.2;
 const DRONE_WAVE_DURATION = 15000;
 const DRONE_WAVE_SPAWN_DELAY = 680;
 const ASTEROID_WAVE_DURATION = 15000;
 const ASTEROID_WAVE_SPAWN_DELAY = 760;
-const TRAVEL_ASTEROID_CHANCE = 0.1;
+const TRAVEL_ASTEROID_CHANCE = 0.15;
 const COMET_WAVE_DURATION = 15000;
 const COMET_WAVE_SPAWN_DELAY = 520;
-const TRAVEL_COMET_CHANCE = 0.2;
+const TRAVEL_COMET_CHANCE = 0.15;
 const COMET_GRAVITY_RATIO = 1.02;
 const COMET_HORIZONTAL_SPEED_RATIO = 0.96;
 const COMET_WAVE_GRAVITY_RATIO = 0.96;
@@ -68,7 +68,7 @@ const COMET_TRAIL_WIDTH = 18;
 const COMET_WAVE_MIN_SPAWN_SPACING = SHIP_WIDTH + 44;
 const COMET_OFFSCREEN_MARGIN = 62;
 const TRAVEL_PLASMA_CHANCE = 0.05;
-const SPIKE_DRONE_SPAWN_CHANCE = 0.05;
+const SPIKE_DRONE_SPAWN_CHANCE = 0.1;
 const SPIKE_DRONE_FOLDED_RADIUS = 18;
 const SPIKE_DRONE_EXPANDED_RADIUS = SPIKE_DRONE_FOLDED_RADIUS * 3;
 const SPIKE_DRONE_FOLDED_DURATION = 1100;
@@ -103,7 +103,7 @@ const RED_NEEDLE_BOSS_ATTACKS = 6;
 const RED_NEEDLE_BOSS_PASS_DURATION = 3400;
 const RED_NEEDLE_BOSS_PASS_GAP = 620;
 const TRAVEL_SENTINEL_ATTACKS = 2;
-const TRAVEL_SENTINEL_CHANCE = 0.018;
+const TRAVEL_SENTINEL_CHANCE = 0.02;
 const TRAVEL_SENTINEL_COOLDOWN = 26000;
 const BOSS_LASER_WARN_DURATION = 1100;
 const BOSS_LASER_DURATION = 2000;
@@ -2930,6 +2930,7 @@ function resetCounters() {
   this.travelSentinelUnlocked = false;
   this.nextTravelSentinelEligibleAt = 0;
   this.pendingBossWave = null;
+  this.pendingBossWaves = [];
   resetBossWave(this);
   updatePlayerLevelText(this);
   updateStreakText();
@@ -3349,6 +3350,10 @@ function scheduleNextSpawn(scene, delayOverride = null) {
     spawnEvent = null;
   }
 
+  if (consumePendingBossWave(scene)) {
+    return;
+  }
+
   if (scene.activeRedWave && !scene.activeRedWave.isSpawningDamageBoosters) {
     return;
   }
@@ -3517,6 +3522,7 @@ function resumeTimedGameplay(scene) {
 
 function pauseCountdown(scene, countdown) {
   if (!countdown || !countdown.endsAt) return;
+  if (countdown.pausedRemaining !== undefined) return;
   countdown.pausedRemaining = Math.max(0, countdown.endsAt - scene.time.now);
 }
 
@@ -5699,7 +5705,10 @@ function maybeOpenUpgradeChoice(scene) {
 
   if (!hasAvailableUpgrades()) {
     updateUpgradeBar(scene);
-    consumePendingBossWave(scene);
+    resumeFallingObjects(scene);
+    resumeTimedGameplay(scene);
+    releasePendingStreakRepairKit(scene);
+    if (!consumePendingBossWave(scene)) recoverGameplaySpawning(scene);
     return;
   }
 
@@ -5714,11 +5723,8 @@ function maybeOpenUpgradeChoice(scene) {
     spawnEvent = null;
   }
 
-  resetTimedBoosters(scene);
-  resetRedWave(scene);
-  resetDroneWave(scene);
-  resetAsteroidWave(scene);
-  clearAllFallingObjects(scene);
+  pauseFallingObjects(scene);
+  pauseTimedGameplay(scene);
   scene.availableUpgradeChoices = getRandomUpgradeChoices();
   updateUpgradeButtons(scene);
   updateUpgradeBar(scene, true, () => {
@@ -5745,9 +5751,19 @@ function advancePlayerLevel(scene) {
     energyRefinerLevelBonus += 1;
   }
   nextUpgradeScore = getLevelRequirement(playerLevel);
-  scene.pendingBossWave = getBossConfigForLevel(completedLevel);
+  queuePendingBossWave(scene, getBossConfigForLevel(completedLevel));
   increaseDifficulty(scene);
   updatePlayerLevelText(scene);
+}
+
+function queuePendingBossWave(scene, bossConfig) {
+  if (!scene || !bossConfig) return;
+  if (!scene.pendingBossWave) {
+    scene.pendingBossWave = bossConfig;
+    return;
+  }
+  if (!scene.pendingBossWaves) scene.pendingBossWaves = [];
+  scene.pendingBossWaves.push(bossConfig);
 }
 
 function getAvailableUpgradeKinds() {
@@ -5841,7 +5857,7 @@ function chooseUpgrade(scene, upgradeKind) {
   showOverlayScreen(scene, null);
   scene.availableUpgradeChoices = null;
 
-  if (scene.pendingBossWave) {
+  if (hasPendingBossWave(scene)) {
     state = 'paused';
     scene.resumeSpawnDelay = null;
     setPauseOverlayMode(scene, 'normal');
@@ -5876,12 +5892,27 @@ function getUpgradeLevel(upgradeKind) {
 }
 
 function consumePendingBossWave(scene) {
-  if (!scene || !scene.pendingBossWave || state !== 'playing') return false;
-  const bossConfig = scene.pendingBossWave;
-  scene.pendingBossWave = false;
+  if (!scene || !hasPendingBossWave(scene) || state !== 'playing') return false;
+  if (
+    getActiveTimedBooster(scene) ||
+    getActiveWaveCountdown(scene) ||
+    scene.waveStartEvent ||
+    scene.waveResumeEvent ||
+    scene.bossCueTween ||
+    hasFallingObjects(scene) ||
+    hasActivePlasmaBars(scene)
+  ) return false;
+  const bossConfig = scene.pendingBossWave || scene.pendingBossWaves.shift();
+  scene.pendingBossWave = scene.pendingBossWaves && scene.pendingBossWaves.length
+    ? scene.pendingBossWaves.shift()
+    : null;
   releasePendingStreakRepairKit(scene);
   activateLevelBoss(scene, bossConfig);
   return true;
+}
+
+function hasPendingBossWave(scene) {
+  return Boolean(scene && (scene.pendingBossWave || (scene.pendingBossWaves && scene.pendingBossWaves.length)));
 }
 
 function releasePendingStreakRepairKit(scene) {
@@ -5977,6 +6008,11 @@ function setUpgradeButtonState(button, config, level) {
 function pauseFallingObjects(scene) {
   scene.balls.getChildren().forEach((ball) => {
     if (!ball.active) return;
+    const kind = ball.getData('kind');
+    if (isAsteroidKind(kind) && ball.getData('pausedAngularVelocity') === undefined) {
+      ball.setData('pausedAngularVelocity', ball.body.angularVelocity || 0);
+      ball.setAngularVelocity(0);
+    }
     ball.body.setVelocityX(0);
     ball.body.setVelocityY(0);
   });
@@ -5986,6 +6022,13 @@ function resumeFallingObjects(scene) {
   scene.balls.getChildren().forEach((ball) => {
     if (!ball.active) return;
     const kind = ball.getData('kind');
+    if (isAsteroidKind(kind)) {
+      const pausedAngularVelocity = ball.getData('pausedAngularVelocity');
+      if (pausedAngularVelocity !== undefined) {
+        ball.setAngularVelocity(pausedAngularVelocity);
+        ball.setData('pausedAngularVelocity', undefined);
+      }
+    }
     ball.body.setVelocityX(getHorizontalVelocity(kind, scene, ball));
     ball.body.setVelocityY(getFallingVelocity(kind, scene, ball));
   });
@@ -6145,7 +6188,7 @@ function getPointToSegmentDistance(x, y, pointA, pointB) {
 // --- Logica de bolas ---
 
 function spawnBall(scene) {
-  if (isBlockingBossWave(scene) || scene.pendingBossWave) return;
+  if (isBlockingBossWave(scene) || hasPendingBossWave(scene)) return;
 
   if (shouldStartTravelSentinel(scene)) {
     activateTravelSentinel(scene);
@@ -6731,7 +6774,7 @@ function getNextTravelThreatKind(scene) {
 
 function shouldStartTravelSentinel(scene) {
   if (!scene.travelSentinelUnlocked || scene.activeBossWave || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activeCometWave || scene.activePlasmaWave) return false;
-  if (scene.pendingBossWave || getActiveTimedBooster(scene) || hasActivePlasmaBars(scene)) return false;
+  if (hasPendingBossWave(scene) || getActiveTimedBooster(scene) || hasActivePlasmaBars(scene)) return false;
   if (scene.time.now < scene.nextTravelSentinelEligibleAt) return false;
   if (Math.random() >= TRAVEL_SENTINEL_CHANCE) return false;
 
@@ -7234,6 +7277,10 @@ function restartBackgroundMusic(scene) {
 
 function playPurpleBoosterMusic(scene) {
   if (!musicEnabled) return;
+  if (!PURPLE_BOOSTER_MUSIC_PATH) {
+    playGameplayMusic(scene);
+    return;
+  }
   playMusicTrack(scene, 'purpleBoosterMusic', PURPLE_BOOSTER_MUSIC_PATH, 0.32);
 }
 
@@ -7241,20 +7288,24 @@ function playMusicTrack(scene, audioKey, path, volume) {
   if (!musicEnabled) return;
   if (scene.currentMusicKey === audioKey && scene[audioKey] && !scene[audioKey].paused && !musicPlaybackBlocked) return;
 
-  stopCurrentMusic(scene);
-
   if (!scene[audioKey]) {
     scene[audioKey] = new Audio(path);
     scene[audioKey].loop = true;
   }
 
+  const previousMusicKey = scene.currentMusicKey;
+  const previousMusic = previousMusicKey && previousMusicKey !== audioKey ? scene[previousMusicKey] : null;
   scene[audioKey].baseVolume = volume;
   scene[audioKey].volume = getMusicVolume(volume);
-  scene.currentMusicKey = audioKey;
   scene[audioKey].currentTime = pausedMusicTime > 0 ? pausedMusicTime : 0;
   pausedMusicTime = 0;
   scene[audioKey].play()
     .then(() => {
+      if (previousMusic) {
+        previousMusic.pause();
+        previousMusic.currentTime = 0;
+      }
+      scene.currentMusicKey = audioKey;
       audioUnlocked = true;
       musicPlaybackBlocked = false;
     })

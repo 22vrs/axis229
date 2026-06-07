@@ -69,6 +69,26 @@ En modo infinito, el primer jefe es `Lluvia de estrellas`; despues los jefes se 
 - Al encadenar `50` orbes de energia sin recibir dano se concede una recompensa de racha.
 - La recompensa base de racha es de `50` puntos y crece con cada bloque de `50`.
 
+## Velocidad del juego
+
+La velocidad principal depende del nivel del jugador y se recalcula al subir de nivel:
+
+| Nivel | Multiplicador | Gravedad de orbes | Intervalo normal |
+| ---: | ---: | ---: | ---: |
+| 1 | `1.00x` | `220` | `1500 ms` |
+| 2 | `1.50x` | `330` | `~829 ms` |
+| 3+ | `2.00x` | `440` | `600 ms` |
+
+Como funciona:
+
+- La gravedad base es `220` y solo los orbes normales usan directamente la velocidad principal.
+- El multiplicador sube de `1.00x` a `2.00x` entre los niveles `1` y `3`; desde el nivel `3` queda en el maximo.
+- El intervalo de aparicion normal baja de `1500 ms` a `600 ms` usando una curva suavizada (`SPAWN_DELAY_EASING = 1.8`), asi que el salto intermedio no es lineal.
+- Los boosters que caen usan el `80%` de la velocidad principal (`BOOSTER_GRAVITY_RATIO = 0.8`), por eso el HUD muestra tambien `BOOST`.
+- Al cambiar la velocidad, los objetos que ya estan cayendo actualizan su velocidad para adaptarse al nuevo ritmo.
+- Las oleadas y jefes pueden usar sus propios intervalos fijos, por ejemplo Enjambre cada `400 ms`, Drones cada `680 ms`, Asteroides cada `760 ms`, Cometas cada `520 ms` y Plasma cada `2100 ms`.
+- Algunas amenazas no escalan con la velocidad principal y usan ratios o valores propios, como asteroides, drones, cometas, lasers y barras de plasma.
+
 ## Mejoras
 
 | Mejora | Efecto |
@@ -123,14 +143,14 @@ Las probabilidades son por intento de aparicion. Algunas solo se desbloquean tra
 
 | Amenaza | Probabilidad | Condicion | Notas |
 | --- | ---: | --- | --- |
-| Obrera / enemigo rojo | `16%` | Tras vencer a Enjambre. | Puede aparecer durante el centinela viajero. |
-| Drone de pinchos | `5%` | Tras vencer a Drones. | Solo dana cuando esta expandido, salvo contacto con escudo. |
+| Obrera / enemigo rojo | `20%` | Tras vencer a Enjambre. | Puede aparecer durante el centinela viajero. |
+| Drone de pinchos | `10%` | Tras vencer a Drones. | Solo dana cuando esta expandido, salvo contacto con escudo. |
 | Aguja Roja | `5%` | Tras vencer a Aguja Roja. | Solo puede haber una activa. |
-| Cometa | `20%` | Tras vencer a Lluvia de estrellas. | Entra desde arriba con deriva diagonal y estela. |
-| Asteroide | `10%` | Tras vencer a Cinturon. | Puede aparecer como normal o grande. |
-| Asteroide grande | `24%` de los asteroides de viaje | Si aparece asteroide. | Aproximadamente `2.4%` por intento total. |
+| Cometa | `15%` | Tras vencer a Lluvia de estrellas. | Entra desde arriba con deriva diagonal y estela. |
+| Asteroide | `15%` | Tras vencer a Cinturon. | Puede aparecer como normal o grande. |
+| Asteroide grande | `24%` de los asteroides de viaje | Si aparece asteroide. | Aproximadamente `3.6%` por intento total. |
 | Barra de plasma | `5%` | Tras vencer a Marea de Plasma. | No aparece durante jefes de nivel. |
-| Centinela viajero | `1.8%` | Tras vencer a Centinela. | Cooldown de `26000 ms`; no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. |
+| Centinela viajero | `2%` | Tras vencer a Centinela. | Cooldown de `26000 ms`; no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. |
 
 Orden de decision en viaje normal:
 
@@ -197,9 +217,9 @@ Si Supabase no esta disponible o no esta configurado, el juego muestra un aviso 
 | `assets/streak-success.mp3` | Recompensa de racha. |
 | `assets/images/player-ship.svg` | Imagen de la nave. |
 
-### Asset pendiente
+### Asset opcional
 
-`game.js` referencia `assets/purple-booster.mp3` para la musica del booster morado, pero ese archivo no existe actualmente en `assets/`. El juego puede funcionar sin ese archivo, pero el navegador puede mostrar un error 404 cuando intente reproducir esa pista.
+El catalizador de energia usa la musica de partida si no hay una pista propia configurada. Si se anade una pista dedicada para el booster morado, puede conectarse en `PURPLE_BOOSTER_MUSIC_PATH`.
 
 ## Dependencias externas
 
