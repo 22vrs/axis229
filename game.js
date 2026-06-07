@@ -169,8 +169,6 @@ const SHIELD_BLOCK_SCORE = 10;
 const INITIAL_HEART_CAPACITY = 3;
 const MAX_UPGRADE_LEVEL = 5;
 const UPGRADE_RESUME_DELAY = 2000;
-const MAGNET_BASE_RADIUS_RATIO = 0.14;
-const MAGNET_PULL_RATIO = 0.75;
 const UPGRADE_BAR_TWEEN_DURATION = 260;
 const BOOSTER_CHANCE_PER_LEVEL = 0.02;
 const FONT_FAMILY = '"Orbitron", "Rajdhani", "Trebuchet MS", Arial, sans-serif';
@@ -239,7 +237,6 @@ let lives = INITIAL_HEART_CAPACITY;
 let nextUpgradeScore = UPGRADE_POINTS_REQUIRED;
 let levelProgressScore = 0;
 let playerLevel = 1;
-let magnetLevel = 0;
 let lifeBoosterLevel = 0;
 let shieldBoosterLevel = 0;
 let scoreBoosterLevel = 0;
@@ -536,60 +533,6 @@ function create() {
   scoreGraphics.generateTexture('scoreBooster', 36, 36);
   scoreGraphics.destroy();
 
-  createShipTexture(this, 'purpleShip', {
-    hull: 0xb8bec8,
-    wing: 0x6f7784,
-    wingAccent: 0x8f55ff,
-    cockpit: 0xf1f4f8,
-    engine: 0xd8a8ff,
-  });
-  createShipTexture(this, 'greenShip', {
-    hull: 0xb8bec8,
-    hullSideAccent: 0x4dff88,
-    wing: 0x6f7784,
-    cockpit: 0xf1f4f8,
-    engine: 0xd6dbe3,
-  });
-  createShipTexture(this, 'greenPurpleShip', {
-    hull: 0xb8bec8,
-    hullSideAccent: 0x4dff88,
-    wing: 0x6f7784,
-    wingAccent: 0x8f55ff,
-    cockpit: 0xf1f4f8,
-    engine: 0xd8a8ff,
-  });
-  createShipTexture(this, 'blueShip', {
-    hull: 0xb8bec8,
-    hullAccent: 0x66bfff,
-    wing: 0x6f7784,
-    cockpit: 0xe7f7ff,
-    engine: 0xd6dbe3,
-  });
-  createShipTexture(this, 'blueGreenShip', {
-    hull: 0xb8bec8,
-    hullAccent: 0x66bfff,
-    hullSideAccent: 0x4dff88,
-    wing: 0x6f7784,
-    cockpit: 0xe7f7ff,
-    engine: 0xd6dbe3,
-  });
-  createShipTexture(this, 'bluePurpleShip', {
-    hull: 0xb8bec8,
-    hullAccent: 0x66bfff,
-    wing: 0x6f7784,
-    wingAccent: 0x8f55ff,
-    cockpit: 0xe7f7ff,
-    engine: 0xd8a8ff,
-  });
-  createShipTexture(this, 'blueGreenPurpleShip', {
-    hull: 0xb8bec8,
-    hullAccent: 0x66bfff,
-    hullSideAccent: 0x4dff88,
-    wing: 0x6f7784,
-    wingAccent: 0x8f55ff,
-    cockpit: 0xe7f7ff,
-    engine: 0xd8a8ff,
-  });
   createXyControlTexture(this);
   createShipTexture(this, 'redShip', {
     hull: 0xff5366,
@@ -634,11 +577,6 @@ function create() {
   this.xyBottomFriction = this.add.graphics()
     .setDepth(SHIP_DEPTH + 3)
     .setVisible(false);
-
-  this.energyRefinerModule = this.add.graphics()
-    .setDepth(SHIP_DEPTH + 2)
-    .setVisible(false);
-  updateShipEquipmentModules(this);
 
   this.shieldBubble = this.add.graphics()
     .setDepth(SHIP_DEPTH + 1)
@@ -1573,7 +1511,6 @@ function update(time, delta) {
   updatePlasmaWave(this);
   updatePlasmaBars(this, delta);
   updateBossWave(this);
-  updateMagnetPull(this);
   recoverGameplaySpawning(this);
 
   // Comprobar si alguna bola ha llegado al fondo
@@ -1623,7 +1560,6 @@ function moveShipTo(scene, x, y = scene.ship ? scene.ship.y : getShipY(scene)) {
     );
     scene.lastShipMoveAt = now;
   }
-  updateShipEquipmentModules(scene);
   updateShieldBubble(scene);
   updateShipLifeIndicator(scene);
   if (usesXyControlHandle(scene) && scene.xyControl && scene.xyControl.visible && !isDraggingShip) {
@@ -1689,43 +1625,7 @@ function refreshShipSize(scene) {
 function setShipTextureForCurrentState(scene) {
   if (!scene.ship) return;
 
-  const hasLifeBooster = lifeBoosterLevel > 0;
-  const hasShieldBooster = shieldBoosterLevel > 0;
-  const hasScoreBooster = scoreBoosterLevel > 0;
-
-  if (hasShieldBooster && hasScoreBooster) {
-    scene.ship.setTexture(hasLifeBooster ? 'blueGreenPurpleShip' : 'bluePurpleShip');
-  } else if (hasScoreBooster) {
-    scene.ship.setTexture(hasLifeBooster ? 'greenPurpleShip' : 'purpleShip');
-  } else if (hasShieldBooster) {
-    scene.ship.setTexture(hasLifeBooster ? 'blueGreenShip' : 'blueShip');
-  } else {
-    scene.ship.setTexture(hasLifeBooster ? 'greenShip' : 'ship');
-  }
-}
-
-function updateShipEquipmentModules(scene) {
-  updateEnergyRefinerModule(scene);
-}
-
-function updateEnergyRefinerModule(scene) {
-  if (!scene.energyRefinerModule || !scene.ship) return;
-
-  scene.energyRefinerModule.clear();
-  if (energyRefinerLevel <= 0) {
-    scene.energyRefinerModule.setVisible(false);
-    return;
-  }
-
-  const x = scene.ship.x;
-  const y = scene.ship.y;
-  scene.energyRefinerModule.setVisible(true);
-  scene.energyRefinerModule.fillStyle(0xffd84d, 0.95);
-  scene.energyRefinerModule.fillRoundedRect(x - 18, y - 4, 36, 8, 4);
-  scene.energyRefinerModule.fillStyle(0xffffff, 0.92);
-  scene.energyRefinerModule.fillCircle(x, y, 3 + energyRefinerLevel);
-  scene.energyRefinerModule.lineStyle(2, 0xfff0a8, 0.75);
-  scene.energyRefinerModule.strokeCircle(x, y, 6 + energyRefinerLevel * 1.5);
+  scene.ship.setTexture('ship');
 }
 
 function getGameWidth(scene) {
@@ -2662,7 +2562,6 @@ function setUiDepth(scene) {
   });
 
   if (scene.shieldBubble) scene.shieldBubble.setDepth(SHIP_DEPTH + 1);
-  if (scene.energyRefinerModule) scene.energyRefinerModule.setDepth(SHIP_DEPTH + 2);
 }
 
 // --- Control de estados ---
@@ -2834,7 +2733,6 @@ function resetCounters() {
   levelProgressScore = 0;
   playerLevel = 1;
   nextUpgradeScore = getLevelRequirement(playerLevel);
-  magnetLevel = 0;
   lifeBoosterLevel = 0;
   shieldBoosterLevel = 0;
   scoreBoosterLevel = 0;
@@ -2860,7 +2758,6 @@ function resetCounters() {
   updateUpgradeStatusIcons(this);
   updateLivesText(this);
   setShipTextureForCurrentState(this);
-  updateShipEquipmentModules(this);
 }
 
 function trackGameplayVisual(scene, object) {
@@ -2904,7 +2801,6 @@ function clearGameplayVisuals(scene) {
   }
 
   if (scene.shieldBubble) scene.shieldBubble.setVisible(false);
-  if (scene.energyRefinerModule) scene.energyRefinerModule.setVisible(false);
   hideXyBottomFriction(scene);
 }
 
@@ -3459,7 +3355,6 @@ function resetTimedBoosters(scene) {
 
   clearScoreBoosterBallColor(scene);
   updateLivesText(scene);
-  updateShipEquipmentModules(scene);
 
   if (scene.ship) {
     refreshShipSize(scene);
@@ -4118,7 +4013,6 @@ function activateScoreBooster(scene) {
   };
 
   setShipTextureForCurrentState(scene);
-  updateShipEquipmentModules(scene);
   applyScoreBoosterBallColor(scene);
   playPurpleBoosterMusic(scene);
 
@@ -4134,7 +4028,6 @@ function activateShieldBooster(scene) {
   };
 
   setShipTextureForCurrentState(scene);
-  updateShipEquipmentModules(scene);
   refreshShipSize(scene);
   moveShipTo(scene, clampShipX(scene, scene.ship.x));
   updateShieldBubble(scene);
@@ -4158,7 +4051,6 @@ function updateScoreBooster(scene) {
   scoreMultiplier = 1;
   clearScoreBoosterBallColor(scene);
   setShipTextureForCurrentState(scene);
-  updateShipEquipmentModules(scene);
   playBackgroundMusic(scene);
   setHudBoosterVisible(false);
   updateBoosterBar(scene, 0);
@@ -4190,7 +4082,6 @@ function updateShieldBooster(scene) {
 
   scene.activeShieldBooster = null;
   setShipTextureForCurrentState(scene);
-  updateShipEquipmentModules(scene);
   refreshShipSize(scene);
   moveShipTo(scene, clampShipX(scene, scene.ship.x));
   updateShieldBubble(scene);
@@ -5583,7 +5474,6 @@ function chooseUpgrade(scene, upgradeKind) {
   updateUpgradeBar(scene);
   updateUpgradeStatusIcons(scene);
   setShipTextureForCurrentState(scene);
-  updateShipEquipmentModules(scene);
   showOverlayScreen(scene, null);
   scene.availableUpgradeChoices = null;
 
@@ -5746,35 +5636,6 @@ function resumeFallingObjects(scene) {
       delete bar.pausedVelocityY;
     });
   }
-}
-
-function updateMagnetPull(scene) {
-  if (magnetLevel <= 0) return;
-
-  const pullRadius = getGameWidth(scene) * MAGNET_BASE_RADIUS_RATIO * magnetLevel;
-  const pullRatio = MAGNET_PULL_RATIO + magnetLevel * 0.08;
-  scene.balls.getChildren().forEach((ball) => {
-    if (state !== 'playing') return;
-    if (!ball.active || ball.getData('kind') !== 'ball') return;
-
-    const hitboxDistance = getDistanceToShipHitbox(scene, ball);
-    if (hitboxDistance <= getObjectCollisionRadius(ball)) {
-      catchBall(ball, scene);
-      return;
-    }
-
-    const distanceX = scene.ship.x - ball.x;
-    const distanceY = scene.ship.y - ball.y;
-    const centerDistance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
-    if (centerDistance > pullRadius || centerDistance === 0) {
-      ball.body.setVelocityX(0);
-      return;
-    }
-
-    const closeness = 1 - centerDistance / pullRadius;
-    const pullSpeed = currentGravity * pullRatio * (0.5 + closeness);
-    ball.body.setVelocityX((distanceX / centerDistance) * pullSpeed);
-  });
 }
 
 function getDistanceToShipHitbox(scene, object) {
