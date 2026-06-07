@@ -108,6 +108,9 @@ const BOSS_LASER_TRACKING_CHANCE = 0.55;
 const BOSS_LASER_TRACKING_JITTER = 18;
 const RED_ENEMY_SWAY_SPEED = 0.0042;
 const RED_ENEMY_SWAY_MAX_VELOCITY = 24;
+const RED_ENEMY_HITBOX_WIDTH = 30;
+const RED_ENEMY_HITBOX_HEIGHT = 36;
+const RED_ENEMY_SHIELD_RADIUS = 16;
 const SHIP_MAX_TILT = 24;
 const SHIP_TILT_SMOOTHING = 0.16;
 const SHIP_TILT_RETURN_SMOOTHING = 0.08;
@@ -936,50 +939,100 @@ function createXyControlTexture(scene) {
 function createEnemyShipTexture(scene) {
   const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
 
-  graphics.fillStyle(0x6b0f1b, 1);
+  graphics.fillStyle(0x3a0712, 1);
   graphics.fillPoints([
-    { x: 24, y: 46 },
-    { x: 5, y: 36 },
-    { x: 12, y: 18 },
-    { x: 3, y: 9 },
-    { x: 19, y: 13 },
     { x: 24, y: 2 },
-    { x: 29, y: 13 },
-    { x: 45, y: 9 },
-    { x: 36, y: 18 },
-    { x: 43, y: 36 },
+    { x: 31, y: 15 },
+    { x: 46, y: 8 },
+    { x: 38, y: 28 },
+    { x: 45, y: 37 },
+    { x: 31, y: 34 },
+    { x: 27, y: 46 },
+    { x: 24, y: 48 },
+    { x: 21, y: 46 },
+    { x: 17, y: 34 },
+    { x: 3, y: 37 },
+    { x: 10, y: 28 },
+    { x: 2, y: 8 },
+    { x: 17, y: 15 },
   ], true);
 
-  graphics.fillStyle(0xf23b4f, 1);
+  graphics.fillStyle(0x8d1725, 1);
   graphics.fillPoints([
-    { x: 24, y: 6 },
-    { x: 34, y: 27 },
-    { x: 30, y: 40 },
-    { x: 24, y: 44 },
-    { x: 18, y: 40 },
-    { x: 14, y: 27 },
+    { x: 24, y: 4 },
+    { x: 30, y: 19 },
+    { x: 26, y: 42 },
+    { x: 24, y: 45 },
+    { x: 22, y: 42 },
+    { x: 18, y: 19 },
   ], true);
 
-  graphics.fillStyle(0xff8090, 0.78);
-  graphics.fillTriangle(12, 19, 4, 29, 16, 28);
-  graphics.fillTriangle(36, 19, 44, 29, 32, 28);
+  graphics.fillStyle(0xd73346, 1);
+  graphics.fillPoints([
+    { x: 24, y: 7 },
+    { x: 29, y: 21 },
+    { x: 27, y: 35 },
+    { x: 24, y: 41 },
+    { x: 21, y: 35 },
+    { x: 19, y: 21 },
+  ], true);
 
-  graphics.fillStyle(0xffedf0, 0.88);
-  graphics.fillEllipse(24, 24, 12, 15);
-  graphics.fillStyle(0x250711, 0.42);
-  graphics.fillEllipse(24, 25, 6, 9);
+  graphics.fillStyle(0x2a030d, 0.78);
+  graphics.fillTriangle(17, 10, 21, 18, 14, 17);
+  graphics.fillTriangle(31, 10, 27, 18, 34, 17);
+  graphics.fillStyle(0xffc05a, 0.95);
+  graphics.fillTriangle(17, 9, 20, 0, 13, 5);
+  graphics.fillTriangle(31, 9, 28, 0, 35, 5);
+  graphics.fillStyle(0x5fb8ff, 0.76);
+  graphics.fillTriangle(22, 8, 24, 0, 26, 8);
 
-  graphics.fillStyle(0xffc15a, 0.95);
-  graphics.fillTriangle(18, 39, 22, 47, 13, 44);
-  graphics.fillTriangle(30, 39, 26, 47, 35, 44);
-  graphics.lineStyle(2, 0xffc0ca, 0.42);
+  graphics.fillStyle(0xb52635, 0.96);
+  graphics.fillTriangle(18, 16, 5, 11, 12, 27);
+  graphics.fillTriangle(30, 16, 43, 11, 36, 27);
+  graphics.fillStyle(0xe0505b, 0.7);
+  graphics.fillTriangle(14, 19, 7, 27, 17, 26);
+  graphics.fillTriangle(34, 19, 41, 27, 31, 26);
+
+  graphics.fillStyle(0x0d121f, 0.86);
+  graphics.fillRoundedRect(10, 18, 7, 3, 1);
+  graphics.fillRoundedRect(31, 18, 7, 3, 1);
+  graphics.fillStyle(0xff6d3f, 0.92);
+  graphics.fillRoundedRect(11, 19, 4, 1, 1);
+  graphics.fillRoundedRect(33, 19, 4, 1, 1);
+
+  graphics.fillStyle(0xf26068, 0.72);
+  graphics.fillCircle(16, 13, 1.7);
+  graphics.fillCircle(32, 13, 1.7);
+
+  graphics.fillStyle(0xb9e8ff, 0.88);
+  graphics.fillEllipse(24, 23, 15, 17);
+  graphics.fillStyle(0x1d2834, 0.92);
+  graphics.fillEllipse(24, 24, 11, 12);
+  graphics.fillStyle(0x6ee9ff, 0.46);
+  graphics.fillEllipse(22, 22, 6, 5);
+  graphics.fillStyle(0x0b0d14, 0.88);
+  graphics.fillCircle(24, 24, 4.2);
+  graphics.lineStyle(1, 0xf3fbff, 0.55);
+  graphics.strokeEllipse(24, 23, 15, 17);
+  graphics.lineStyle(1, 0x6ee9ff, 0.48);
+  graphics.strokeCircle(24, 24, 6.5);
+
+  graphics.lineStyle(1, 0xffa2ad, 0.44);
   graphics.strokePoints([
-    { x: 24, y: 6 },
-    { x: 34, y: 27 },
-    { x: 30, y: 40 },
-    { x: 24, y: 44 },
-    { x: 18, y: 40 },
-    { x: 14, y: 27 },
+    { x: 24, y: 2 },
+    { x: 31, y: 15 },
+    { x: 46, y: 8 },
+    { x: 38, y: 28 },
+    { x: 45, y: 37 },
+    { x: 31, y: 34 },
+    { x: 27, y: 46 },
+    { x: 24, y: 48 },
+    { x: 21, y: 46 },
+    { x: 17, y: 34 },
+    { x: 3, y: 37 },
+    { x: 10, y: 28 },
+    { x: 2, y: 8 },
+    { x: 17, y: 15 },
   ], true);
 
   graphics.generateTexture('enemyShipSmall', 48, 48);
@@ -5658,6 +5711,7 @@ function isPreciseShipOverlap(scene, objectA, objectB) {
   }
   if (object.getData('kind') === 'redNeedle') return isRedNeedleOverlappingShip(scene, object);
   if (object.getData('kind') === 'redNeedleLaser') return isRedNeedleLaserOverlappingShip(scene, object);
+  if (object.getData('kind') === 'damageBooster') return isDamageBoosterOverlappingShip(scene, object);
 
   if (isShieldActive(scene) && isShieldBlockedKind(object.getData('kind'))) {
     return getDistanceToShieldCenter(scene, object) <= SHIELD_BUBBLE_RADIUS + getObjectCollisionRadius(object);
@@ -5678,6 +5732,10 @@ function isRedNeedleOverlappingShip(scene, needle, scale = needle.scaleX || 1) {
     (RED_NEEDLE_WIDTH - 12) * Math.abs(scale),
     (RED_NEEDLE_HEIGHT - 6) * Math.abs(scale)
   );
+}
+
+function isDamageBoosterOverlappingShip(scene, enemy) {
+  return isRectOverlappingShip(scene, enemy.x, enemy.y, RED_ENEMY_HITBOX_WIDTH, RED_ENEMY_HITBOX_HEIGHT);
 }
 
 function isRectOverlappingShip(scene, x, y, width, height) {
@@ -5727,7 +5785,7 @@ function getObjectCollisionRadius(object) {
   const kind = object.getData('kind');
   if (kind === 'redNeedle') return RED_NEEDLE_WIDTH / 2;
   if (kind === 'redNeedleLaser') return RED_NEEDLE_LASER_WIDTH / 2;
-  if (kind === 'damageBooster') return 11;
+  if (kind === 'damageBooster') return RED_ENEMY_SHIELD_RADIUS;
   if (kind === 'spikeDrone') return object.getData('collisionRadius') || SPIKE_DRONE_FOLDED_RADIUS;
   if (kind === 'bigAsteroid') return 34;
   if (kind === 'asteroid') return 18;
@@ -6087,7 +6145,7 @@ function setFallingObjectBody(object, kind) {
   }
 
   if (kind === 'damageBooster') {
-    object.body.setCircle(11, 13, 13);
+    object.body.setSize(RED_ENEMY_HITBOX_WIDTH, RED_ENEMY_HITBOX_HEIGHT, true);
     return;
   }
 
