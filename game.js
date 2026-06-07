@@ -9,6 +9,7 @@ const RED_WAVE_SOUND_PATH = 'assets/red-wave.mp3';
 const BOSS_LASER_SOUND_PATH = 'assets/boss-laser.mp3';
 const SHIELD_BLOCK_SOUND_PATH = 'assets/shield-block.mp3';
 const SPIKE_DRONE_SOUND_PATH = 'assets/spike-drone.mp3';
+const SPIKE_DRONE_DISABLE_SOUND_PATH = 'assets/spike-drone-disable.mp3';
 const RED_NEEDLE_SHOT_SOUND_PATH = 'assets/red-needle-shot.mp3';
 const STREAK_SUCCESS_SOUND_PATH = 'assets/streak-success.mp3';
 const BACKGROUND_MUSIC_PATH = 'assets/background.mp3';
@@ -988,6 +989,7 @@ function createSpikeDroneTextures(scene) {
   createSpikeDroneTexture(scene, 'spikeDroneWarningGreen', 'warningGreen');
   createSpikeDroneTexture(scene, 'spikeDroneWarningRed', 'warningRed');
   createSpikeDroneTexture(scene, 'spikeDroneExpanded', 'expanded');
+  createSpikeDroneTexture(scene, 'spikeDroneDisabled', 'disabled');
 }
 
 function createSpikeDroneTexture(scene, key, mode) {
@@ -996,6 +998,7 @@ function createSpikeDroneTexture(scene, key, mode) {
   const expanded = mode === 'expanded';
   const warningGreen = mode === 'warningGreen';
   const warningRed = mode === 'warningRed';
+  const disabled = mode === 'disabled';
   const warning = warningGreen || warningRed;
   const spikeInnerRadius = 24;
   const spikeOuterRadius = 58;
@@ -1038,16 +1041,16 @@ function createSpikeDroneTexture(scene, key, mode) {
     }
   }
 
-  graphics.fillStyle(0x141b2a, 1);
+  graphics.fillStyle(disabled ? 0x2d323a : 0x141b2a, 1);
   graphics.fillCircle(center, center, 20);
-  graphics.fillStyle(0x596272, 1);
+  graphics.fillStyle(disabled ? 0x767d88 : 0x596272, 1);
   graphics.fillCircle(center, center, 17);
-  graphics.fillStyle(0x252d3d, 1);
+  graphics.fillStyle(disabled ? 0x3f4650 : 0x252d3d, 1);
   graphics.fillCircle(center, center, 13);
-  graphics.lineStyle(2, 0xaeb8c9, 0.62);
+  graphics.lineStyle(2, disabled ? 0xc3c8d0 : 0xaeb8c9, disabled ? 0.42 : 0.62);
   graphics.strokeCircle(center, center, 18);
 
-  graphics.lineStyle(1, 0x111827, 0.55);
+  graphics.lineStyle(1, disabled ? 0x1f242b : 0x111827, disabled ? 0.75 : 0.55);
   graphics.beginPath();
   graphics.moveTo(center - 14, center);
   graphics.lineTo(center + 14, center);
@@ -1055,10 +1058,10 @@ function createSpikeDroneTexture(scene, key, mode) {
   graphics.lineTo(center, center + 14);
   graphics.strokePath();
 
-  const safeLight = !warning && !expanded;
+  const safeLight = !warning && !expanded && !disabled;
   const activeLightColor = warningGreen || safeLight ? 0x4dff88 : 0xff1f32;
-  const lightColor = warning || expanded || safeLight ? activeLightColor : 0x263142;
-  const lightAlpha = warning || expanded || safeLight ? 1 : 0.86;
+  const lightColor = disabled ? 0x9aa3af : warning || expanded || safeLight ? activeLightColor : 0x263142;
+  const lightAlpha = disabled ? 0.7 : warning || expanded || safeLight ? 1 : 0.86;
   const lightGlowRadius = safeLight || expanded ? 14 : warning ? 10 : 10;
   const lightCoreRadius = safeLight || expanded ? 7 : warning ? 5 : 5;
   if (warningGreen) {
@@ -1071,7 +1074,7 @@ function createSpikeDroneTexture(scene, key, mode) {
   }
   graphics.fillStyle(lightColor, lightAlpha);
   graphics.fillCircle(center, center, lightCoreRadius);
-  graphics.fillStyle(0xffffff, warning || expanded || safeLight ? 0.78 : 0.18);
+  graphics.fillStyle(0xffffff, disabled ? 0.28 : warning || expanded || safeLight ? 0.78 : 0.18);
   graphics.fillCircle(center - 2, center - 2, warning ? 1.5 : 2);
 
   if (expanded) {
@@ -5548,7 +5551,11 @@ function getDistanceToShipHitbox(scene, object) {
 function isPreciseShipOverlap(scene, objectA, objectB) {
   const object = getCaughtObject(scene, objectA, objectB);
   if (!object) return false;
-  if (object.getData('kind') === 'spikeDrone' && object.getData('spikeState') !== 'expanded' && !isShieldActive(scene)) return false;
+  if (object.getData('kind') === 'spikeDrone') {
+    const spikeState = object.getData('spikeState');
+    if (spikeState === 'disabled' && !isShieldActive(scene)) return false;
+    if (spikeState !== 'expanded' && !isSpikeDroneGreenState(spikeState) && !isShieldActive(scene)) return false;
+  }
   if (object.getData('kind') === 'redNeedle') return isRedNeedleOverlappingShip(scene, object);
   if (object.getData('kind') === 'redNeedleLaser') return isRedNeedleLaserOverlappingShip(scene, object);
 
@@ -5886,6 +5893,7 @@ function updateSpikeDrones(scene) {
     if (scene.time.now < nextStateAt) return;
 
     const stateName = drone.getData('spikeState') || 'folded';
+    if (stateName === 'disabled') return;
     if (stateName === 'folded') {
       applySpikeDroneState(drone, 'warningGreen', scene);
       drone.setData('nextSpikeStateAt', scene.time.now + SPIKE_DRONE_WARNING_GREEN_DURATION);
@@ -5914,6 +5922,9 @@ function applySpikeDroneState(drone, stateName, scene) {
   } else if (stateName === 'expanded') {
     drone.setTexture('spikeDroneExpanded');
     drone.setData('collisionRadius', SPIKE_DRONE_EXPANDED_RADIUS);
+  } else if (stateName === 'disabled') {
+    drone.setTexture('spikeDroneDisabled');
+    drone.setData('collisionRadius', SPIKE_DRONE_FOLDED_RADIUS);
   } else {
     drone.setTexture('spikeDrone');
     drone.setData('collisionRadius', SPIKE_DRONE_FOLDED_RADIUS);
@@ -5923,6 +5934,18 @@ function applySpikeDroneState(drone, stateName, scene) {
     drone.body.setVelocityX(0);
     drone.body.setVelocityY(getFallingVelocity('spikeDrone', scene, drone));
   }
+}
+
+function disableSpikeDrone(scene, drone) {
+  applySpikeDroneState(drone, 'disabled', scene);
+  drone.setData('nextSpikeStateAt', undefined);
+  drone.setData('pausedSpikeRemaining', undefined);
+  drone.setAngularVelocity(0);
+  playSpikeDroneDisableSound(scene);
+}
+
+function isSpikeDroneGreenState(stateName) {
+  return stateName === 'folded' || stateName === 'warningGreen';
 }
 
 function pauseSpikeDrones(scene) {
@@ -6345,7 +6368,14 @@ function catchBall(ball, scene) {
   const kind = ball.getData('kind');
   const isPurpleEnergy = Boolean(ball.getData('isPurpleEnergy'));
   let hitFeedbackShown = false;
-  if (kind === 'spikeDrone' && ball.getData('spikeState') !== 'expanded' && !isShieldActive(scene)) return;
+  if (kind === 'spikeDrone') {
+    const spikeState = ball.getData('spikeState');
+    if (!isShieldActive(scene) && isSpikeDroneGreenState(spikeState)) {
+      disableSpikeDrone(scene, ball);
+      return;
+    }
+    if (spikeState !== 'expanded' && !isShieldActive(scene)) return;
+  }
 
   if (isShieldBlockedKind(kind)) {
     handleHostileShipContact(scene, ball, x, y, kind, isPurpleEnergy);
@@ -6457,6 +6487,10 @@ function playSpikeDroneSound(scene) {
   playOverlappingAudioFile(scene, 'spikeDroneAudios', SPIKE_DRONE_SOUND_PATH, 0.55);
 }
 
+function playSpikeDroneDisableSound(scene) {
+  playOverlappingAudioFile(scene, 'spikeDroneDisableAudios', SPIKE_DRONE_DISABLE_SOUND_PATH, 0.55);
+}
+
 function playRedNeedleShotSound(scene) {
   playOverlappingAudioFile(scene, 'redNeedleShotAudios', RED_NEEDLE_SHOT_SOUND_PATH, 0.48);
 }
@@ -6519,6 +6553,13 @@ function stopNonMusicAudio(scene) {
       audio.currentTime = 0;
     });
     scene.spikeDroneAudios = [];
+  }
+  if (scene.spikeDroneDisableAudios) {
+    scene.spikeDroneDisableAudios.forEach((audio) => {
+      audio.pause();
+      audio.currentTime = 0;
+    });
+    scene.spikeDroneDisableAudios = [];
   }
   if (scene.redNeedleShotAudios) {
     scene.redNeedleShotAudios.forEach((audio) => {
