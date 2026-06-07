@@ -36,8 +36,7 @@ const SHIP_HEIGHT = 34;
 const SHIP_RADIUS = 8;
 const SHIELD_BUBBLE_RADIUS = 82;
 const SHIELD_BUBBLE_DIAMETER = SHIELD_BUBBLE_RADIUS * 2;
-const MIN_TIMED_BOOSTER_DURATION = 5000;
-const MAX_TIMED_BOOSTER_DURATION = 15000;
+const TIMED_BOOSTER_DURATION = 10000;
 const RED_WAVE_DURATION = 15000;
 const RED_WAVE_SPAWN_DELAY = 400;
 const RED_WAVE_ENEMY_GRAVITY_RATIO = 0.72;
@@ -162,9 +161,7 @@ const UPGRADE_RESUME_DELAY = 2000;
 const MAGNET_BASE_RADIUS_RATIO = 0.14;
 const MAGNET_PULL_RATIO = 0.75;
 const UPGRADE_BAR_TWEEN_DURATION = 260;
-const SCORE_BOOSTER_CHANCE = 0.07;
-const SHIELD_BOOSTER_CHANCE = 0.05;
-const LIFE_BOOSTER_CHANCE_PER_LEVEL = 0.02;
+const BOOSTER_CHANCE_PER_LEVEL = 0.02;
 const FONT_FAMILY = '"Orbitron", "Rajdhani", "Trebuchet MS", Arial, sans-serif';
 const BACKGROUND_FIRST_COLOR = '#112c4d';
 const BACKGROUND_SECOND_COLOR = '#461240';
@@ -3490,10 +3487,8 @@ function isShieldActive(scene) {
   return Boolean(scene.activeShieldBooster);
 }
 
-function getTimedBoosterDuration(level) {
-  if (level <= 0) return MIN_TIMED_BOOSTER_DURATION;
-  const step = (MAX_TIMED_BOOSTER_DURATION - MIN_TIMED_BOOSTER_DURATION) / (MAX_UPGRADE_LEVEL - 1);
-  return Math.round(MIN_TIMED_BOOSTER_DURATION + (level - 1) * step);
+function getTimedBoosterDuration() {
+  return TIMED_BOOSTER_DURATION;
 }
 
 function getLifeBoosterHealAmount() {
@@ -3501,11 +3496,19 @@ function getLifeBoosterHealAmount() {
 }
 
 function getLifeBoosterChance(level = lifeBoosterLevel) {
-  return Math.max(0, level) * LIFE_BOOSTER_CHANCE_PER_LEVEL;
+  return getBoosterChanceForLevel(level);
 }
 
 function getLifeBoosterChancePercent(level = lifeBoosterLevel) {
-  return Math.round(getLifeBoosterChance(level) * 100);
+  return getBoosterChancePercent(level);
+}
+
+function getBoosterChanceForLevel(level) {
+  return Math.max(0, level) * BOOSTER_CHANCE_PER_LEVEL;
+}
+
+function getBoosterChancePercent(level) {
+  return Math.round(getBoosterChanceForLevel(level) * 100);
 }
 
 function canDropLifeBooster() {
@@ -3889,7 +3892,7 @@ function emitRedNeedleTrail(scene, needle, horizontalVelocity, scaleMultiplier =
 }
 
 function activateScoreBooster(scene) {
-  const duration = getTimedBoosterDuration(scoreBoosterLevel);
+  const duration = getTimedBoosterDuration();
   scoreMultiplier = 2;
   scene.activeScoreBooster = {
     endsAt: scene.time.now + duration,
@@ -3906,7 +3909,7 @@ function activateScoreBooster(scene) {
 }
 
 function activateShieldBooster(scene) {
-  const duration = getTimedBoosterDuration(shieldBoosterLevel);
+  const duration = getTimedBoosterDuration();
   scene.activeShieldBooster = {
     endsAt: scene.time.now + duration,
     duration,
@@ -5296,18 +5299,14 @@ function getUpgradeConfig(upgradeKind) {
   if (upgradeKind === 'shieldBooster') {
     return {
       label: 'Barrera protectora',
-      getDescription: (level) => (level === 1
-        ? 'Desbloquea la aparición de barreras protectoras. Proporciona un escudo que protege la nave y daña algunos enemigos al contacto. '
-        : '') + 'Duración ' + formatSeconds(getTimedBoosterDuration(level)) + ' segundos.',
+      getDescription: (level) => 'Aumenta la probabilidad de aparición a ' + getBoosterChancePercent(level) + '%. Dura ' + formatSeconds(getTimedBoosterDuration()) + ' segundos.',
       color: '#4da3ff',
     };
   }
   if (upgradeKind === 'scoreBooster') {
     return {
       label: 'Catalizador de energía',
-      getDescription: (level) => (level === 1
-        ? 'Desbloquea la aparición de catalizadores de energía. Duplica los puntos obtenidos al recoger orbes de energía. '
-        : '') + 'Duración ' + formatSeconds(getTimedBoosterDuration(level)) + ' segundos.',
+      getDescription: (level) => 'Aumenta la probabilidad de aparición a ' + getBoosterChancePercent(level) + '%. Dura ' + formatSeconds(getTimedBoosterDuration()) + ' segundos.',
       color: '#9b5cff',
     };
   }
@@ -6077,8 +6076,8 @@ function getNextBoosterKind(scene) {
 
   const timedBoosterActive = getActiveTimedBooster(scene);
   const options = [
-    { kind: 'scoreBooster', chance: timedBoosterActive || scoreBoosterLevel <= 0 ? 0 : SCORE_BOOSTER_CHANCE },
-    { kind: 'shieldBooster', chance: timedBoosterActive || shieldBoosterLevel <= 0 ? 0 : SHIELD_BOOSTER_CHANCE },
+    { kind: 'scoreBooster', chance: timedBoosterActive || scoreBoosterLevel <= 0 ? 0 : getBoosterChanceForLevel(scoreBoosterLevel) },
+    { kind: 'shieldBooster', chance: timedBoosterActive || shieldBoosterLevel <= 0 ? 0 : getBoosterChanceForLevel(shieldBoosterLevel) },
     { kind: 'lifeBooster', chance: canDropLifeBooster() ? getLifeBoosterChance() : 0 },
   ];
   const totalChance = options.reduce((sum, option) => sum + option.chance, 0);
