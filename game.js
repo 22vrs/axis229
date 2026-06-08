@@ -168,6 +168,7 @@ const FINAL_DAMAGE_GAME_OVER_DELAY = 1450;
 const ENERGY_STREAK_REWARD_TARGET = 50;
 const ENERGY_STREAK_REWARD_SCORE = 50;
 const ENERGY_STREAK_UPGRADE_DELAY = 900;
+const CONTAMINATED_ORB_CHANCE = 0.2;
 const POINT_POPUP_STACK_WINDOW = 260;
 const POINT_POPUP_STACK_DISTANCE = 78;
 const POINT_POPUP_STACK_OFFSET = 24;
@@ -737,6 +738,79 @@ function createEnergyBallTexture(scene, ballKey, colors) {
   ballGraphics.strokeCircle(22, 22, 7);
   ballGraphics.generateTexture(ballKey, 44, 44);
   ballGraphics.destroy();
+}
+
+function attachEnergyOrbOverlay(scene, orb, palette) {
+  if (!scene || !orb) return;
+  const overlay = trackGameplayVisual(scene, scene.add.graphics().setDepth(FALLING_OBJECT_DEPTH + 1));
+  orb.setData('energyOrbOverlay', overlay);
+  orb.setData('energyOrbWispPalette', palette);
+  orb.setData('energyOrbWispSeed', Phaser.Math.FloatBetween(0, Math.PI * 2));
+  orb.setData('energyOrbWispSpin', Phaser.Math.FloatBetween(0.9, 1.35));
+  orb.once('destroy', () => {
+    if (overlay && overlay.destroy) overlay.destroy();
+  });
+}
+
+function updateEnergyOrbOverlays(scene, time) {
+  scene.balls.getChildren().forEach((orb) => {
+    if (!orb.active || !isEnergyOrbSpeedKind(orb.getData('kind'))) return;
+    const overlay = orb.getData('energyOrbOverlay');
+    if (!overlay || !overlay.active) return;
+    drawEnergyOrbOverlay(overlay, orb, time);
+  });
+}
+
+function drawEnergyOrbOverlay(overlay, orb, time) {
+  const seed = orb.getData('energyOrbWispSeed') || 0;
+  const spin = orb.getData('energyOrbWispSpin') || 1;
+  const palette = orb.getData('energyOrbWispPalette') || getEnergyOrbWispPalette(orb.getData('kind'));
+  const centerX = orb.x;
+  const centerY = orb.y;
+  const t = time * 0.011 * spin + seed;
+
+  overlay.clear();
+  drawOrbWisp(overlay, centerX, centerY, 5, palette.shadow, 0.34, 12, 0.88, t);
+  drawOrbWisp(overlay, centerX, centerY, 3, palette.mid, 0.46, 10, 1.12, t + 2.2);
+  drawOrbWisp(overlay, centerX, centerY, 2, palette.bright, 0.42, 13, 1.36, -t * 1.18);
+  drawOrbWisp(overlay, centerX, centerY, 2, palette.glow, 0.3, 8, 1.7, t * 1.42 + 1.4);
+}
+
+function getEnergyOrbWispPalette(kind) {
+  if (kind === 'contaminatedOrb') {
+    return {
+      shadow: 0x123f27,
+      mid: 0x165d32,
+      bright: 0x40ff78,
+      glow: 0x86ff9f,
+    };
+  }
+
+  return {
+    shadow: 0x7a4a00,
+    mid: 0xb87900,
+    bright: 0xffd84d,
+    glow: 0xffffb8,
+  };
+}
+
+function drawOrbWisp(graphics, centerX, centerY, width, color, alpha, radius, curl, phase) {
+  graphics.lineStyle(width, color, alpha);
+  graphics.beginPath();
+  for (let i = 0; i <= 24; i += 1) {
+    const progress = i / 24;
+    const angle = phase + progress * Math.PI * 1.55 * curl;
+    const wobble = Math.sin(phase * 1.7 + progress * Math.PI * 4) * 4;
+    const localRadius = radius - progress * 4 + wobble;
+    const x = centerX + Math.cos(angle) * localRadius;
+    const y = centerY + Math.sin(angle) * localRadius * 0.72;
+    if (i === 0) {
+      graphics.moveTo(x, y);
+    } else {
+      graphics.lineTo(x, y);
+    }
+  }
+  graphics.strokePath();
 }
 
 function createShipTexture(scene, key, colors, textureWidth = SHIP_TEXTURE_WIDTH) {
@@ -1641,6 +1715,7 @@ function update(time, delta) {
   updateComets(this, delta);
   updateCometTrails(this);
   updateBossWave(this);
+  updateEnergyOrbOverlays(this, time);
   recoverGameplaySpawning(this);
 
   // Comprobar si alguna bola ha llegado al fondo
@@ -6206,7 +6281,7 @@ function getObjectCollisionRadius(object) {
   if (kind === 'spikeDrone') return object.getData('collisionRadius') || SPIKE_DRONE_FOLDED_RADIUS;
   if (kind === 'bigAsteroid') return 34;
   if (kind === 'asteroid') return 18;
-  if (isCollectibleBallKind(kind)) return 16;
+  if (isEnergyOrbSpeedKind(kind)) return 16;
   return 15;
 }
 
@@ -6306,6 +6381,9 @@ function spawnFallingKind(scene, kind, forcedX = null) {
 
   if (kind === 'ball') {
     setBallEnergyColor(ball, Boolean(scene.activeScoreBooster));
+    attachEnergyOrbOverlay(scene, ball, getEnergyOrbWispPalette(kind));
+  } else if (kind === 'contaminatedOrb') {
+    attachEnergyOrbOverlay(scene, ball, getEnergyOrbWispPalette(kind));
   } else if (isAsteroidKind(kind)) {
     ball.setAngularVelocity(Phaser.Math.Between(-110, 110));
   } else if (kind === 'damageBooster') {
@@ -6794,7 +6872,7 @@ function setFallingObjectBody(object, kind) {
     return;
   }
 
-  object.body.setCircle(isCollectibleBallKind(kind) ? 16 : 15, isCollectibleBallKind(kind) ? 6 : 3, isCollectibleBallKind(kind) ? 6 : 3);
+  object.body.setCircle(isEnergyOrbSpeedKind(kind) ? 16 : 15, isEnergyOrbSpeedKind(kind) ? 6 : 3, isEnergyOrbSpeedKind(kind) ? 6 : 3);
 }
 
 function getNextSpawnKind(scene) {
@@ -6820,7 +6898,8 @@ function getNextSpawnKind(scene) {
   if (asteroidKind) return asteroidKind;
   const boosterKind = getNextBoosterKind(scene);
   if (scene.activeBossWave && scene.activeBossWave.isTravelEncounter) return boosterKind;
-  return boosterKind || 'ball';
+  if (boosterKind) return boosterKind;
+  return Math.random() < CONTAMINATED_ORB_CHANCE ? 'contaminatedOrb' : 'ball';
 }
 
 function getNextTravelThreatKind(scene) {
@@ -6935,6 +7014,10 @@ function isCollectibleBallKind(kind) {
   return kind === 'ball';
 }
 
+function isEnergyOrbSpeedKind(kind) {
+  return kind === 'ball' || kind === 'contaminatedOrb';
+}
+
 function isAsteroidKind(kind) {
   return kind === 'asteroid' || kind === 'bigAsteroid';
 }
@@ -6944,7 +7027,7 @@ function isCometKind(kind) {
 }
 
 function isShieldBlockedKind(kind) {
-  return kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || kind === 'comet' || isAsteroidKind(kind);
+  return kind === 'contaminatedOrb' || kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || kind === 'comet' || isAsteroidKind(kind);
 }
 
 function isCometOutOfBounds(scene, comet) {
@@ -7127,7 +7210,7 @@ function getFallingVelocity(kind, scene, object = null) {
     return Math.round(BASE_GRAVITY * ratio);
   }
 
-  return isCollectibleBallKind(kind) ? currentGravity : currentBoosterGravity;
+  return isEnergyOrbSpeedKind(kind) ? currentGravity : currentBoosterGravity;
 }
 
 function getHorizontalVelocity(kind, scene, object = null) {
@@ -7236,9 +7319,12 @@ function handleHostileShipContact(scene, hostile, x, y, kind, isPurpleEnergy = f
   if (!isShieldActive(scene) && isShipDamageInvulnerable(scene)) return;
   if (isShieldActive(scene) && hostile && hostile.getData('hasBeenShieldBlocked')) return;
 
-  showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
+  const absorbKind = kind === 'contaminatedOrb' ? 'ball' : kind;
+  const absorbIsPurpleEnergy = kind === 'contaminatedOrb' ? false : isPurpleEnergy;
+  showAbsorbEffect(scene, x, y, absorbKind, absorbIsPurpleEnergy);
   if (!isShieldActive(scene)) {
     takeDirectDamage(scene);
+    if (kind === 'contaminatedOrb' && hostile && hostile.active) hostile.destroy();
     return;
   }
 
@@ -7714,6 +7800,7 @@ function showAbsorbEffect(scene, x, y, kind, isPurpleEnergy = false) {
 function getAbsorbParticleTint(kind, isPurpleEnergy = false) {
   if (kind === 'ball' && isPurpleEnergy) return 0x9b5cff;
   if (isAsteroidKind(kind)) return 0xaeb7c8;
+  if (kind === 'contaminatedOrb') return 0x3dff78;
   if (kind === 'damageBooster') return 0xff3b4f;
   if (kind === 'spikeDrone') return 0xff3045;
   if (kind === 'redNeedle') return 0xff263c;
