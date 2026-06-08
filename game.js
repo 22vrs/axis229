@@ -155,6 +155,10 @@ const SHIP_TRAIL_CORE_ALPHA_RATIO = 0.52;
 const SHIP_TRAIL_IDLE_INTERVAL = 55;
 const SHIP_TRAIL_IDLE_SPEED = 0.08;
 const SHIP_TRAIL_IDLE_MAX_DELTA = 34;
+const SHIP_EYE_LOCAL_X = 0;
+const SHIP_EYE_LOCAL_Y = -1;
+const SHIP_EYE_GLOW_RADIUS = 18;
+const SHIP_EYE_CORE_RADIUS = 7;
 const SHIP_RESUME_TOUCH_PADDING_X = 12;
 const SHIP_RESUME_TOUCH_PADDING_Y = 24;
 const XY_CONTROL_RADIUS = 34;
@@ -630,6 +634,15 @@ function create() {
   this.ship.body.setImmovable(true);
   this.ship.body.setAllowGravity(false);
   refreshShipSize(this);
+  this.shipEyeGlow = this.add.circle(0, 0, SHIP_EYE_GLOW_RADIUS, 0xffd84d, 0)
+    .setDepth(SHIP_DEPTH + 1)
+    .setBlendMode(Phaser.BlendModes.ADD)
+    .setVisible(false);
+  this.shipEyeCore = this.add.circle(0, 0, SHIP_EYE_CORE_RADIUS, 0xffffb8, 0)
+    .setDepth(SHIP_DEPTH + 2)
+    .setBlendMode(Phaser.BlendModes.ADD)
+    .setVisible(false);
+  updateShipEyeGlow(this);
 
   this.echoCompanion = this.add.image(0, 0, 'echoCompanion')
     .setDepth(SHIP_DEPTH + 2)
@@ -1806,6 +1819,7 @@ function update(time, delta) {
   updateSpaceBackground(this, delta, time);
   updateShipPropulsion(this, delta);
   updateShipTilt(this);
+  updateShipEyeGlow(this);
   updateShipLifeIndicator(this);
   updateEchoCompanion(this, delta);
   updateEchoAttacks(this);
@@ -1877,10 +1891,66 @@ function moveShipTo(scene, x, y = scene.ship ? scene.ship.y : getShipY(scene)) {
   }
   updateShieldBubble(scene);
   updateEchoCompanion(scene, 0);
+  updateShipEyeGlow(scene);
   updateShipLifeIndicator(scene);
   if (usesXyControlHandle(scene) && scene.xyControl && scene.xyControl.visible && !isDraggingShip) {
     updateXyControlFromShip(scene);
   }
+}
+
+function updateShipEyeGlow(scene) {
+  if (!scene || !scene.ship || !scene.shipEyeGlow || !scene.shipEyeCore) return;
+
+  const angle = Phaser.Math.DegToRad(scene.ship.angle || 0);
+  const offsetX = SHIP_EYE_LOCAL_X * SHIP_SCALE;
+  const offsetY = SHIP_EYE_LOCAL_Y * SHIP_SCALE;
+  const rotatedX = (Math.cos(angle) * offsetX) - (Math.sin(angle) * offsetY);
+  const rotatedY = (Math.sin(angle) * offsetX) + (Math.cos(angle) * offsetY);
+  const x = scene.ship.x + rotatedX;
+  const y = scene.ship.y + rotatedY;
+  const visible = Boolean(scene.ship.visible !== false && (scene.shipEyeGlow.alpha > 0 || scene.shipEyeCore.alpha > 0));
+
+  [scene.shipEyeGlow, scene.shipEyeCore].forEach((eyePart) => {
+    eyePart.setPosition(x, y);
+    eyePart.setRotation(scene.ship.rotation || 0);
+    eyePart.setVisible(visible);
+  });
+}
+
+function flashShipEye(scene) {
+  if (!scene || !scene.shipEyeGlow || !scene.shipEyeCore || !scene.tweens) return;
+
+  scene.tweens.killTweensOf([scene.shipEyeGlow, scene.shipEyeCore]);
+  updateShipEyeGlow(scene);
+  scene.shipEyeGlow
+    .setFillStyle(0xffd84d, 1)
+    .setAlpha(0.42)
+    .setScale(0.72)
+    .setVisible(true);
+  scene.shipEyeCore
+    .setFillStyle(0xffffb8, 1)
+    .setAlpha(0.95)
+    .setScale(0.82)
+    .setVisible(true);
+
+  scene.tweens.add({
+    targets: scene.shipEyeGlow,
+    alpha: 0,
+    scale: 1.24,
+    duration: 260,
+    ease: 'Sine.easeOut',
+    onUpdate: () => updateShipEyeGlow(scene),
+    onComplete: () => updateShipEyeGlow(scene),
+  });
+  scene.tweens.add({
+    targets: scene.shipEyeCore,
+    alpha: 0,
+    scale: 1.08,
+    duration: 210,
+    ease: 'Sine.easeOut',
+    onUpdate: () => updateShipEyeGlow(scene),
+    onComplete: () => updateShipEyeGlow(scene),
+  });
 }
 
 function updateShipTilt(scene) {
@@ -1901,6 +1971,7 @@ function updateShipTilt(scene) {
   if (Math.abs(scene.ship.angle) < 0.05 && Math.abs(targetAngle) < 0.05) {
     scene.ship.setAngle(0);
   }
+  updateShipEyeGlow(scene);
 }
 
 function getShipMovementTargetAngle(scene) {
@@ -3072,6 +3143,8 @@ function setUiDepth(scene) {
   });
 
   if (scene.shieldBubble) scene.shieldBubble.setDepth(SHIP_DEPTH + 1);
+  if (scene.shipEyeGlow) scene.shipEyeGlow.setDepth(SHIP_DEPTH + 1);
+  if (scene.shipEyeCore) scene.shipEyeCore.setDepth(SHIP_DEPTH + 2);
   if (scene.echoCompanion) scene.echoCompanion.setDepth(SHIP_DEPTH + 2);
   if (scene.echoEyeGlow) scene.echoEyeGlow.setDepth(SHIP_DEPTH + 3);
   if (scene.echoEyeCore) scene.echoEyeCore.setDepth(SHIP_DEPTH + 4);
@@ -3325,6 +3398,12 @@ function clearGameplayVisuals(scene) {
     refreshShipSize(scene);
     moveShipTo(scene, getGameWidth(scene) / 2, getShipY(scene));
   }
+  if (scene.shipEyeGlow && scene.shipEyeCore) {
+    scene.tweens.killTweensOf([scene.shipEyeGlow, scene.shipEyeCore]);
+    scene.shipEyeGlow.setAlpha(0).setScale(1).setVisible(false);
+    scene.shipEyeCore.setAlpha(0).setScale(1).setVisible(false);
+    updateShipEyeGlow(scene);
+  }
 
   if (scene.shieldBubble) scene.shieldBubble.setVisible(false);
   if (scene.echoCompanion) {
@@ -3397,6 +3476,7 @@ function isShipDamageInvulnerable(scene) {
 
 function flashPlayerShip(scene, damaged = false) {
   if (!scene.ship) return;
+
   if (scene.shipAbsorbTween) {
     scene.shipAbsorbTween.stop();
     scene.shipAbsorbTween = null;
@@ -8102,6 +8182,11 @@ function showAbsorbEffect(scene, x, y, kind, isPurpleEnergy = false) {
       ease: 'Cubic.easeIn',
       onComplete: () => particle.destroy(),
     });
+  }
+
+  if (kind === 'ball') {
+    flashShipEye(scene);
+    return;
   }
 
   if (scene.shipAbsorbTween) {
