@@ -149,6 +149,9 @@ const SHIP_TRAIL_WIDTH = 18;
 const SHIP_TRAIL_POSITION_SMOOTHING = 0.34;
 const SHIP_TRAIL_CURVE_PASSES = 2;
 const SHIP_TRAIL_BLUE_CORE_RATIO = 0.34;
+const SHIP_TRAIL_BASE_ALPHA = 0.035;
+const SHIP_TRAIL_ALPHA_RANGE = 0.31;
+const SHIP_TRAIL_CORE_ALPHA_RATIO = 0.52;
 const SHIP_TRAIL_IDLE_INTERVAL = 55;
 const SHIP_TRAIL_IDLE_SPEED = 0.08;
 const SHIP_TRAIL_IDLE_MAX_DELTA = 34;
@@ -4202,11 +4205,11 @@ function drawShipTrail(scene, now) {
     const positionRatio = i / (points.length - 1);
     const taper = Math.pow(Math.min(freshness, positionRatio), 1.18);
     const width = Math.max(1.1, SHIP_TRAIL_WIDTH * taper);
-    const alpha = 0.06 + 0.44 * taper;
+    const alpha = SHIP_TRAIL_BASE_ALPHA + SHIP_TRAIL_ALPHA_RANGE * taper;
     const blueMix = Phaser.Math.Clamp((positionRatio - (1 - SHIP_TRAIL_BLUE_CORE_RATIO)) / SHIP_TRAIL_BLUE_CORE_RATIO, 0, 1);
     const haloColor = mixRgbColor(0xff9f1c, 0x1269d3, blueMix);
-    const bodyColor = mixRgbColor(0xffc22e, 0x1b8be6, blueMix);
-    const coreColor = mixRgbColor(0xffe06a, 0x5fd7ff, blueMix);
+    const bodyColor = mixRgbColor(0xf08a2a, 0x1678c8, blueMix);
+    const coreColor = mixRgbColor(0xffc14f, 0x44b8dc, blueMix);
 
     graphics.lineStyle(width * 1.25, haloColor, alpha * 0.28);
     graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
@@ -4216,7 +4219,7 @@ function drawShipTrail(scene, now) {
     graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
     graphics.fillStyle(bodyColor, alpha * 0.58);
     graphics.fillCircle(currentPoint.x, currentPoint.y, width * 0.42);
-    graphics.lineStyle(Math.max(0.7, width * 0.22), coreColor, alpha * 0.7);
+    graphics.lineStyle(Math.max(0.7, width * 0.22), coreColor, alpha * SHIP_TRAIL_CORE_ALPHA_RATIO);
     graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
   }
 }
