@@ -194,10 +194,17 @@ const STREAK_POINT_POPUP_FADE_DELAY = 620;
 const STREAK_POINT_POPUP_COLORS = ['#ff4f68', '#ffd84d', '#7dffae', '#76ffe8', '#4da3ff', '#d7a8ff'];
 const ECHO_TEXTURE_SIZE = 72;
 const ECHO_SIZE = 28;
-const ECHO_IDLE_OFFSET_X = 82;
-const ECHO_IDLE_OFFSET_Y = -40;
-const ECHO_ORBIT_RADIUS = 108;
-const ECHO_ORBIT_SPEED = 0.0052;
+const ECHO_HOME_OFFSET_X = -62;
+const ECHO_HOME_OFFSET_Y = -54;
+const ECHO_ATTACK_DETECTION_RADIUS = 96;
+const ECHO_ATTACK_SPEED = 980;
+const ECHO_RETURN_SPEED = 620;
+const ECHO_HELP_COLOR = '#ff4f4f';
+const ECHO_HELP_TINT = 0xff4f4f;
+const ECHO_EYE_IDLE_GLOW_COLOR = 0xffd84d;
+const ECHO_EYE_IDLE_CORE_COLOR = 0xfff0a8;
+const ECHO_EYE_ATTACK_GLOW_COLOR = 0xff2222;
+const ECHO_EYE_ATTACK_CORE_COLOR = 0xff6969;
 const ECHO_COLLISION_RADIUS = 13;
 const ECHO_EYE_GLOW_RADIUS = 6;
 const ECHO_EYE_CORE_RADIUS = 2.7;
@@ -227,6 +234,7 @@ const BACKGROUND_FIRST_COLOR_RATIO = 1 / 1.5;
 const BACKGROUND_GRADIENT_FADE_RATIO = 0.50;
 const FALLING_OBJECT_DEPTH = 4;
 const SHIP_DEPTH = 12;
+const SHIP_UPGRADE_COMPONENT_DEPTH = SHIP_DEPTH + 0.45;
 const FX_DEPTH = 30;
 const UI_DEPTH = 1000;
 const STARFIELD_TEXTURE_WIDTH = 512;
@@ -634,6 +642,10 @@ function create() {
   this.ship.body.setImmovable(true);
   this.ship.body.setAllowGravity(false);
   refreshShipSize(this);
+  this.shipUpgradeComponents = this.add.graphics()
+    .setDepth(SHIP_UPGRADE_COMPONENT_DEPTH)
+    .setVisible(false);
+  updateShipUpgradeComponents(this, true);
   this.shipEyeGlow = this.add.circle(0, 0, SHIP_EYE_GLOW_RADIUS, 0xffd84d, 0)
     .setDepth(SHIP_DEPTH + 1)
     .setBlendMode(Phaser.BlendModes.ADD)
@@ -655,7 +667,8 @@ function create() {
     .setDepth(SHIP_DEPTH + 4)
     .setBlendMode(Phaser.BlendModes.ADD)
     .setVisible(false);
-  this.echoOrbitAngle = -Math.PI / 2;
+  this.echoAttackTarget = null;
+  this.echoReturningHome = false;
   startEchoEyeAnimation(this);
   updateEchoCompanion(this, 0);
 
@@ -1892,6 +1905,7 @@ function moveShipTo(scene, x, y = scene.ship ? scene.ship.y : getShipY(scene)) {
   updateShieldBubble(scene);
   updateEchoCompanion(scene, 0);
   updateShipEyeGlow(scene);
+  updateShipUpgradeComponents(scene);
   updateShipLifeIndicator(scene);
   if (usesXyControlHandle(scene) && scene.xyControl && scene.xyControl.visible && !isDraggingShip) {
     updateXyControlFromShip(scene);
@@ -1971,6 +1985,7 @@ function updateShipTilt(scene) {
   if (Math.abs(scene.ship.angle) < 0.05 && Math.abs(targetAngle) < 0.05) {
     scene.ship.setAngle(0);
   }
+  updateShipUpgradeComponents(scene);
   updateShipEyeGlow(scene);
 }
 
@@ -2013,6 +2028,194 @@ function setShipTextureForCurrentState(scene) {
   if (!scene.ship) return;
 
   scene.ship.setTexture('ship');
+  updateShipUpgradeComponents(scene, true);
+}
+
+function hasShipUpgradeComponents() {
+  return lifeBoosterLevel > 0
+    || shieldBoosterLevel > 0
+    || scoreBoosterLevel > 0
+    || energyRefinerLevel > 0;
+}
+
+function getShipUpgradeComponentSignature() {
+  return [
+    lifeBoosterLevel > 0 ? 1 : 0,
+    shieldBoosterLevel > 0 ? 1 : 0,
+    scoreBoosterLevel > 0 ? 1 : 0,
+    energyRefinerLevel > 0 ? 1 : 0,
+  ].join(':');
+}
+
+function updateShipUpgradeComponents(scene, forceRedraw = false) {
+  if (!scene || !scene.ship || !scene.shipUpgradeComponents) return;
+
+  const graphics = scene.shipUpgradeComponents;
+  graphics.setPosition(scene.ship.x, scene.ship.y);
+  graphics.setRotation(scene.ship.rotation || 0);
+  graphics.setScale(SHIP_SCALE, SHIP_SCALE);
+
+  const visible = Boolean(scene.ship.visible !== false && hasShipUpgradeComponents());
+  graphics.setVisible(visible);
+
+  const signature = getShipUpgradeComponentSignature();
+  if (!forceRedraw && scene.shipUpgradeComponentSignature === signature) return;
+
+  scene.shipUpgradeComponentSignature = signature;
+  graphics.clear();
+  if (!visible) return;
+
+  drawShipUpgradeComponents(graphics);
+}
+
+function shipTextureLocalPoint(x, y) {
+  return {
+    x: x - SHIP_TEXTURE_WIDTH / 2,
+    y: y - SHIP_TEXTURE_HEIGHT / 2,
+  };
+}
+
+function fillShipTexturePoints(graphics, points) {
+  graphics.fillPoints(points.map((point) => shipTextureLocalPoint(point.x, point.y)), true);
+}
+
+function strokeShipTexturePoints(graphics, points) {
+  graphics.strokePoints(points.map((point) => shipTextureLocalPoint(point.x, point.y)), true);
+}
+
+function fillShipTextureRoundedRect(graphics, x, y, width, height, radius) {
+  const local = shipTextureLocalPoint(x, y);
+  graphics.fillRoundedRect(local.x, local.y, width, height, radius);
+}
+
+function strokeShipTextureRoundedRect(graphics, x, y, width, height, radius) {
+  const local = shipTextureLocalPoint(x, y);
+  graphics.strokeRoundedRect(local.x, local.y, width, height, radius);
+}
+
+function fillShipTextureCircle(graphics, x, y, radius) {
+  const local = shipTextureLocalPoint(x, y);
+  graphics.fillCircle(local.x, local.y, radius);
+}
+
+function drawShipUpgradeComponents(graphics) {
+  if (scoreBoosterLevel > 0) drawCatalystShipComponents(graphics);
+  if (energyRefinerLevel > 0) drawRefinerShipComponents(graphics);
+  if (lifeBoosterLevel > 0) drawRepairShipComponents(graphics);
+  if (shieldBoosterLevel > 0) drawShieldShipComponents(graphics);
+}
+
+function drawCatalystShipComponents(graphics) {
+  const leftPanel = [
+    { x: 43, y: 12 },
+    { x: 55, y: 9 },
+    { x: 60, y: 15 },
+    { x: 54, y: 21 },
+    { x: 42, y: 18 },
+  ];
+  const rightPanel = [
+    { x: 113, y: 12 },
+    { x: 101, y: 9 },
+    { x: 96, y: 15 },
+    { x: 102, y: 21 },
+    { x: 114, y: 18 },
+  ];
+
+  graphics.fillStyle(0x2b1745, 0.54);
+  fillShipTexturePoints(graphics, leftPanel.map((point) => ({ x: point.x - 1, y: point.y + 2 })));
+  fillShipTexturePoints(graphics, rightPanel.map((point) => ({ x: point.x + 1, y: point.y + 2 })));
+  graphics.fillStyle(0x9b5cff, 0.95);
+  fillShipTexturePoints(graphics, leftPanel);
+  fillShipTexturePoints(graphics, rightPanel);
+  graphics.fillStyle(0xe5d4ff, 0.82);
+  fillShipTexturePoints(graphics, [
+    { x: 47, y: 13 },
+    { x: 54, y: 11 },
+    { x: 57, y: 15 },
+    { x: 51, y: 16 },
+  ]);
+  fillShipTexturePoints(graphics, [
+    { x: 109, y: 13 },
+    { x: 102, y: 11 },
+    { x: 99, y: 15 },
+    { x: 105, y: 16 },
+  ]);
+  graphics.lineStyle(1.5, 0xf0e6ff, 0.44);
+  strokeShipTexturePoints(graphics, leftPanel);
+  strokeShipTexturePoints(graphics, rightPanel);
+}
+
+function drawRefinerShipComponents(graphics) {
+  const enginePlates = [
+    { x: 44, y: 36, width: 17, height: 6 },
+    { x: 95, y: 36, width: 17, height: 6 },
+  ];
+
+  enginePlates.forEach((plate) => {
+    graphics.fillStyle(0x3f2e07, 0.58);
+    fillShipTextureRoundedRect(graphics, plate.x, plate.y + 1.2, plate.width, plate.height, 2);
+    graphics.fillStyle(0xffd84d, 0.94);
+    fillShipTextureRoundedRect(graphics, plate.x, plate.y, plate.width, plate.height, 2);
+    graphics.fillStyle(0xfff0a8, 0.78);
+    fillShipTextureRoundedRect(graphics, plate.x + 3, plate.y + 1, plate.width - 6, 1.6, 1);
+    graphics.lineStyle(1.2, 0xfff6c8, 0.42);
+    strokeShipTextureRoundedRect(graphics, plate.x, plate.y, plate.width, plate.height, 2);
+  });
+}
+
+function drawRepairShipComponents(graphics) {
+  const kits = [
+    { x: 25, y: 28, crossX: 32 },
+    { x: 116, y: 28, crossX: 123 },
+  ];
+
+  kits.forEach((kit) => {
+    graphics.fillStyle(0x0f4f2a, 0.5);
+    fillShipTextureRoundedRect(graphics, kit.x, kit.y + 1.4, 15, 7, 2);
+    graphics.fillStyle(0x4dff88, 0.92);
+    fillShipTextureRoundedRect(graphics, kit.x, kit.y, 15, 7, 2);
+    graphics.fillStyle(0xe8fff0, 0.86);
+    fillShipTextureRoundedRect(graphics, kit.crossX - 1, kit.y + 1.2, 2, 4.6, 0.6);
+    fillShipTextureRoundedRect(graphics, kit.crossX - 2.3, kit.y + 2.5, 4.6, 2, 0.6);
+    graphics.lineStyle(1.2, 0xc6ffd8, 0.44);
+    strokeShipTextureRoundedRect(graphics, kit.x, kit.y, 15, 7, 2);
+  });
+}
+
+function drawShieldShipComponents(graphics) {
+  const emitters = [
+    [
+      { x: 37, y: 18 },
+      { x: 48, y: 20 },
+      { x: 47, y: 29 },
+      { x: 36, y: 27 },
+    ],
+    [
+      { x: 119, y: 18 },
+      { x: 108, y: 20 },
+      { x: 109, y: 29 },
+      { x: 120, y: 27 },
+    ],
+  ];
+
+  emitters.forEach((points) => {
+    graphics.fillStyle(0x102f55, 0.58);
+    fillShipTexturePoints(graphics, points.map((point) => ({ x: point.x, y: point.y + 1.4 })));
+    graphics.fillStyle(0x4da3ff, 0.88);
+    fillShipTexturePoints(graphics, points);
+    graphics.fillStyle(0xc9eaff, 0.7);
+    const upper = points.slice(0, 2).concat([
+      { x: (points[1].x + points[2].x) / 2, y: (points[1].y + points[2].y) / 2 },
+      { x: (points[0].x + points[3].x) / 2, y: (points[0].y + points[3].y) / 2 },
+    ]);
+    fillShipTexturePoints(graphics, upper);
+    graphics.lineStyle(1.2, 0xdff4ff, 0.42);
+    strokeShipTexturePoints(graphics, points);
+  });
+
+  graphics.fillStyle(0x9fd9ff, 0.64);
+  fillShipTextureCircle(graphics, 36.5, 22.7, 2.2);
+  fillShipTextureCircle(graphics, 119.5, 22.7, 2.2);
 }
 
 function getGameWidth(scene) {
@@ -2063,30 +2266,82 @@ function updateEchoCompanion(scene, delta = 0) {
   setEchoEyeVisible(scene, scene.echoCompanion.visible);
   if (!scene.echoCompanion.visible) return;
 
-  if (isEchoHelpActive()) {
-    scene.echoOrbitAngle = (scene.echoOrbitAngle || 0) + delta * ECHO_ORBIT_SPEED;
-    const floatOffset = getEchoFloatOffset(scene);
-    scene.echoCompanion.setPosition(
-      scene.ship.x + Math.cos(scene.echoOrbitAngle) * ECHO_ORBIT_RADIUS + floatOffset.x,
-      scene.ship.y + Math.sin(scene.echoOrbitAngle) * ECHO_ORBIT_RADIUS + floatOffset.y
-    );
-    scene.echoCompanion.setScale(ECHO_SIZE / ECHO_TEXTURE_SIZE);
-    scene.echoCompanion.setRotation(scene.echoOrbitAngle + Math.PI / 2);
-    scene.echoCompanion.setAlpha(1);
+  const homePosition = getEchoHomePosition(scene);
+  scene.echoCompanion.setScale(ECHO_SIZE / ECHO_TEXTURE_SIZE);
+  scene.echoCompanion.setAlpha(isEchoHelpActive() ? 1 : 0.9);
+  if (updateEchoAttackMovement(scene, delta, homePosition)) {
     updateEchoEyePosition(scene);
     return;
   }
 
-  scene.echoOrbitAngle = -Math.PI / 2;
-  const floatOffset = getEchoFloatOffset(scene);
-  scene.echoCompanion.setPosition(
-    scene.ship.x + ECHO_IDLE_OFFSET_X + floatOffset.x,
-    scene.ship.y + ECHO_IDLE_OFFSET_Y + floatOffset.y
-  );
-  scene.echoCompanion.setScale(ECHO_SIZE / ECHO_TEXTURE_SIZE);
-  scene.echoCompanion.setRotation(0);
-  scene.echoCompanion.setAlpha(0.9);
+  scene.echoCompanion.setPosition(homePosition.x, homePosition.y);
+  scene.echoCompanion.setRotation(-0.18 + Math.sin((scene.time ? scene.time.now : 0) * 0.0021) * 0.08);
+  setEchoEyeAttacking(scene, false);
   updateEchoEyePosition(scene);
+}
+
+function getEchoHomePosition(scene) {
+  const floatOffset = getEchoFloatOffset(scene);
+  return {
+    x: scene.ship.x + ECHO_HOME_OFFSET_X + floatOffset.x,
+    y: scene.ship.y + ECHO_HOME_OFFSET_Y + floatOffset.y,
+  };
+}
+
+function updateEchoAttackMovement(scene, delta, homePosition) {
+  const deltaSeconds = Math.max(0.001, delta / 1000);
+  const target = scene.echoAttackTarget;
+  if (target && target.active) {
+    setEchoEyeAttacking(scene, true);
+    moveEchoToward(scene, target.x, target.y, ECHO_ATTACK_SPEED * deltaSeconds);
+    scene.echoCompanion.setRotation(Phaser.Math.Angle.Between(
+      scene.echoCompanion.x,
+      scene.echoCompanion.y,
+      target.x,
+      target.y
+    ) + Math.PI / 2);
+
+    if (isEchoOverlappingHostile(scene, target)) {
+      target.setData('hasBeenEchoBlocked', true);
+      scene.echoAttackTarget = null;
+      scene.echoReturningHome = true;
+      blockHostileWithEcho(scene, target);
+      setEchoEyeAttacking(scene, false);
+    }
+    return true;
+  }
+
+  if (target && !target.active) {
+    scene.echoAttackTarget = null;
+    scene.echoReturningHome = true;
+  }
+
+  if (!scene.echoReturningHome) return false;
+
+  setEchoEyeAttacking(scene, false);
+  moveEchoToward(scene, homePosition.x, homePosition.y, ECHO_RETURN_SPEED * deltaSeconds);
+  scene.echoCompanion.setRotation(Phaser.Math.Angle.Between(
+    scene.echoCompanion.x,
+    scene.echoCompanion.y,
+    homePosition.x,
+    homePosition.y
+  ) + Math.PI / 2);
+
+  if (Phaser.Math.Distance.Between(scene.echoCompanion.x, scene.echoCompanion.y, homePosition.x, homePosition.y) <= 2) {
+    scene.echoCompanion.setPosition(homePosition.x, homePosition.y);
+    scene.echoReturningHome = false;
+  }
+  return true;
+}
+
+function moveEchoToward(scene, x, y, distance) {
+  const angle = Phaser.Math.Angle.Between(scene.echoCompanion.x, scene.echoCompanion.y, x, y);
+  const remaining = Phaser.Math.Distance.Between(scene.echoCompanion.x, scene.echoCompanion.y, x, y);
+  const step = Math.min(distance, remaining);
+  scene.echoCompanion.setPosition(
+    scene.echoCompanion.x + Math.cos(angle) * step,
+    scene.echoCompanion.y + Math.sin(angle) * step
+  );
 }
 
 function getEchoFloatOffset(scene) {
@@ -2149,15 +2404,38 @@ function hideEchoCompanion(scene) {
 
 function updateEchoAttacks(scene) {
   if (!isEchoHelpActive() || !scene.echoCompanion || !scene.echoCompanion.visible) return;
+  if (scene.echoAttackTarget || scene.echoReturningHome) return;
 
   scene.balls.getChildren().forEach((hostile) => {
-    if (!hostile.active || !isShieldBlockedKind(hostile.getData('kind'))) return;
+    if (scene.echoAttackTarget) return;
+    if (!hostile.active || !isEchoAttackableKind(hostile.getData('kind'))) return;
     if (hostile.getData('hasBeenEchoBlocked')) return;
-    if (!isEchoOverlappingHostile(scene, hostile)) return;
+    if (!isHostileInsideEchoAttackRadius(scene, hostile)) return;
+    if (hostile.getData('hasRolledEchoAttack')) return;
 
-    hostile.setData('hasBeenEchoBlocked', true);
-    blockHostileWithEcho(scene, hostile);
+    hostile.setData('hasRolledEchoAttack', true);
+    if (Math.random() >= getEchoAttackChance()) return;
+    scene.echoAttackTarget = hostile;
+    setEchoEyeAttacking(scene, true);
   });
+}
+
+function isEchoAttackableKind(kind) {
+  return kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'comet' || isAsteroidKind(kind);
+}
+
+function isHostileInsideEchoAttackRadius(scene, hostile) {
+  const radius = ECHO_ATTACK_DETECTION_RADIUS + getObjectCollisionRadius(hostile);
+  return Phaser.Math.Distance.Between(
+    scene.ship.x,
+    scene.ship.y,
+    hostile.x,
+    hostile.y
+  ) <= radius;
+}
+
+function getEchoAttackChance() {
+  return Phaser.Math.Clamp(echoHelpLevel, 0, MAX_UPGRADE_LEVEL) * 0.05;
 }
 
 function isEchoOverlappingHostile(scene, hostile) {
@@ -2179,14 +2457,14 @@ function blockHostileWithEcho(scene, hostile) {
   showAbsorbEffect(scene, x, y, kind, false);
   playShieldBlockSound(scene);
   flashEchoCompanion(scene);
-  addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#ffd84d' });
+  addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: ECHO_HELP_COLOR });
   destroyShieldBlockedHostile(scene, hostile);
 }
 
 function flashEchoCompanion(scene) {
   if (!scene.echoCompanion || !scene.tweens) return;
   scene.tweens.killTweensOf(scene.echoCompanion);
-  scene.echoCompanion.setTint(0xffd84d);
+  scene.echoCompanion.setTint(ECHO_HELP_TINT);
   scene.echoCompanion.setAlpha(1);
   scene.tweens.add({
     targets: scene.echoCompanion,
@@ -2200,6 +2478,15 @@ function flashEchoCompanion(scene) {
       scene.echoCompanion.setAlpha(isEchoHelpActive() ? 1 : 0.9);
     },
   });
+}
+
+function setEchoEyeAttacking(scene, isAttacking) {
+  if (scene.echoEyeGlow) {
+    scene.echoEyeGlow.setFillStyle(isAttacking ? ECHO_EYE_ATTACK_GLOW_COLOR : ECHO_EYE_IDLE_GLOW_COLOR, 0.34);
+  }
+  if (scene.echoEyeCore) {
+    scene.echoEyeCore.setFillStyle(isAttacking ? ECHO_EYE_ATTACK_CORE_COLOR : ECHO_EYE_IDLE_CORE_COLOR, 1);
+  }
 }
 
 function isEchoHelpActive() {
@@ -3143,6 +3430,7 @@ function setUiDepth(scene) {
   });
 
   if (scene.shieldBubble) scene.shieldBubble.setDepth(SHIP_DEPTH + 1);
+  if (scene.shipUpgradeComponents) scene.shipUpgradeComponents.setDepth(SHIP_UPGRADE_COMPONENT_DEPTH);
   if (scene.shipEyeGlow) scene.shipEyeGlow.setDepth(SHIP_DEPTH + 1);
   if (scene.shipEyeCore) scene.shipEyeCore.setDepth(SHIP_DEPTH + 2);
   if (scene.echoCompanion) scene.echoCompanion.setDepth(SHIP_DEPTH + 2);
@@ -3334,6 +3622,10 @@ function resetCounters() {
   echoHelpLevel = 0;
   energyRefinerLevelBonus = 0;
   enemyTrailTimer = 0;
+  this.echoAttackTarget = null;
+  this.echoReturningHome = false;
+  if (this.echoCompanion) this.echoCompanion.clearTint();
+  setEchoEyeAttacking(this, false);
   clearShipTrail(this);
   this.nextRedWaveEligibleAt = 0;
   this.nextAsteroidWaveEligibleAt = 0;
@@ -4177,6 +4469,10 @@ function getBoosterChanceForLevel(level) {
 
 function getBoosterChancePercent(level) {
   return Math.round(getBoosterChanceForLevel(level) * 100);
+}
+
+function getEchoAttackChancePercent(level = echoHelpLevel) {
+  return Math.round(Phaser.Math.Clamp(level, 0, MAX_UPGRADE_LEVEL) * 5);
 }
 
 function canDropLifeBooster() {
@@ -6334,12 +6630,11 @@ function getUpgradeConfig(upgradeKind) {
   if (upgradeKind === 'echoHelp') {
     return {
       label: 'Ayuda de Echo',
-      getDescription: () => getUpgradeDescriptionLines([
-        'Echo orbita alrededor de la nave.',
-        'Destruye enemigos al contacto y otorga ' + SHIELD_BLOCK_SCORE + ' puntos.',
+      getDescription: (level) => getUpgradeDescriptionLines([
+        'Al acercarte a asteroides, obreras, cometas o drones, Echo tiene un ' + getEchoAttackChancePercent(level) + '% de atacar.',
+        'Otorga ' + SHIELD_BLOCK_SCORE + ' puntos por enemigo destruido.',
       ]),
-      color: '#ffd84d',
-      maxLevel: 1,
+      color: ECHO_HELP_COLOR,
     };
   }
   return { label: 'Mejora', getDescription: () => '', color: '#76ffe8' };
@@ -6358,7 +6653,6 @@ function hasAvailableUpgrades() {
 }
 
 function canChooseUpgradeKind(upgradeKind) {
-  if (upgradeKind === 'echoHelp' && shieldBoosterLevel < MAX_UPGRADE_LEVEL) return false;
   return getUpgradeLevel(upgradeKind) < getUpgradeMaxLevel(upgradeKind);
 }
 
@@ -6382,7 +6676,7 @@ function chooseUpgrade(scene, upgradeKind) {
   } else if (upgradeKind === 'energyRefiner') {
     energyRefinerLevel += 1;
   } else if (upgradeKind === 'echoHelp') {
-    echoHelpLevel = 1;
+    echoHelpLevel += 1;
     updateEchoCompanion(scene, 0);
   }
 
