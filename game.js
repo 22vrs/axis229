@@ -110,6 +110,7 @@ const BOSS_LASER_DURATION = 2000;
 const BOSS_ATTACK_GAP = 1500;
 const BOSS_WIDTH = 560;
 const BOSS_HEIGHT = 220;
+const SENTINEL_TARGET_Y = 86;
 const BOSS_LASER_WIDTH = 32;
 const BOSS_HORIZONTAL_LASER_HEIGHT = 30;
 const WAVE_CLEAR_DELAY = 2200;
@@ -370,7 +371,7 @@ function getBossConfigForLevel(level) {
 
   const bossKinds = ['red', 'boss', 'asteroid', 'plasma', 'drones', 'redNeedleBoss', 'comet'];
   const bossKind = isInfiniteGameMode()
-    ? (bossIndex === 0 ? 'comet' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
+    ? (bossIndex === 0 ? 'boss' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
     : bossKinds[bossIndex % bossKinds.length];
   return createBossConfig(bossKind);
 }
@@ -4674,6 +4675,65 @@ function recoverStalledBossWave(scene, bossWave) {
   scheduleBossAttack(scene, BOSS_ATTACK_GAP);
 }
 
+function createSentinelShip(scene) {
+  const bottomLimit = getXyShipBottomLimit(scene);
+  const armTop = -34;
+  const armBottom = bottomLimit - SENTINEL_TARGET_Y;
+  const armHeight = Math.max(BOSS_HEIGHT, armBottom - armTop);
+  const armWidth = 34;
+  const armRadius = 8;
+  const sideInset = -22;
+  const leftArmX = -getGameWidth(scene) / 2 + sideInset;
+  const rightArmX = getGameWidth(scene) / 2 - sideInset - armWidth;
+  const container = scene.add.container(getGameWidth(scene) / 2, getSentinelHiddenY(scene));
+  const arms = scene.make.graphics({ x: 0, y: 0, add: false });
+
+  arms.fillStyle(0x210815, 0.96);
+  arms.fillRoundedRect(leftArmX, armTop, armWidth, armHeight, armRadius);
+  arms.fillRoundedRect(rightArmX, armTop, armWidth, armHeight, armRadius);
+
+  arms.fillStyle(0x8f172d, 0.96);
+  arms.fillRoundedRect(leftArmX + 6, armTop + 12, armWidth - 12, armHeight - 24, 6);
+  arms.fillRoundedRect(rightArmX + 6, armTop + 12, armWidth - 12, armHeight - 24, 6);
+
+  arms.fillStyle(0x541020, 1);
+  arms.fillRoundedRect(leftArmX + 13, armTop + 34, armWidth - 26, armHeight - 68, 4);
+  arms.fillRoundedRect(rightArmX + 13, armTop + 34, armWidth - 26, armHeight - 68, 4);
+
+  arms.fillStyle(0xff4058, 0.68);
+  [70, 150, 230, 310, 390, 470].forEach((offset) => {
+    if (armTop + offset > armBottom - 14) return;
+    arms.fillCircle(leftArmX + armWidth / 2, armTop + offset, 7);
+    arms.fillCircle(rightArmX + armWidth / 2, armTop + offset, 7);
+  });
+
+  arms.fillStyle(0xffd0d7, 0.58);
+  [70, 230, 390].forEach((offset) => {
+    if (armTop + offset > armBottom - 14) return;
+    arms.fillCircle(leftArmX + armWidth / 2, armTop + offset, 2.5);
+    arms.fillCircle(rightArmX + armWidth / 2, armTop + offset, 2.5);
+  });
+
+  arms.lineStyle(2, 0xff9aaa, 0.34);
+  arms.strokeRoundedRect(leftArmX, armTop, armWidth, armHeight, armRadius);
+  arms.strokeRoundedRect(rightArmX, armTop, armWidth, armHeight, armRadius);
+  arms.lineStyle(1, 0xffd0d7, 0.22);
+  arms.lineBetween(leftArmX + 8, armTop + 18, leftArmX + 8, armBottom - 12);
+  arms.lineBetween(rightArmX + armWidth - 8, armTop + 18, rightArmX + armWidth - 8, armBottom - 12);
+
+  const body = scene.add.image(0, 0, 'bossShip').setOrigin(0.5, 0.5);
+  container
+    .add([arms, body])
+    .setDepth(FX_DEPTH + 1)
+    .setData('sentinelHiddenY', getSentinelHiddenY(scene));
+
+  return container;
+}
+
+function getSentinelHiddenY(scene) {
+  return -(getXyShipBottomLimit(scene) - SENTINEL_TARGET_Y + 70);
+}
+
 function startBossWave(scene) {
   const bossWave = scene.activeBossWave;
   if (!bossWave || bossWave.hasStarted) return;
@@ -4693,13 +4753,11 @@ function startBossWave(scene) {
   refreshShipSize(scene);
   moveShipTo(scene, clampShipX(scene, scene.ship.x));
 
-  scene.bossShip = scene.add.image(getGameWidth(scene) / 2, -BOSS_HEIGHT / 2, 'bossShip')
-    .setOrigin(0.5, 0.5)
-    .setDepth(FX_DEPTH + 1);
+  scene.bossShip = createSentinelShip(scene);
 
   scene.bossEnterTween = scene.tweens.add({
     targets: scene.bossShip,
-    y: 86,
+    y: SENTINEL_TARGET_Y,
     duration: 1100,
     ease: 'Sine.easeOut',
     onComplete: () => {
@@ -5110,9 +5168,12 @@ function retreatBoss(scene) {
   if (!bossWave || bossWave.isRetreating) return;
 
   bossWave.isRetreating = true;
+  const retreatY = scene.bossShip && scene.bossShip.getData
+    ? scene.bossShip.getData('sentinelHiddenY') || -BOSS_HEIGHT / 2
+    : -BOSS_HEIGHT / 2;
   scene.bossExitTween = scene.tweens.add({
     targets: scene.bossShip,
-    y: -BOSS_HEIGHT / 2,
+    y: retreatY,
     duration: 850,
     ease: 'Sine.easeIn',
     onComplete: () => {

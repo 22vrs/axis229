@@ -54,7 +54,7 @@ Claves usadas en `localStorage`:
 | Normal | `JUGAR` | Partida con progresion, mejoras, jefes cada 3 niveles y ranking. | Si |
 | Infinito | `MODO INFINITO` | Partida libre con amenazas desbloqueadas y jefes aleatorios. | No |
 
-En modo infinito, el primer jefe es `Lluvia de estrellas`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
+En modo infinito, el primer jefe es `Centinela`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
 
 ## Progresion
 
