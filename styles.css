@@ -244,10 +244,10 @@ canvas {
 .hud-life-cell {
   position: relative;
   height: 14px;
-  border: 1px solid rgba(77, 255, 136, 0.42);
+  border: 1px solid rgba(255, 216, 77, 0.42);
   border-radius: var(--ui-radius-small);
   background: rgba(12, 24, 36, 0.46);
-  box-shadow: inset 0 0 8px rgba(77, 255, 136, 0.08);
+  box-shadow: inset 0 0 8px rgba(255, 216, 77, 0.08);
   overflow: hidden;
 }
 
@@ -264,9 +264,9 @@ canvas {
 }
 
 .hud-life-cell.is-full {
-  border-color: rgba(77, 255, 136, 0.84);
-  background: linear-gradient(180deg, rgba(77, 255, 136, 0.86), rgba(14, 172, 111, 0.82));
-  box-shadow: 0 0 10px rgba(77, 255, 136, 0.36), inset 0 0 8px rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 216, 77, 0.86);
+  background: linear-gradient(180deg, rgba(255, 225, 105, 0.92), rgba(214, 156, 37, 0.86));
+  box-shadow: 0 0 10px rgba(255, 216, 77, 0.36), inset 0 0 8px rgba(255, 255, 255, 0.18);
 }
 
 .hud-life-cell.is-shielded {

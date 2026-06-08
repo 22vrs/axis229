@@ -164,6 +164,10 @@ const SHIP_LIFE_INDICATOR_CURVE_DEPTH = 10;
 const SHIP_LIFE_INDICATOR_Y_OFFSET = 42;
 const SHIP_LIFE_INDICATOR_VISIBLE_DURATION = 1150;
 const SHIP_LIFE_INDICATOR_FADE_DURATION = 260;
+const LIFE_INDICATOR_FILL_COLOR = 0xffd84d;
+const LIFE_INDICATOR_HEAL_COLOR = 0xffe169;
+const LIFE_INDICATOR_BORDER_COLOR = 0xffe8a3;
+const LIFE_INDICATOR_HEAL_BORDER_COLOR = 0xfff0b8;
 const FINAL_DAMAGE_GAME_OVER_DELAY = 1450;
 const ENERGY_STREAK_REWARD_TARGET = 50;
 const ENERGY_STREAK_REWARD_SCORE = 50;
@@ -3068,7 +3072,7 @@ function updateLivesText(scene, options = {}) {
 
   currentHud.lifeBar.innerHTML = '';
   currentHud.lifeCount.textContent = lives + '/' + maxLives;
-  const activeColor = isShieldActive(scene) ? '#4da3ff' : '#4dff88';
+  const activeColor = isShieldActive(scene) ? '#4da3ff' : '#ffd84d';
   for (let i = 0; i < maxLives; i += 1) {
     const isFull = i < lives;
     const isLost = options.lostLifeIndex === i;
@@ -3228,11 +3232,11 @@ function createShipLifeIndicatorCell(scene, index, previousLives, nextLives, cha
     ? index >= nextLives && index < previousLives
     : index >= previousLives && index < nextLives;
   const fillColor = isChanged
-    ? (changeKind === 'heal' ? 0x7dffae : 0xff4f68)
-    : (isFilledAfter ? 0x4dff88 : 0x10243a);
+    ? (changeKind === 'heal' ? LIFE_INDICATOR_HEAL_COLOR : 0xff4f68)
+    : (isFilledAfter ? LIFE_INDICATOR_FILL_COLOR : 0x10243a);
   const borderColor = isChanged
-    ? (changeKind === 'heal' ? 0xb5ffcf : 0xff9aaa)
-    : (isFilledAfter ? 0x8dffb2 : 0x33506f);
+    ? (changeKind === 'heal' ? LIFE_INDICATOR_HEAL_BORDER_COLOR : 0xff9aaa)
+    : (isFilledAfter ? LIFE_INDICATOR_BORDER_COLOR : 0x33506f);
 
   const frame = scene.add.graphics();
   frame.fillStyle(0x071121, 0.86);
@@ -3275,10 +3279,10 @@ function setShipLifeIndicatorCellFilled(cell) {
   cell.frame.clear();
   cell.frame.fillStyle(0x071121, 0.86);
   cell.frame.fillPoints(cell.geometry.framePoints, true);
-  cell.frame.lineStyle(1, 0x8dffb2, 0.88);
+  cell.frame.lineStyle(1, LIFE_INDICATOR_BORDER_COLOR, 0.88);
   cell.frame.strokePoints(cell.geometry.framePoints, true);
   cell.fill.clear();
-  cell.fill.fillStyle(0x4dff88, 0.9);
+  cell.fill.fillStyle(LIFE_INDICATOR_FILL_COLOR, 0.9);
   cell.fill.fillPoints(cell.geometry.fillPoints, true);
 }
 
