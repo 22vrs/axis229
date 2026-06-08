@@ -149,6 +149,9 @@ const SHIP_TRAIL_WIDTH = 18;
 const SHIP_TRAIL_POSITION_SMOOTHING = 0.34;
 const SHIP_TRAIL_CURVE_PASSES = 2;
 const SHIP_TRAIL_BLUE_CORE_RATIO = 0.34;
+const SHIP_TRAIL_IDLE_INTERVAL = 55;
+const SHIP_TRAIL_IDLE_SPEED = 0.08;
+const SHIP_TRAIL_IDLE_MAX_DELTA = 34;
 const SHIP_RESUME_TOUCH_PADDING_X = 12;
 const SHIP_RESUME_TOUCH_PADDING_Y = 24;
 const XY_CONTROL_RADIUS = 34;
@@ -4139,11 +4142,31 @@ function updateShipPropulsion(scene, delta) {
     createdAt: now,
   };
   const previousPoint = scene.shipTrailPoints && scene.shipTrailPoints[scene.shipTrailPoints.length - 1];
+  const hasPreviousEmission = scene.shipTrailLastEmitX !== undefined && scene.shipTrailLastEmitY !== undefined;
+  const hasMovedEnough = !hasPreviousEmission
+    || Phaser.Math.Distance.Between(
+      scene.shipTrailLastEmitX,
+      scene.shipTrailLastEmitY,
+      point.x,
+      point.y
+    ) >= SHIP_TRAIL_MIN_POINT_DISTANCE;
+  const shouldAddIdlePoint = previousPoint
+    && !hasMovedEnough
+    && now - previousPoint.createdAt >= SHIP_TRAIL_IDLE_INTERVAL;
+  if (previousPoint && !hasMovedEnough) {
+    const idleDrift = SHIP_TRAIL_IDLE_SPEED * Math.min(delta || 16, SHIP_TRAIL_IDLE_MAX_DELTA);
+    scene.shipTrailPoints.forEach((trailPoint) => {
+      trailPoint.y += idleDrift;
+    });
+  }
   if (
     !previousPoint
-    || Phaser.Math.Distance.Between(previousPoint.x, previousPoint.y, point.x, point.y) >= SHIP_TRAIL_MIN_POINT_DISTANCE
+    || hasMovedEnough
+    || shouldAddIdlePoint
   ) {
     scene.shipTrailPoints.push(point);
+    scene.shipTrailLastEmitX = point.x;
+    scene.shipTrailLastEmitY = point.y;
   }
 
   scene.shipTrailPoints = scene.shipTrailPoints
@@ -4158,6 +4181,8 @@ function clearShipTrail(scene) {
   scene.shipTrailPoints = [];
   scene.shipTrailAnchorX = undefined;
   scene.shipTrailAnchorY = undefined;
+  scene.shipTrailLastEmitX = undefined;
+  scene.shipTrailLastEmitY = undefined;
   if (scene.shipTrail) scene.shipTrail.clear();
 }
 
