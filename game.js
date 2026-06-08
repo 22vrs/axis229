@@ -234,7 +234,6 @@ const BACKGROUND_FIRST_COLOR_RATIO = 1 / 1.5;
 const BACKGROUND_GRADIENT_FADE_RATIO = 0.50;
 const FALLING_OBJECT_DEPTH = 4;
 const SHIP_DEPTH = 12;
-const SHIP_UPGRADE_COMPONENT_DEPTH = SHIP_DEPTH + 0.45;
 const FX_DEPTH = 30;
 const UI_DEPTH = 1000;
 const STARFIELD_TEXTURE_WIDTH = 512;
@@ -642,10 +641,6 @@ function create() {
   this.ship.body.setImmovable(true);
   this.ship.body.setAllowGravity(false);
   refreshShipSize(this);
-  this.shipUpgradeComponents = this.add.graphics()
-    .setDepth(SHIP_UPGRADE_COMPONENT_DEPTH)
-    .setVisible(false);
-  updateShipUpgradeComponents(this, true);
   this.shipEyeGlow = this.add.circle(0, 0, SHIP_EYE_GLOW_RADIUS, 0xffd84d, 0)
     .setDepth(SHIP_DEPTH + 1)
     .setBlendMode(Phaser.BlendModes.ADD)
@@ -1905,7 +1900,6 @@ function moveShipTo(scene, x, y = scene.ship ? scene.ship.y : getShipY(scene)) {
   updateShieldBubble(scene);
   updateEchoCompanion(scene, 0);
   updateShipEyeGlow(scene);
-  updateShipUpgradeComponents(scene);
   updateShipLifeIndicator(scene);
   if (usesXyControlHandle(scene) && scene.xyControl && scene.xyControl.visible && !isDraggingShip) {
     updateXyControlFromShip(scene);
@@ -1985,7 +1979,6 @@ function updateShipTilt(scene) {
   if (Math.abs(scene.ship.angle) < 0.05 && Math.abs(targetAngle) < 0.05) {
     scene.ship.setAngle(0);
   }
-  updateShipUpgradeComponents(scene);
   updateShipEyeGlow(scene);
 }
 
@@ -2028,194 +2021,6 @@ function setShipTextureForCurrentState(scene) {
   if (!scene.ship) return;
 
   scene.ship.setTexture('ship');
-  updateShipUpgradeComponents(scene, true);
-}
-
-function hasShipUpgradeComponents() {
-  return lifeBoosterLevel > 0
-    || shieldBoosterLevel > 0
-    || scoreBoosterLevel > 0
-    || energyRefinerLevel > 0;
-}
-
-function getShipUpgradeComponentSignature() {
-  return [
-    lifeBoosterLevel > 0 ? 1 : 0,
-    shieldBoosterLevel > 0 ? 1 : 0,
-    scoreBoosterLevel > 0 ? 1 : 0,
-    energyRefinerLevel > 0 ? 1 : 0,
-  ].join(':');
-}
-
-function updateShipUpgradeComponents(scene, forceRedraw = false) {
-  if (!scene || !scene.ship || !scene.shipUpgradeComponents) return;
-
-  const graphics = scene.shipUpgradeComponents;
-  graphics.setPosition(scene.ship.x, scene.ship.y);
-  graphics.setRotation(scene.ship.rotation || 0);
-  graphics.setScale(SHIP_SCALE, SHIP_SCALE);
-
-  const visible = Boolean(scene.ship.visible !== false && hasShipUpgradeComponents());
-  graphics.setVisible(visible);
-
-  const signature = getShipUpgradeComponentSignature();
-  if (!forceRedraw && scene.shipUpgradeComponentSignature === signature) return;
-
-  scene.shipUpgradeComponentSignature = signature;
-  graphics.clear();
-  if (!visible) return;
-
-  drawShipUpgradeComponents(graphics);
-}
-
-function shipTextureLocalPoint(x, y) {
-  return {
-    x: x - SHIP_TEXTURE_WIDTH / 2,
-    y: y - SHIP_TEXTURE_HEIGHT / 2,
-  };
-}
-
-function fillShipTexturePoints(graphics, points) {
-  graphics.fillPoints(points.map((point) => shipTextureLocalPoint(point.x, point.y)), true);
-}
-
-function strokeShipTexturePoints(graphics, points) {
-  graphics.strokePoints(points.map((point) => shipTextureLocalPoint(point.x, point.y)), true);
-}
-
-function fillShipTextureRoundedRect(graphics, x, y, width, height, radius) {
-  const local = shipTextureLocalPoint(x, y);
-  graphics.fillRoundedRect(local.x, local.y, width, height, radius);
-}
-
-function strokeShipTextureRoundedRect(graphics, x, y, width, height, radius) {
-  const local = shipTextureLocalPoint(x, y);
-  graphics.strokeRoundedRect(local.x, local.y, width, height, radius);
-}
-
-function fillShipTextureCircle(graphics, x, y, radius) {
-  const local = shipTextureLocalPoint(x, y);
-  graphics.fillCircle(local.x, local.y, radius);
-}
-
-function drawShipUpgradeComponents(graphics) {
-  if (scoreBoosterLevel > 0) drawCatalystShipComponents(graphics);
-  if (energyRefinerLevel > 0) drawRefinerShipComponents(graphics);
-  if (lifeBoosterLevel > 0) drawRepairShipComponents(graphics);
-  if (shieldBoosterLevel > 0) drawShieldShipComponents(graphics);
-}
-
-function drawCatalystShipComponents(graphics) {
-  const leftPanel = [
-    { x: 43, y: 12 },
-    { x: 55, y: 9 },
-    { x: 60, y: 15 },
-    { x: 54, y: 21 },
-    { x: 42, y: 18 },
-  ];
-  const rightPanel = [
-    { x: 113, y: 12 },
-    { x: 101, y: 9 },
-    { x: 96, y: 15 },
-    { x: 102, y: 21 },
-    { x: 114, y: 18 },
-  ];
-
-  graphics.fillStyle(0x2b1745, 0.54);
-  fillShipTexturePoints(graphics, leftPanel.map((point) => ({ x: point.x - 1, y: point.y + 2 })));
-  fillShipTexturePoints(graphics, rightPanel.map((point) => ({ x: point.x + 1, y: point.y + 2 })));
-  graphics.fillStyle(0x9b5cff, 0.95);
-  fillShipTexturePoints(graphics, leftPanel);
-  fillShipTexturePoints(graphics, rightPanel);
-  graphics.fillStyle(0xe5d4ff, 0.82);
-  fillShipTexturePoints(graphics, [
-    { x: 47, y: 13 },
-    { x: 54, y: 11 },
-    { x: 57, y: 15 },
-    { x: 51, y: 16 },
-  ]);
-  fillShipTexturePoints(graphics, [
-    { x: 109, y: 13 },
-    { x: 102, y: 11 },
-    { x: 99, y: 15 },
-    { x: 105, y: 16 },
-  ]);
-  graphics.lineStyle(1.5, 0xf0e6ff, 0.44);
-  strokeShipTexturePoints(graphics, leftPanel);
-  strokeShipTexturePoints(graphics, rightPanel);
-}
-
-function drawRefinerShipComponents(graphics) {
-  const enginePlates = [
-    { x: 44, y: 36, width: 17, height: 6 },
-    { x: 95, y: 36, width: 17, height: 6 },
-  ];
-
-  enginePlates.forEach((plate) => {
-    graphics.fillStyle(0x3f2e07, 0.58);
-    fillShipTextureRoundedRect(graphics, plate.x, plate.y + 1.2, plate.width, plate.height, 2);
-    graphics.fillStyle(0xffd84d, 0.94);
-    fillShipTextureRoundedRect(graphics, plate.x, plate.y, plate.width, plate.height, 2);
-    graphics.fillStyle(0xfff0a8, 0.78);
-    fillShipTextureRoundedRect(graphics, plate.x + 3, plate.y + 1, plate.width - 6, 1.6, 1);
-    graphics.lineStyle(1.2, 0xfff6c8, 0.42);
-    strokeShipTextureRoundedRect(graphics, plate.x, plate.y, plate.width, plate.height, 2);
-  });
-}
-
-function drawRepairShipComponents(graphics) {
-  const kits = [
-    { x: 25, y: 28, crossX: 32 },
-    { x: 116, y: 28, crossX: 123 },
-  ];
-
-  kits.forEach((kit) => {
-    graphics.fillStyle(0x0f4f2a, 0.5);
-    fillShipTextureRoundedRect(graphics, kit.x, kit.y + 1.4, 15, 7, 2);
-    graphics.fillStyle(0x4dff88, 0.92);
-    fillShipTextureRoundedRect(graphics, kit.x, kit.y, 15, 7, 2);
-    graphics.fillStyle(0xe8fff0, 0.86);
-    fillShipTextureRoundedRect(graphics, kit.crossX - 1, kit.y + 1.2, 2, 4.6, 0.6);
-    fillShipTextureRoundedRect(graphics, kit.crossX - 2.3, kit.y + 2.5, 4.6, 2, 0.6);
-    graphics.lineStyle(1.2, 0xc6ffd8, 0.44);
-    strokeShipTextureRoundedRect(graphics, kit.x, kit.y, 15, 7, 2);
-  });
-}
-
-function drawShieldShipComponents(graphics) {
-  const emitters = [
-    [
-      { x: 37, y: 18 },
-      { x: 48, y: 20 },
-      { x: 47, y: 29 },
-      { x: 36, y: 27 },
-    ],
-    [
-      { x: 119, y: 18 },
-      { x: 108, y: 20 },
-      { x: 109, y: 29 },
-      { x: 120, y: 27 },
-    ],
-  ];
-
-  emitters.forEach((points) => {
-    graphics.fillStyle(0x102f55, 0.58);
-    fillShipTexturePoints(graphics, points.map((point) => ({ x: point.x, y: point.y + 1.4 })));
-    graphics.fillStyle(0x4da3ff, 0.88);
-    fillShipTexturePoints(graphics, points);
-    graphics.fillStyle(0xc9eaff, 0.7);
-    const upper = points.slice(0, 2).concat([
-      { x: (points[1].x + points[2].x) / 2, y: (points[1].y + points[2].y) / 2 },
-      { x: (points[0].x + points[3].x) / 2, y: (points[0].y + points[3].y) / 2 },
-    ]);
-    fillShipTexturePoints(graphics, upper);
-    graphics.lineStyle(1.2, 0xdff4ff, 0.42);
-    strokeShipTexturePoints(graphics, points);
-  });
-
-  graphics.fillStyle(0x9fd9ff, 0.64);
-  fillShipTextureCircle(graphics, 36.5, 22.7, 2.2);
-  fillShipTextureCircle(graphics, 119.5, 22.7, 2.2);
 }
 
 function getGameWidth(scene) {
@@ -3430,7 +3235,6 @@ function setUiDepth(scene) {
   });
 
   if (scene.shieldBubble) scene.shieldBubble.setDepth(SHIP_DEPTH + 1);
-  if (scene.shipUpgradeComponents) scene.shipUpgradeComponents.setDepth(SHIP_UPGRADE_COMPONENT_DEPTH);
   if (scene.shipEyeGlow) scene.shipEyeGlow.setDepth(SHIP_DEPTH + 1);
   if (scene.shipEyeCore) scene.shipEyeCore.setDepth(SHIP_DEPTH + 2);
   if (scene.echoCompanion) scene.echoCompanion.setDepth(SHIP_DEPTH + 2);
