@@ -183,6 +183,7 @@ const ENERGY_STREAK_REWARD_TARGET = 50;
 const ENERGY_STREAK_REWARD_SCORE = 50;
 const ENERGY_STREAK_UPGRADE_DELAY = 900;
 const CONTAMINATED_ORB_CHANCE = 0.2;
+const ENERGY_PURIFIER_COLOR = '#d9dee6';
 const POINT_POPUP_STACK_WINDOW = 260;
 const POINT_POPUP_STACK_DISTANCE = 78;
 const POINT_POPUP_STACK_OFFSET = 24;
@@ -196,9 +197,10 @@ const ECHO_TEXTURE_SIZE = 72;
 const ECHO_SIZE = 28;
 const ECHO_HOME_OFFSET_X = -62;
 const ECHO_HOME_OFFSET_Y = -54;
-const ECHO_ATTACK_DETECTION_RADIUS = 96;
+const ECHO_ATTACK_DETECTION_RADIUS = 128;
 const ECHO_ATTACK_SPEED = 980;
 const ECHO_RETURN_SPEED = 620;
+const ECHO_ATTACK_CHANCE = 0.3;
 const ECHO_HELP_COLOR = '#ff4f4f';
 const ECHO_HELP_TINT = 0xff4f4f;
 const ECHO_EYE_IDLE_GLOW_COLOR = 0xffd84d;
@@ -297,6 +299,7 @@ let lifeBoosterLevel = 0;
 let shieldBoosterLevel = 0;
 let scoreBoosterLevel = 0;
 let energyRefinerLevel = 0;
+let energyPurifierLevel = 0;
 let echoHelpLevel = 0;
 let state = 'menu';
 let spawnEvent = null;
@@ -2230,17 +2233,16 @@ function isEchoAttackableKind(kind) {
 }
 
 function isHostileInsideEchoAttackRadius(scene, hostile) {
-  const radius = ECHO_ATTACK_DETECTION_RADIUS + getObjectCollisionRadius(hostile);
   return Phaser.Math.Distance.Between(
     scene.ship.x,
     scene.ship.y,
     hostile.x,
     hostile.y
-  ) <= radius;
+  ) <= ECHO_ATTACK_DETECTION_RADIUS;
 }
 
 function getEchoAttackChance() {
-  return Phaser.Math.Clamp(echoHelpLevel, 0, MAX_UPGRADE_LEVEL) * 0.05;
+  return echoHelpLevel > 0 ? ECHO_ATTACK_CHANCE : 0;
 }
 
 function isEchoOverlappingHostile(scene, hostile) {
@@ -3423,6 +3425,7 @@ function resetCounters() {
   shieldBoosterLevel = 0;
   scoreBoosterLevel = 0;
   energyRefinerLevel = 0;
+  energyPurifierLevel = 0;
   echoHelpLevel = 0;
   energyRefinerLevelBonus = 0;
   enemyTrailTimer = 0;
@@ -4276,7 +4279,7 @@ function getBoosterChancePercent(level) {
 }
 
 function getEchoAttackChancePercent(level = echoHelpLevel) {
-  return Math.round(Phaser.Math.Clamp(level, 0, MAX_UPGRADE_LEVEL) * 5);
+  return level > 0 ? Math.round(ECHO_ATTACK_CHANCE * 100) : 0;
 }
 
 function canDropLifeBooster() {
@@ -6378,7 +6381,7 @@ function queuePendingBossWave(scene, bossConfig) {
 }
 
 function getAvailableUpgradeKinds() {
-  return ['lifeBooster', 'shieldBooster', 'scoreBooster', 'energyRefiner', 'echoHelp']
+  return ['lifeBooster', 'shieldBooster', 'scoreBooster', 'energyRefiner', 'energyPurifier', 'echoHelp']
     .filter((upgradeKind) => canChooseUpgradeKind(upgradeKind));
 }
 
@@ -6431,14 +6434,22 @@ function getUpgradeConfig(upgradeKind) {
       color: '#ffd84d',
     };
   }
+  if (upgradeKind === 'energyPurifier') {
+    return {
+      label: 'Purificador de energía',
+      getDescription: () => 'Puedes recoger orbes contaminados sin perder salud.',
+      color: ENERGY_PURIFIER_COLOR,
+      maxLevel: 1,
+    };
+  }
   if (upgradeKind === 'echoHelp') {
     return {
       label: 'Ayuda de Echo',
       getDescription: (level) => getUpgradeDescriptionLines([
-        'Al acercarte a asteroides, obreras, cometas o drones, Echo tiene un ' + getEchoAttackChancePercent(level) + '% de atacar.',
-        'Otorga ' + SHIELD_BLOCK_SCORE + ' puntos por enemigo destruido.',
+        'Echo atacará a algunos enemigos que se acerquen a ti, con una probabilidad del ' + getEchoAttackChancePercent(level) + '%.',
       ]),
       color: ECHO_HELP_COLOR,
+      maxLevel: 1,
     };
   }
   return { label: 'Mejora', getDescription: () => '', color: '#76ffe8' };
@@ -6457,6 +6468,8 @@ function hasAvailableUpgrades() {
 }
 
 function canChooseUpgradeKind(upgradeKind) {
+  if (upgradeKind === 'energyPurifier' && energyRefinerLevel < MAX_UPGRADE_LEVEL) return false;
+  if (upgradeKind === 'echoHelp' && shieldBoosterLevel < MAX_UPGRADE_LEVEL) return false;
   return getUpgradeLevel(upgradeKind) < getUpgradeMaxLevel(upgradeKind);
 }
 
@@ -6479,6 +6492,8 @@ function chooseUpgrade(scene, upgradeKind) {
     scoreBoosterLevel += 1;
   } else if (upgradeKind === 'energyRefiner') {
     energyRefinerLevel += 1;
+  } else if (upgradeKind === 'energyPurifier') {
+    energyPurifierLevel += 1;
   } else if (upgradeKind === 'echoHelp') {
     echoHelpLevel += 1;
     updateEchoCompanion(scene, 0);
@@ -6521,6 +6536,7 @@ function getUpgradeLevel(upgradeKind) {
   if (upgradeKind === 'shieldBooster') return shieldBoosterLevel;
   if (upgradeKind === 'scoreBooster') return scoreBoosterLevel;
   if (upgradeKind === 'energyRefiner') return energyRefinerLevel;
+  if (upgradeKind === 'energyPurifier') return energyPurifierLevel;
   if (upgradeKind === 'echoHelp') return echoHelpLevel;
   return 0;
 }
@@ -6599,23 +6615,51 @@ function updateUpgradeStatusIcons(scene) {
   if (!currentHud.upgrades) return;
 
   currentHud.upgrades.innerHTML = '';
-  ['lifeBooster', 'shieldBooster', 'scoreBooster', 'energyRefiner', 'echoHelp'].forEach((upgradeKind) => {
+  ['lifeBooster', 'shieldBooster', 'scoreBooster', 'energyRefiner', 'energyPurifier', 'echoHelp'].forEach((upgradeKind) => {
     const config = getUpgradeConfig(upgradeKind);
-    addUpgradeStatusIcon(scene, getUpgradeLevel(upgradeKind), config.color, config.label);
+    addUpgradeStatusIcon(scene, getUpgradeLevel(upgradeKind), config.color, config.label, {
+      locked: isUpgradeLockedForHud(upgradeKind),
+      lockLabel: getUpgradeLockLabel(upgradeKind),
+      lockColor: getUpgradeLockColor(upgradeKind),
+    });
   });
 }
 
-function addUpgradeStatusIcon(scene, level, color, label) {
+function isUpgradeLockedForHud(upgradeKind) {
+  if (upgradeKind === 'energyPurifier') return energyRefinerLevel < MAX_UPGRADE_LEVEL;
+  if (upgradeKind === 'echoHelp') return shieldBoosterLevel < MAX_UPGRADE_LEVEL;
+  return false;
+}
+
+function getUpgradeLockLabel(upgradeKind) {
+  if (upgradeKind === 'energyPurifier') return 'requiere Refinador de energía nivel ' + MAX_UPGRADE_LEVEL;
+  if (upgradeKind === 'echoHelp') return 'requiere Barrera protectora nivel ' + MAX_UPGRADE_LEVEL;
+  return 'bloqueada';
+}
+
+function getUpgradeLockColor(upgradeKind) {
+  if (upgradeKind === 'echoHelp') return 'rgba(77, 163, 255, 0.62)';
+  return 'rgba(255, 216, 77, 0.62)';
+}
+
+function addUpgradeStatusIcon(scene, level, color, label, options = {}) {
   const currentHud = initHud();
   if (!currentHud.upgrades) return;
 
+  const isLocked = Boolean(options.locked);
   const chip = document.createElement('span');
   chip.className = 'hud-upgrade-chip';
   chip.classList.toggle('is-empty', level <= 0);
+  chip.classList.toggle('is-locked', isLocked);
   chip.style.setProperty('--chip-color', color);
-  chip.setAttribute('aria-label', label + ': ' + (level > 0 ? 'nivel ' + level : 'sin desbloquear'));
+  if (options.lockColor) chip.style.setProperty('--lock-color', options.lockColor);
+  chip.setAttribute('aria-label', label + ': ' + (isLocked ? options.lockLabel : (level > 0 ? 'nivel ' + level : 'sin desbloquear')));
   chip.textContent = level > 0 ? 'Nv.' + level : '';
   currentHud.upgrades.appendChild(chip);
+}
+
+function isEnergyPurifierActive() {
+  return energyPurifierLevel > 0;
 }
 
 function setUpgradeButtonState(button, config, level) {
@@ -7769,6 +7813,7 @@ function catchBall(ball, scene) {
   const y = ball.y;
   const kind = ball.getData('kind');
   const isPurpleEnergy = Boolean(ball.getData('isPurpleEnergy'));
+  const isPurifiedContaminatedOrb = kind === 'contaminatedOrb' && isEnergyPurifierActive();
   let hitFeedbackShown = false;
   if (kind === 'spikeDrone') {
     const spikeState = ball.getData('spikeState');
@@ -7779,7 +7824,13 @@ function catchBall(ball, scene) {
     if (spikeState !== 'expanded' && !isShieldActive(scene)) return;
   }
 
-  if (isHostileContactKind(kind)) {
+  if (isPurifiedContaminatedOrb) {
+    ball.destroy();
+    const points = getEnergyBallValue() * scoreMultiplier;
+    addScore(scene, points, true, { x, y, color: '#ffd84d' });
+    ballsCaught += 1;
+    increaseEnergyStreak(scene);
+  } else if (isHostileContactKind(kind)) {
     handleHostileShipContact(scene, ball, x, y, kind, isPurpleEnergy);
     hitFeedbackShown = true;
   } else if (kind === 'lifeBooster') {
@@ -7802,7 +7853,7 @@ function catchBall(ball, scene) {
   if (state !== 'playing') return;
 
   if (!hitFeedbackShown) {
-    if (isHostileContactKind(kind)) {
+    if (isHostileContactKind(kind) && !isPurifiedContaminatedOrb) {
       playBadSound(scene);
     } else if (isBoosterKind(kind)) {
       playBoosterSound(scene);
@@ -7811,10 +7862,10 @@ function catchBall(ball, scene) {
     }
   }
   if (!hitFeedbackShown) {
-    showAbsorbEffect(scene, x, y, kind, isPurpleEnergy);
+    showAbsorbEffect(scene, x, y, isPurifiedContaminatedOrb ? 'ball' : kind, isPurpleEnergy);
   }
 
-  if (kind === 'ball') {
+  if (kind === 'ball' || isPurifiedContaminatedOrb) {
     maybeOpenUpgradeChoice(scene);
   }
 }
