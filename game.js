@@ -188,6 +188,16 @@ const POINT_POPUP_FADE_DELAY = 390;
 const STREAK_POINT_POPUP_DURATION = 1000;
 const STREAK_POINT_POPUP_FADE_DELAY = 620;
 const STREAK_POINT_POPUP_COLORS = ['#ff4f68', '#ffd84d', '#7dffae', '#76ffe8', '#4da3ff', '#d7a8ff'];
+const ECHO_TEXTURE_SIZE = 72;
+const ECHO_SIZE = 28;
+const ECHO_IDLE_OFFSET_X = 82;
+const ECHO_IDLE_OFFSET_Y = -40;
+const ECHO_ORBIT_RADIUS = 94;
+const ECHO_ORBIT_SPEED = 0.0044;
+const ECHO_COLLISION_RADIUS = 13;
+const ECHO_EYE_GLOW_RADIUS = 6;
+const ECHO_EYE_CORE_RADIUS = 2.7;
+const ECHO_FLOAT_RADIUS = 4;
 let streakGradientTextureId = 0;
 let pointPopupTextureId = 0;
 const ASTEROID_WAVE_BIG_ASTEROID_CHANCE = 0.16;
@@ -276,6 +286,7 @@ let lifeBoosterLevel = 0;
 let shieldBoosterLevel = 0;
 let scoreBoosterLevel = 0;
 let energyRefinerLevel = 0;
+let echoHelpLevel = 0;
 let state = 'menu';
 let spawnEvent = null;
 let gameScene = null;
@@ -544,6 +555,7 @@ function create() {
   createBigAsteroidTexture(this);
   createCometTexture(this);
   createCometTrailTexture(this);
+  createEchoTexture(this);
 
   if (!this.textures.exists('ship')) {
     createShipTexture(this, 'ship', {
@@ -618,6 +630,21 @@ function create() {
   this.ship.body.setImmovable(true);
   this.ship.body.setAllowGravity(false);
   refreshShipSize(this);
+
+  this.echoCompanion = this.add.image(0, 0, 'echoCompanion')
+    .setDepth(SHIP_DEPTH + 2)
+    .setVisible(false);
+  this.echoEyeGlow = this.add.circle(0, 0, ECHO_EYE_GLOW_RADIUS, 0xffd84d, 0.34)
+    .setDepth(SHIP_DEPTH + 3)
+    .setBlendMode(Phaser.BlendModes.ADD)
+    .setVisible(false);
+  this.echoEyeCore = this.add.circle(0, 0, ECHO_EYE_CORE_RADIUS, 0xfff0a8, 1)
+    .setDepth(SHIP_DEPTH + 4)
+    .setBlendMode(Phaser.BlendModes.ADD)
+    .setVisible(false);
+  this.echoOrbitAngle = -Math.PI / 2;
+  startEchoEyeAnimation(this);
+  updateEchoCompanion(this, 0);
 
   this.shipTrail = this.add.graphics().setDepth(SHIP_DEPTH - 1);
   this.shipTrailPoints = [];
@@ -1039,6 +1066,58 @@ function createShipTexture(scene, key, colors, textureWidth = SHIP_TEXTURE_WIDTH
   ], true);
 
   graphics.generateTexture(key, textureWidth, SHIP_TEXTURE_HEIGHT);
+  graphics.destroy();
+}
+
+function createEchoTexture(scene) {
+  const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+  const center = ECHO_TEXTURE_SIZE / 2;
+  const radius = 31;
+
+  graphics.fillStyle(0x050b12, 0.52);
+  graphics.fillEllipse(center + 2, center + 4, 64, 58);
+  graphics.fillStyle(0x242b32, 1);
+  graphics.fillCircle(center, center, radius + 2);
+  graphics.fillStyle(0xcfd1ce, 1);
+  graphics.fillCircle(center, center, radius);
+  graphics.fillStyle(0xaeb1ae, 0.68);
+  graphics.slice(center, center, radius, Phaser.Math.DegToRad(78), Phaser.Math.DegToRad(286), false);
+  graphics.fillPath();
+  graphics.fillStyle(0xffffff, 0.26);
+  graphics.slice(center - 2, center - 2, radius - 2, Phaser.Math.DegToRad(214), Phaser.Math.DegToRad(330), false);
+  graphics.fillPath();
+
+  graphics.lineStyle(2, 0x4d555d, 0.7);
+  graphics.lineBetween(center, center - radius, center, center - 14);
+  graphics.lineBetween(center, center + 14, center, center + radius);
+
+  graphics.fillStyle(0x202830, 1);
+  graphics.fillEllipse(8, center, 16, 30);
+  graphics.fillEllipse(64, center, 16, 30);
+  graphics.fillStyle(0x4a545d, 0.74);
+  graphics.fillEllipse(11, center, 7, 23);
+  graphics.fillEllipse(61, center, 7, 23);
+  graphics.lineStyle(2, 0x10161c, 0.72);
+  graphics.strokeEllipse(8, center, 16, 30);
+  graphics.strokeEllipse(64, center, 16, 30);
+  graphics.fillStyle(0xffd84d, 1);
+  graphics.fillRoundedRect(4, 34, 8, 3, 2);
+  graphics.fillRoundedRect(60, 34, 8, 3, 2);
+
+  graphics.fillStyle(0x172027, 1);
+  graphics.fillCircle(center, center, 22);
+  graphics.fillStyle(0x34434a, 1);
+  graphics.fillCircle(center, center, 18);
+  graphics.fillStyle(0x1b2e34, 1);
+  graphics.fillCircle(center, center, 13);
+  graphics.lineStyle(5, 0x6b541d, 0.42);
+  graphics.strokeCircle(center, center, 9);
+  graphics.fillStyle(0x4a3a17, 0.62);
+  graphics.fillCircle(center, center, 5);
+  graphics.lineStyle(3, 0x071016, 0.7);
+  graphics.strokeCircle(center, center, 22);
+
+  graphics.generateTexture('echoCompanion', ECHO_TEXTURE_SIZE, ECHO_TEXTURE_SIZE);
   graphics.destroy();
 }
 
@@ -1728,6 +1807,8 @@ function update(time, delta) {
   updateShipPropulsion(this, delta);
   updateShipTilt(this);
   updateShipLifeIndicator(this);
+  updateEchoCompanion(this, delta);
+  updateEchoAttacks(this);
   updateEnemyPropulsion(this, delta);
   updateRedNeedles(this);
   updateRedEnemySway(this, time);
@@ -1795,6 +1876,7 @@ function moveShipTo(scene, x, y = scene.ship ? scene.ship.y : getShipY(scene)) {
     scene.lastShipMoveAt = now;
   }
   updateShieldBubble(scene);
+  updateEchoCompanion(scene, 0);
   updateShipLifeIndicator(scene);
   if (usesXyControlHandle(scene) && scene.xyControl && scene.xyControl.visible && !isDraggingShip) {
     updateXyControlFromShip(scene);
@@ -1901,6 +1983,156 @@ function updateShieldBubble(scene) {
   scene.shieldBubble.strokeCircle(scene.ship.x, scene.ship.y, SHIELD_BUBBLE_RADIUS - 2);
   scene.shieldBubble.lineStyle(1, 0xffffff, 0.2);
   scene.shieldBubble.strokeCircle(scene.ship.x, scene.ship.y, SHIELD_BUBBLE_RADIUS - 12);
+}
+
+function updateEchoCompanion(scene, delta = 0) {
+  if (!scene.echoCompanion || !scene.ship) return;
+
+  scene.echoCompanion.setVisible(Boolean(scene.ship.visible !== false));
+  setEchoEyeVisible(scene, scene.echoCompanion.visible);
+  if (!scene.echoCompanion.visible) return;
+
+  if (isEchoHelpActive()) {
+    scene.echoOrbitAngle = (scene.echoOrbitAngle || 0) + delta * ECHO_ORBIT_SPEED;
+    const floatOffset = getEchoFloatOffset(scene);
+    scene.echoCompanion.setPosition(
+      scene.ship.x + Math.cos(scene.echoOrbitAngle) * ECHO_ORBIT_RADIUS + floatOffset.x,
+      scene.ship.y + Math.sin(scene.echoOrbitAngle) * ECHO_ORBIT_RADIUS + floatOffset.y
+    );
+    scene.echoCompanion.setScale(ECHO_SIZE / ECHO_TEXTURE_SIZE);
+    scene.echoCompanion.setRotation(scene.echoOrbitAngle + Math.PI / 2);
+    scene.echoCompanion.setAlpha(1);
+    updateEchoEyePosition(scene);
+    return;
+  }
+
+  scene.echoOrbitAngle = -Math.PI / 2;
+  const floatOffset = getEchoFloatOffset(scene);
+  scene.echoCompanion.setPosition(
+    scene.ship.x + ECHO_IDLE_OFFSET_X + floatOffset.x,
+    scene.ship.y + ECHO_IDLE_OFFSET_Y + floatOffset.y
+  );
+  scene.echoCompanion.setScale(ECHO_SIZE / ECHO_TEXTURE_SIZE);
+  scene.echoCompanion.setRotation(0);
+  scene.echoCompanion.setAlpha(0.9);
+  updateEchoEyePosition(scene);
+}
+
+function getEchoFloatOffset(scene) {
+  if (!scene.echoFloatSeed) {
+    scene.echoFloatSeed = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    scene.echoFloatSeedAlt = Phaser.Math.FloatBetween(0, Math.PI * 2);
+  }
+
+  const time = scene.time ? scene.time.now : 0;
+  const primary = time * 0.0017 + scene.echoFloatSeed;
+  const secondary = time * 0.0023 + scene.echoFloatSeedAlt;
+  return {
+    x: Math.sin(primary) * ECHO_FLOAT_RADIUS + Math.sin(secondary * 0.73) * (ECHO_FLOAT_RADIUS * 0.35),
+    y: Math.cos(secondary) * ECHO_FLOAT_RADIUS + Math.sin(primary * 0.61) * (ECHO_FLOAT_RADIUS * 0.4),
+  };
+}
+
+function startEchoEyeAnimation(scene) {
+  if (!scene || !scene.tweens || !scene.echoEyeGlow || !scene.echoEyeCore) return;
+
+  scene.tweens.add({
+    targets: scene.echoEyeGlow,
+    scale: 1.45,
+    alpha: 0.04,
+    duration: 900,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut',
+  });
+  scene.tweens.add({
+    targets: scene.echoEyeCore,
+    scale: 1.18,
+    alpha: 0.28,
+    duration: 520,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut',
+  });
+}
+
+function updateEchoEyePosition(scene) {
+  if (!scene.echoCompanion) return;
+  [scene.echoEyeGlow, scene.echoEyeCore].forEach((eyePart) => {
+    if (!eyePart) return;
+    eyePart.setPosition(scene.echoCompanion.x, scene.echoCompanion.y);
+    eyePart.setVisible(scene.echoCompanion.visible);
+  });
+}
+
+function setEchoEyeVisible(scene, visible) {
+  [scene.echoEyeGlow, scene.echoEyeCore].forEach((eyePart) => {
+    if (eyePart) eyePart.setVisible(visible);
+  });
+}
+
+function hideEchoCompanion(scene) {
+  if (scene.echoCompanion) scene.echoCompanion.setVisible(false);
+  setEchoEyeVisible(scene, false);
+}
+
+function updateEchoAttacks(scene) {
+  if (!isEchoHelpActive() || !scene.echoCompanion || !scene.echoCompanion.visible) return;
+
+  scene.balls.getChildren().forEach((hostile) => {
+    if (!hostile.active || !isShieldBlockedKind(hostile.getData('kind'))) return;
+    if (hostile.getData('hasBeenEchoBlocked')) return;
+    if (!isEchoOverlappingHostile(scene, hostile)) return;
+
+    hostile.setData('hasBeenEchoBlocked', true);
+    blockHostileWithEcho(scene, hostile);
+  });
+}
+
+function isEchoOverlappingHostile(scene, hostile) {
+  const radius = ECHO_COLLISION_RADIUS + getObjectCollisionRadius(hostile);
+  return Phaser.Math.Distance.Between(
+    scene.echoCompanion.x,
+    scene.echoCompanion.y,
+    hostile.x,
+    hostile.y
+  ) <= radius;
+}
+
+function blockHostileWithEcho(scene, hostile) {
+  if (!hostile || !hostile.active) return;
+
+  const x = hostile.x;
+  const y = hostile.y;
+  const kind = hostile.getData('kind');
+  showAbsorbEffect(scene, x, y, kind, false);
+  playShieldBlockSound(scene);
+  flashEchoCompanion(scene);
+  addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#ffd84d' });
+  destroyShieldBlockedHostile(scene, hostile);
+}
+
+function flashEchoCompanion(scene) {
+  if (!scene.echoCompanion || !scene.tweens) return;
+  scene.tweens.killTweensOf(scene.echoCompanion);
+  scene.echoCompanion.setTint(0xffd84d);
+  scene.echoCompanion.setAlpha(1);
+  scene.tweens.add({
+    targets: scene.echoCompanion,
+    alpha: 0.72,
+    duration: 80,
+    yoyo: true,
+    ease: 'Sine.easeOut',
+    onComplete: () => {
+      if (!scene.echoCompanion) return;
+      scene.echoCompanion.clearTint();
+      scene.echoCompanion.setAlpha(isEchoHelpActive() ? 1 : 0.9);
+    },
+  });
+}
+
+function isEchoHelpActive() {
+  return echoHelpLevel > 0;
 }
 
 function getShipHitboxPolygon(scene) {
@@ -2840,6 +3072,9 @@ function setUiDepth(scene) {
   });
 
   if (scene.shieldBubble) scene.shieldBubble.setDepth(SHIP_DEPTH + 1);
+  if (scene.echoCompanion) scene.echoCompanion.setDepth(SHIP_DEPTH + 2);
+  if (scene.echoEyeGlow) scene.echoEyeGlow.setDepth(SHIP_DEPTH + 3);
+  if (scene.echoEyeCore) scene.echoEyeCore.setDepth(SHIP_DEPTH + 4);
 }
 
 // --- Control de estados ---
@@ -2873,6 +3108,7 @@ function showMenu() {
   playMenuMusic(this);
   showOverlayScreen(this, 'menu');
   resetCounters.call(this);
+  hideEchoCompanion(this);
   setHudVisible(this, false);
 }
 
@@ -2885,6 +3121,7 @@ function showRanking() {
   this.optionsReturnScreen = null;
   this.input.setDefaultCursor('default');
   playMenuMusic(this);
+  hideEchoCompanion(this);
   setHudVisible(this, false);
   showOverlayScreen(this, 'ranking');
   loadRankingInto(this.rankingContainer && this.rankingContainer.list, this.rankingContainer && this.rankingContainer.status, 10);
@@ -2909,6 +3146,7 @@ function startGame(options = {}) {
   if (isInfiniteGameMode()) {
     enableInfiniteModeThreats(this);
   }
+  updateEchoCompanion(this, 0);
   resetTimedBoosters(this);
   resetRedWave(this);
   resetDroneWave(this);
@@ -2965,6 +3203,7 @@ function endGame() {
   clearPendingStreakReward(this);
   stopNonMusicAudio(this);
   clearGameplayVisuals(this);
+  hideEchoCompanion(this);
   playMenuMusic(this);
   setHudVisible(this, false);
   showOverlayScreen(this, 'gameover');
@@ -3019,6 +3258,7 @@ function resetCounters() {
   shieldBoosterLevel = 0;
   scoreBoosterLevel = 0;
   energyRefinerLevel = 0;
+  echoHelpLevel = 0;
   energyRefinerLevelBonus = 0;
   enemyTrailTimer = 0;
   clearShipTrail(this);
@@ -3042,6 +3282,7 @@ function resetCounters() {
   updateUpgradeStatusIcons(this);
   updateLivesText(this);
   setShipTextureForCurrentState(this);
+  updateEchoCompanion(this, 0);
 }
 
 function trackGameplayVisual(scene, object) {
@@ -3086,6 +3327,11 @@ function clearGameplayVisuals(scene) {
   }
 
   if (scene.shieldBubble) scene.shieldBubble.setVisible(false);
+  if (scene.echoCompanion) {
+    scene.tweens.killTweensOf(scene.echoCompanion);
+    scene.echoCompanion.clearTint();
+    updateEchoCompanion(scene, 0);
+  }
   hideXyBottomFriction(scene);
 }
 
@@ -5952,8 +6198,8 @@ function queuePendingBossWave(scene, bossConfig) {
 }
 
 function getAvailableUpgradeKinds() {
-  return ['lifeBooster', 'shieldBooster', 'scoreBooster', 'energyRefiner']
-    .filter((upgradeKind) => getUpgradeLevel(upgradeKind) < MAX_UPGRADE_LEVEL);
+  return ['lifeBooster', 'shieldBooster', 'scoreBooster', 'energyRefiner', 'echoHelp']
+    .filter((upgradeKind) => canChooseUpgradeKind(upgradeKind));
 }
 
 function getRandomUpgradeChoices() {
@@ -6005,6 +6251,17 @@ function getUpgradeConfig(upgradeKind) {
       color: '#ffd84d',
     };
   }
+  if (upgradeKind === 'echoHelp') {
+    return {
+      label: 'Ayuda de Echo',
+      getDescription: () => getUpgradeDescriptionLines([
+        'Echo orbita alrededor de la nave.',
+        'Destruye enemigos al contacto y otorga ' + SHIELD_BLOCK_SCORE + ' puntos.',
+      ]),
+      color: '#ffd84d',
+      maxLevel: 1,
+    };
+  }
   return { label: 'Mejora', getDescription: () => '', color: '#76ffe8' };
 }
 
@@ -6020,10 +6277,20 @@ function hasAvailableUpgrades() {
   return getAvailableUpgradeKinds().length > 0;
 }
 
+function canChooseUpgradeKind(upgradeKind) {
+  if (upgradeKind === 'echoHelp' && shieldBoosterLevel < MAX_UPGRADE_LEVEL) return false;
+  return getUpgradeLevel(upgradeKind) < getUpgradeMaxLevel(upgradeKind);
+}
+
+function getUpgradeMaxLevel(upgradeKind) {
+  const config = getUpgradeConfig(upgradeKind);
+  return config.maxLevel || MAX_UPGRADE_LEVEL;
+}
+
 function chooseUpgrade(scene, upgradeKind) {
   if (state !== 'upgrading') return;
   if (!upgradeKind) return;
-  if (getUpgradeLevel(upgradeKind) >= MAX_UPGRADE_LEVEL) return;
+  if (!canChooseUpgradeKind(upgradeKind)) return;
 
   if (upgradeKind === 'lifeBooster') {
     lifeBoosterLevel += 1;
@@ -6034,6 +6301,9 @@ function chooseUpgrade(scene, upgradeKind) {
     scoreBoosterLevel += 1;
   } else if (upgradeKind === 'energyRefiner') {
     energyRefinerLevel += 1;
+  } else if (upgradeKind === 'echoHelp') {
+    echoHelpLevel = 1;
+    updateEchoCompanion(scene, 0);
   }
 
   updateUpgradeBar(scene);
@@ -6073,6 +6343,7 @@ function getUpgradeLevel(upgradeKind) {
   if (upgradeKind === 'shieldBooster') return shieldBoosterLevel;
   if (upgradeKind === 'scoreBooster') return scoreBoosterLevel;
   if (upgradeKind === 'energyRefiner') return energyRefinerLevel;
+  if (upgradeKind === 'echoHelp') return echoHelpLevel;
   return 0;
 }
 
@@ -6150,7 +6421,7 @@ function updateUpgradeStatusIcons(scene) {
   if (!currentHud.upgrades) return;
 
   currentHud.upgrades.innerHTML = '';
-  ['lifeBooster', 'shieldBooster', 'scoreBooster', 'energyRefiner'].forEach((upgradeKind) => {
+  ['lifeBooster', 'shieldBooster', 'scoreBooster', 'energyRefiner', 'echoHelp'].forEach((upgradeKind) => {
     const config = getUpgradeConfig(upgradeKind);
     addUpgradeStatusIcon(scene, getUpgradeLevel(upgradeKind), config.color, config.label);
   });
@@ -6170,8 +6441,9 @@ function addUpgradeStatusIcon(scene, level, color, label) {
 }
 
 function setUpgradeButtonState(button, config, level) {
-  const isMaxed = level >= MAX_UPGRADE_LEVEL;
-  const nextLevel = Math.min(MAX_UPGRADE_LEVEL, level + 1);
+  const maxLevel = config.maxLevel || MAX_UPGRADE_LEVEL;
+  const isMaxed = level >= maxLevel;
+  const nextLevel = Math.min(maxLevel, level + 1);
   const title = config.label + (isMaxed ? ' MAX' : ' ' + nextLevel);
   const description = isMaxed ? 'Mejora al nivel máximo.' : config.getDescription(nextLevel);
   button.setAlpha(1);
