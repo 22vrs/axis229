@@ -6745,13 +6745,25 @@ function updateUpgradeStatusIcons(scene) {
   if (!currentHud.upgrades) return;
 
   currentHud.upgrades.innerHTML = '';
-  ['energyRefiner', 'energyPurifier', 'scoreBooster', 'energyResonance', 'shieldBooster', 'echoHelp', 'lifeBooster', 'vitalExpander'].forEach((upgradeKind) => {
-    const config = getUpgradeConfig(upgradeKind);
-    addUpgradeStatusIcon(scene, getUpgradeLevel(upgradeKind), config.color, config.label, {
-      locked: isUpgradeLockedForHud(upgradeKind),
-      lockLabel: getUpgradeLockLabel(upgradeKind),
-      lockColor: getUpgradeLockColor(upgradeKind),
-      maxLevel: getUpgradeMaxLevel(upgradeKind),
+  [
+    ['energyRefiner', 'energyPurifier'],
+    ['scoreBooster', 'energyResonance'],
+    ['shieldBooster', 'echoHelp'],
+    ['lifeBooster', 'vitalExpander'],
+  ].forEach((upgradePair) => {
+    const pairElement = document.createElement('span');
+    pairElement.className = 'hud-upgrade-pair';
+    currentHud.upgrades.appendChild(pairElement);
+
+    upgradePair.forEach((upgradeKind) => {
+      const config = getUpgradeConfig(upgradeKind);
+      addUpgradeStatusIcon(scene, getUpgradeLevel(upgradeKind), config.color, config.label, {
+        locked: isUpgradeLockedForHud(upgradeKind),
+        lockLabel: getUpgradeLockLabel(upgradeKind),
+        lockColor: getUpgradeLockColor(upgradeKind),
+        maxLevel: getUpgradeMaxLevel(upgradeKind),
+        parent: pairElement,
+      });
     });
   });
 }
@@ -6782,6 +6794,7 @@ function getUpgradeLockColor(upgradeKind) {
 function addUpgradeStatusIcon(scene, level, color, label, options = {}) {
   const currentHud = initHud();
   if (!currentHud.upgrades) return;
+  const parent = options.parent || currentHud.upgrades;
 
   const isLocked = Boolean(options.locked);
   const chip = document.createElement('span');
@@ -6794,7 +6807,7 @@ function addUpgradeStatusIcon(scene, level, color, label, options = {}) {
   const statusLabel = isMaxed ? 'nivel máximo' : (level > 0 ? 'nivel ' + level : 'sin desbloquear');
   chip.setAttribute('aria-label', label + ': ' + (isLocked ? options.lockLabel : statusLabel));
   chip.textContent = isMaxed ? 'MAX' : (level > 0 ? 'Nv.' + level : '');
-  currentHud.upgrades.appendChild(chip);
+  parent.appendChild(chip);
 }
 
 function isEnergyPurifierActive() {
