@@ -184,6 +184,9 @@ const ENERGY_STREAK_REWARD_SCORE = 50;
 const ENERGY_STREAK_UPGRADE_DELAY = 900;
 const CONTAMINATED_ORB_CHANCE = 0.2;
 const ENERGY_PURIFIER_COLOR = '#d9dee6';
+const VITAL_EXPANDER_COLOR = '#ff8a2a';
+const VITAL_EXPANDER_LOCK_COLOR = 'rgba(77, 255, 136, 0.31)';
+const VITAL_EXPANDER_LIFE_BONUS = 2;
 const POINT_POPUP_STACK_WINDOW = 260;
 const POINT_POPUP_STACK_DISTANCE = 78;
 const POINT_POPUP_STACK_OFFSET = 24;
@@ -193,6 +196,10 @@ const POINT_POPUP_FADE_DELAY = 390;
 const STREAK_POINT_POPUP_DURATION = 1000;
 const STREAK_POINT_POPUP_FADE_DELAY = 620;
 const STREAK_POINT_POPUP_COLORS = ['#ff4f68', '#ffd84d', '#7dffae', '#76ffe8', '#4da3ff', '#d7a8ff'];
+const ENERGY_RESONANCE_COLOR = '#ff66c4';
+const ENERGY_RESONANCE_POPUP_COLORS = ['#ff66c4', '#ff9fdd', '#ffd5f0', '#ff4fb8'];
+const ENERGY_RESONANCE_REQUIRED_ORBS = 3;
+const ENERGY_RESONANCE_CHAIN_WINDOW = 1300;
 const ECHO_TEXTURE_SIZE = 72;
 const ECHO_SIZE = 28;
 const ECHO_HOME_OFFSET_X = -62;
@@ -301,6 +308,8 @@ let scoreBoosterLevel = 0;
 let energyRefinerLevel = 0;
 let energyPurifierLevel = 0;
 let echoHelpLevel = 0;
+let vitalExpanderLevel = 0;
+let energyResonanceLevel = 0;
 let state = 'menu';
 let spawnEvent = null;
 let gameScene = null;
@@ -321,6 +330,9 @@ let musicVolume = 1;
 let audioUnlockListenersBound = false;
 let audioUnlocked = false;
 let musicPlaybackBlocked = false;
+let pageAudioListenersBound = false;
+let pageAudioSuspended = false;
+let pageAudioWasPlaying = false;
 
 loadAudioSettings();
 
@@ -539,6 +551,12 @@ function create() {
     core: 0xf0d7ff,
     ring: 0xd5a9ff,
   });
+  createEnergyBallTexture(this, 'pinkBall', {
+    outer: 0xff3faa,
+    mid: 0xff66c4,
+    core: 0xffe0f4,
+    ring: 0xffa9dd,
+  });
   const particleGraphics = this.make.graphics({ x: 0, y: 0, add: false });
   particleGraphics.fillStyle(0xffd76a, 1);
   particleGraphics.fillCircle(3, 3, 3);
@@ -718,6 +736,7 @@ function create() {
   this.rankingContainer = createRanking(this);
   updateAudioOptionButtons(this);
   bindAudioUnlockListeners(this);
+  bindPageAudioPauseListeners(this);
   setUiDepth(this);
   layoutScene(this);
 
@@ -834,7 +853,7 @@ function updateEnergyOrbOverlays(scene, time) {
 function drawEnergyOrbOverlay(overlay, orb, time) {
   const seed = orb.getData('energyOrbWispSeed') || 0;
   const spin = orb.getData('energyOrbWispSpin') || 1;
-  const palette = getEnergyOrbWispPalette(orb.getData('kind'), Boolean(orb.getData('isPurpleEnergy')));
+  const palette = getEnergyOrbWispPalette(orb.getData('kind'), getEnergyOrbColor(orb));
   const t = time * 0.011 * spin + seed;
 
   overlay.setPosition(orb.x, orb.y);
@@ -853,6 +872,15 @@ function getEnergyOrbWispPalette(kind, isPurpleEnergy = false) {
       mid: 0x063719,
       bright: 0x0f7f37,
       glow: 0x24a552,
+    };
+  }
+
+  if (isPurpleEnergy === 'pink') {
+    return {
+      shadow: 0x7a1459,
+      mid: 0xff3faa,
+      bright: 0xff8fd6,
+      glow: 0xffe0f4,
     };
   }
 
@@ -1855,6 +1883,7 @@ function update(time, delta) {
   this.balls.getChildren().forEach((ball) => {
     if (ball.active && ball.y > getGameHeight(this) + 32) {
       if (isCollectibleBallKind(ball.getData('kind'))) {
+        if (this.activeScoreBooster) breakEnergyResonance(this);
         ball.destroy();
         resetEnergyStreak();
         playBadSound(this);
@@ -3427,6 +3456,8 @@ function resetCounters() {
   energyRefinerLevel = 0;
   energyPurifierLevel = 0;
   echoHelpLevel = 0;
+  vitalExpanderLevel = 0;
+  energyResonanceLevel = 0;
   energyRefinerLevelBonus = 0;
   enemyTrailTimer = 0;
   this.echoAttackTarget = null;
@@ -3518,6 +3549,7 @@ function updateLivesText(scene, options = {}) {
   if (!currentHud.lifeBar || !currentHud.lifeCount) return;
 
   currentHud.lifeBar.innerHTML = '';
+  currentHud.lifeBar.style.setProperty('--life-slots', maxLives);
   currentHud.lifeCount.textContent = lives + '/' + maxLives;
   const activeColor = isShieldActive(scene) ? '#4da3ff' : '#ffd84d';
   for (let i = 0; i < maxLives; i += 1) {
@@ -3617,6 +3649,16 @@ function flashPlayerShip(scene, damaged = false) {
 function gainLife(scene) {
   const previousLives = lives;
   lives = Math.min(maxLives, lives + getLifeBoosterHealAmount());
+  updateLivesText(scene);
+  if (lives > previousLives) {
+    showShipLifeChange(scene, previousLives, lives, 'heal');
+  }
+}
+
+function expandVitalCapacity(scene) {
+  const previousLives = lives;
+  maxLives += VITAL_EXPANDER_LIFE_BONUS;
+  lives = Math.min(maxLives, lives + VITAL_EXPANDER_LIFE_BONUS);
   updateLivesText(scene);
   if (lives > previousLives) {
     showShipLifeChange(scene, previousLives, lives, 'heal');
@@ -4061,6 +4103,7 @@ function resumeCountdown(scene, countdown) {
 }
 
 function resetTimedBoosters(scene) {
+  resetEnergyResonance(scene);
   scoreMultiplier = 1;
   scene.activeScoreBooster = null;
   scene.activeShieldBooster = null;
@@ -4385,7 +4428,7 @@ function showPointPopup(scene, x, y, points, color = '#ffd84d', label = null, du
   });
 }
 
-function showStreakPointPopup(scene, x, y, label) {
+function showStreakPointPopup(scene, x, y, label, colors = STREAK_POINT_POPUP_COLORS) {
   if (!scene || !scene.add) return;
   const popupPosition = getPointPopupPosition(scene, x, y);
   const container = trackGameplayVisual(scene, scene.add.container(popupPosition.x, popupPosition.y));
@@ -4393,7 +4436,7 @@ function showStreakPointPopup(scene, x, y, label) {
   container.setScale(0.62);
   container.setAlpha(0.84);
 
-  const streakText = createStreakGradientText(scene, label);
+  const streakText = createStreakGradientText(scene, label, colors);
   container.add(streakText);
 
   scene.tweens.add({
@@ -4432,12 +4475,12 @@ function showStreakPointPopup(scene, x, y, label) {
   });
 }
 
-function createStreakGradientText(scene, label) {
+function createStreakGradientText(scene, label, colors = STREAK_POINT_POPUP_COLORS) {
   const textureKey = 'streakGradientText-' + streakGradientTextureId;
   streakGradientTextureId += 1;
   return createCanvasTextImage(scene, label, {
     fontSize: 22,
-    fill: STREAK_POINT_POPUP_COLORS,
+    fill: colors,
     textureKey,
   });
 }
@@ -4774,6 +4817,9 @@ function activateScoreBooster(scene) {
   scene.activeScoreBooster = {
     endsAt: scene.time.now + duration,
     duration,
+    resonanceCount: 0,
+    lastResonanceOrbAt: 0,
+    isResonanceActive: false,
   };
 
   setShipTextureForCurrentState(scene);
@@ -4811,6 +4857,7 @@ function updateScoreBooster(scene) {
 
   if (remaining > 0) return;
 
+  resetEnergyResonance(scene);
   scene.activeScoreBooster = null;
   scoreMultiplier = 1;
   clearScoreBoosterBallColor(scene);
@@ -4823,7 +4870,7 @@ function updateScoreBooster(scene) {
 function applyScoreBoosterBallColor(scene) {
   if (!scene.balls) return;
   scene.balls.getChildren().forEach((ball) => {
-    if (ball.active && ball.getData('kind') === 'ball') setBallEnergyColor(ball, true);
+    if (ball.active && ball.getData('kind') === 'ball') setBallEnergyColor(ball, getScoreBoosterOrbColor(scene));
   });
 }
 
@@ -4832,6 +4879,61 @@ function clearScoreBoosterBallColor(scene) {
   scene.balls.getChildren().forEach((ball) => {
     if (ball.active && ball.getData('kind') === 'ball') setBallEnergyColor(ball, false);
   });
+}
+
+function getScoreBoosterOrbColor(scene) {
+  return isEnergyResonanceActive(scene) ? 'pink' : 'purple';
+}
+
+function isEnergyResonanceUnlocked() {
+  return energyResonanceLevel > 0;
+}
+
+function isEnergyResonanceActive(scene) {
+  return Boolean(scene && scene.activeScoreBooster && scene.activeScoreBooster.isResonanceActive);
+}
+
+function resetEnergyResonance(scene) {
+  if (!scene || !scene.activeScoreBooster) return;
+  scene.activeScoreBooster.resonanceCount = 0;
+  scene.activeScoreBooster.lastResonanceOrbAt = 0;
+  scene.activeScoreBooster.isResonanceActive = false;
+}
+
+function activateEnergyResonance(scene) {
+  if (!scene || !scene.activeScoreBooster || scene.activeScoreBooster.isResonanceActive) return;
+  scene.activeScoreBooster.isResonanceActive = true;
+  scoreMultiplier = 3;
+  applyScoreBoosterBallColor(scene);
+  if (scene.ship) {
+    showStreakPointPopup(scene, scene.ship.x, scene.ship.y - 58, 'SINCRONÍA', ENERGY_RESONANCE_POPUP_COLORS);
+  }
+}
+
+function breakEnergyResonance(scene) {
+  if (!scene || !scene.activeScoreBooster) return;
+  scene.activeScoreBooster.resonanceCount = 0;
+  scene.activeScoreBooster.lastResonanceOrbAt = 0;
+  if (!scene.activeScoreBooster.isResonanceActive) return;
+  scene.activeScoreBooster.isResonanceActive = false;
+  scoreMultiplier = 2;
+  applyScoreBoosterBallColor(scene);
+}
+
+function registerScoreBoosterOrbCatch(scene) {
+  const booster = scene && scene.activeScoreBooster;
+  if (!booster || !isEnergyResonanceUnlocked()) return;
+  if (booster.isResonanceActive) return;
+
+  const now = scene.time.now;
+  booster.resonanceCount = now - (booster.lastResonanceOrbAt || 0) <= ENERGY_RESONANCE_CHAIN_WINDOW
+    ? (booster.resonanceCount || 0) + 1
+    : 1;
+  booster.lastResonanceOrbAt = now;
+
+  if (booster.resonanceCount >= ENERGY_RESONANCE_REQUIRED_ORBS) {
+    activateEnergyResonance(scene);
+  }
 }
 
 function updateShieldBooster(scene) {
@@ -6381,7 +6483,7 @@ function queuePendingBossWave(scene, bossConfig) {
 }
 
 function getAvailableUpgradeKinds() {
-  return ['lifeBooster', 'shieldBooster', 'scoreBooster', 'energyRefiner', 'energyPurifier', 'echoHelp']
+  return ['lifeBooster', 'shieldBooster', 'scoreBooster', 'energyResonance', 'energyRefiner', 'energyPurifier', 'echoHelp', 'vitalExpander']
     .filter((upgradeKind) => canChooseUpgradeKind(upgradeKind));
 }
 
@@ -6425,6 +6527,17 @@ function getUpgradeConfig(upgradeKind) {
       color: '#9b5cff',
     };
   }
+  if (upgradeKind === 'energyResonance') {
+    return {
+      label: 'Resonancia energética',
+      getDescription: () => getUpgradeDescriptionLines([
+        'Tras recoger 3 orbes multiplicados en rápida sucesión, activa Sincronía.',
+        'Durante la Sincronía los orbes rosas suman un multiplicador adicional.',
+      ]),
+      color: ENERGY_RESONANCE_COLOR,
+      maxLevel: 1,
+    };
+  }
   if (upgradeKind === 'energyRefiner') {
     return {
       label: 'Refinador de energía',
@@ -6437,7 +6550,7 @@ function getUpgradeConfig(upgradeKind) {
   if (upgradeKind === 'energyPurifier') {
     return {
       label: 'Purificador de energía',
-      getDescription: () => 'Puedes recoger orbes contaminados sin perder salud.',
+      getDescription: () => 'Los orbes contaminados dejan de aparecer.',
       color: ENERGY_PURIFIER_COLOR,
       maxLevel: 1,
     };
@@ -6449,6 +6562,14 @@ function getUpgradeConfig(upgradeKind) {
         'Echo atacará a algunos enemigos que se acerquen a ti, con una probabilidad del ' + getEchoAttackChancePercent(level) + '%.',
       ]),
       color: ECHO_HELP_COLOR,
+      maxLevel: 1,
+    };
+  }
+  if (upgradeKind === 'vitalExpander') {
+    return {
+      label: 'Expansor vital',
+      getDescription: () => 'Aumenta en +' + VITAL_EXPANDER_LIFE_BONUS + ' la capacidad de vida de la nave.',
+      color: VITAL_EXPANDER_COLOR,
       maxLevel: 1,
     };
   }
@@ -6470,6 +6591,8 @@ function hasAvailableUpgrades() {
 function canChooseUpgradeKind(upgradeKind) {
   if (upgradeKind === 'energyPurifier' && energyRefinerLevel < MAX_UPGRADE_LEVEL) return false;
   if (upgradeKind === 'echoHelp' && shieldBoosterLevel < MAX_UPGRADE_LEVEL) return false;
+  if (upgradeKind === 'vitalExpander' && lifeBoosterLevel < MAX_UPGRADE_LEVEL) return false;
+  if (upgradeKind === 'energyResonance' && scoreBoosterLevel < MAX_UPGRADE_LEVEL) return false;
   return getUpgradeLevel(upgradeKind) < getUpgradeMaxLevel(upgradeKind);
 }
 
@@ -6490,6 +6613,8 @@ function chooseUpgrade(scene, upgradeKind) {
     shieldBoosterLevel += 1;
   } else if (upgradeKind === 'scoreBooster') {
     scoreBoosterLevel += 1;
+  } else if (upgradeKind === 'energyResonance') {
+    energyResonanceLevel += 1;
   } else if (upgradeKind === 'energyRefiner') {
     energyRefinerLevel += 1;
   } else if (upgradeKind === 'energyPurifier') {
@@ -6497,6 +6622,9 @@ function chooseUpgrade(scene, upgradeKind) {
   } else if (upgradeKind === 'echoHelp') {
     echoHelpLevel += 1;
     updateEchoCompanion(scene, 0);
+  } else if (upgradeKind === 'vitalExpander') {
+    vitalExpanderLevel += 1;
+    expandVitalCapacity(scene);
   }
 
   updateUpgradeBar(scene);
@@ -6535,9 +6663,11 @@ function getUpgradeLevel(upgradeKind) {
   if (upgradeKind === 'lifeBooster') return lifeBoosterLevel;
   if (upgradeKind === 'shieldBooster') return shieldBoosterLevel;
   if (upgradeKind === 'scoreBooster') return scoreBoosterLevel;
+  if (upgradeKind === 'energyResonance') return energyResonanceLevel;
   if (upgradeKind === 'energyRefiner') return energyRefinerLevel;
   if (upgradeKind === 'energyPurifier') return energyPurifierLevel;
   if (upgradeKind === 'echoHelp') return echoHelpLevel;
+  if (upgradeKind === 'vitalExpander') return vitalExpanderLevel;
   return 0;
 }
 
@@ -6615,12 +6745,13 @@ function updateUpgradeStatusIcons(scene) {
   if (!currentHud.upgrades) return;
 
   currentHud.upgrades.innerHTML = '';
-  ['lifeBooster', 'shieldBooster', 'scoreBooster', 'energyRefiner', 'energyPurifier', 'echoHelp'].forEach((upgradeKind) => {
+  ['energyRefiner', 'energyPurifier', 'scoreBooster', 'energyResonance', 'shieldBooster', 'echoHelp', 'lifeBooster', 'vitalExpander'].forEach((upgradeKind) => {
     const config = getUpgradeConfig(upgradeKind);
     addUpgradeStatusIcon(scene, getUpgradeLevel(upgradeKind), config.color, config.label, {
       locked: isUpgradeLockedForHud(upgradeKind),
       lockLabel: getUpgradeLockLabel(upgradeKind),
       lockColor: getUpgradeLockColor(upgradeKind),
+      maxLevel: getUpgradeMaxLevel(upgradeKind),
     });
   });
 }
@@ -6628,18 +6759,24 @@ function updateUpgradeStatusIcons(scene) {
 function isUpgradeLockedForHud(upgradeKind) {
   if (upgradeKind === 'energyPurifier') return energyRefinerLevel < MAX_UPGRADE_LEVEL;
   if (upgradeKind === 'echoHelp') return shieldBoosterLevel < MAX_UPGRADE_LEVEL;
+  if (upgradeKind === 'vitalExpander') return lifeBoosterLevel < MAX_UPGRADE_LEVEL;
+  if (upgradeKind === 'energyResonance') return scoreBoosterLevel < MAX_UPGRADE_LEVEL;
   return false;
 }
 
 function getUpgradeLockLabel(upgradeKind) {
   if (upgradeKind === 'energyPurifier') return 'requiere Refinador de energía nivel ' + MAX_UPGRADE_LEVEL;
   if (upgradeKind === 'echoHelp') return 'requiere Barrera protectora nivel ' + MAX_UPGRADE_LEVEL;
+  if (upgradeKind === 'vitalExpander') return 'requiere Kit de reparación nivel ' + MAX_UPGRADE_LEVEL;
+  if (upgradeKind === 'energyResonance') return 'requiere Catalizador de energía nivel ' + MAX_UPGRADE_LEVEL;
   return 'bloqueada';
 }
 
 function getUpgradeLockColor(upgradeKind) {
-  if (upgradeKind === 'echoHelp') return 'rgba(77, 163, 255, 0.62)';
-  return 'rgba(255, 216, 77, 0.62)';
+  if (upgradeKind === 'echoHelp') return 'rgba(77, 163, 255, 0.31)';
+  if (upgradeKind === 'vitalExpander') return VITAL_EXPANDER_LOCK_COLOR;
+  if (upgradeKind === 'energyResonance') return 'rgba(155, 92, 255, 0.31)';
+  return 'rgba(255, 216, 77, 0.31)';
 }
 
 function addUpgradeStatusIcon(scene, level, color, label, options = {}) {
@@ -6653,8 +6790,10 @@ function addUpgradeStatusIcon(scene, level, color, label, options = {}) {
   chip.classList.toggle('is-locked', isLocked);
   chip.style.setProperty('--chip-color', color);
   if (options.lockColor) chip.style.setProperty('--lock-color', options.lockColor);
-  chip.setAttribute('aria-label', label + ': ' + (isLocked ? options.lockLabel : (level > 0 ? 'nivel ' + level : 'sin desbloquear')));
-  chip.textContent = level > 0 ? 'Nv.' + level : '';
+  const isMaxed = level > 0 && level >= (options.maxLevel || MAX_UPGRADE_LEVEL);
+  const statusLabel = isMaxed ? 'nivel máximo' : (level > 0 ? 'nivel ' + level : 'sin desbloquear');
+  chip.setAttribute('aria-label', label + ': ' + (isLocked ? options.lockLabel : statusLabel));
+  chip.textContent = isMaxed ? 'MAX' : (level > 0 ? 'Nv.' + level : '');
   currentHud.upgrades.appendChild(chip);
 }
 
@@ -6923,7 +7062,7 @@ function spawnFallingKind(scene, kind, forcedX = null) {
   ball.body.setVelocityY(getFallingVelocity(kind, scene, ball));
 
   if (kind === 'ball') {
-    setBallEnergyColor(ball, Boolean(scene.activeScoreBooster));
+    setBallEnergyColor(ball, scene.activeScoreBooster ? getScoreBoosterOrbColor(scene) : 'gold');
     attachEnergyOrbOverlay(scene, ball, getEnergyOrbWispPalette(kind));
   } else if (kind === 'contaminatedOrb') {
     attachEnergyOrbOverlay(scene, ball, getEnergyOrbWispPalette(kind));
@@ -7368,8 +7507,22 @@ function resumeSpikeDrones(scene) {
 
 function setBallEnergyColor(ball, isPurple) {
   ball.clearTint();
-  ball.setTexture(isPurple ? 'purpleBall' : 'goldBall');
-  ball.setData('isPurpleEnergy', isPurple);
+  const color = normalizeEnergyOrbColor(isPurple);
+  const texture = color === 'pink' ? 'pinkBall' : color === 'purple' ? 'purpleBall' : 'goldBall';
+  ball.setTexture(texture);
+  ball.setData('energyColor', color);
+  ball.setData('isPurpleEnergy', color !== 'gold');
+  ball.setData('isPinkEnergy', color === 'pink');
+}
+
+function normalizeEnergyOrbColor(color) {
+  if (color === 'pink' || color === 'purple' || color === 'gold') return color;
+  return color ? 'purple' : 'gold';
+}
+
+function getEnergyOrbColor(orb) {
+  if (!orb || !orb.getData) return 'gold';
+  return normalizeEnergyOrbColor(orb.getData('energyColor') || (orb.getData('isPurpleEnergy') ? 'purple' : 'gold'));
 }
 
 function setFallingObjectBody(object, kind) {
@@ -7442,6 +7595,7 @@ function getNextSpawnKind(scene) {
   const boosterKind = getNextBoosterKind(scene);
   if (scene.activeBossWave && scene.activeBossWave.isTravelEncounter) return boosterKind;
   if (boosterKind) return boosterKind;
+  if (isEnergyPurifierActive()) return 'ball';
   return Math.random() < CONTAMINATED_ORB_CHANCE ? 'contaminatedOrb' : 'ball';
 }
 
@@ -7812,7 +7966,8 @@ function catchBall(ball, scene) {
   const x = ball.x;
   const y = ball.y;
   const kind = ball.getData('kind');
-  const isPurpleEnergy = Boolean(ball.getData('isPurpleEnergy'));
+  const energyOrbColor = getEnergyOrbColor(ball);
+  const isPurpleEnergy = energyOrbColor !== 'gold';
   const isPurifiedContaminatedOrb = kind === 'contaminatedOrb' && isEnergyPurifierActive();
   let hitFeedbackShown = false;
   if (kind === 'spikeDrone') {
@@ -7831,7 +7986,7 @@ function catchBall(ball, scene) {
     ballsCaught += 1;
     increaseEnergyStreak(scene);
   } else if (isHostileContactKind(kind)) {
-    handleHostileShipContact(scene, ball, x, y, kind, isPurpleEnergy);
+    handleHostileShipContact(scene, ball, x, y, kind, energyOrbColor);
     hitFeedbackShown = true;
   } else if (kind === 'lifeBooster') {
     ball.destroy();
@@ -7845,9 +8000,11 @@ function catchBall(ball, scene) {
   } else {
     ball.destroy();
     const points = getEnergyBallValue() * scoreMultiplier;
-    addScore(scene, points, true, { x, y, color: isPurpleEnergy ? '#d7a8ff' : '#ffd84d' });
+    const feedbackColor = energyOrbColor === 'pink' ? ENERGY_RESONANCE_COLOR : isPurpleEnergy ? '#d7a8ff' : '#ffd84d';
+    addScore(scene, points, true, { x, y, color: feedbackColor });
     ballsCaught += 1;
     increaseEnergyStreak(scene);
+    registerScoreBoosterOrbCatch(scene);
   }
 
   if (state !== 'playing') return;
@@ -7862,7 +8019,7 @@ function catchBall(ball, scene) {
     }
   }
   if (!hitFeedbackShown) {
-    showAbsorbEffect(scene, x, y, isPurifiedContaminatedOrb ? 'ball' : kind, isPurpleEnergy);
+    showAbsorbEffect(scene, x, y, isPurifiedContaminatedOrb ? 'ball' : kind, energyOrbColor);
   }
 
   if (kind === 'ball' || isPurifiedContaminatedOrb) {
@@ -7870,13 +8027,13 @@ function catchBall(ball, scene) {
   }
 }
 
-function handleHostileShipContact(scene, hostile, x, y, kind, isPurpleEnergy = false) {
+function handleHostileShipContact(scene, hostile, x, y, kind, energyOrbColor = 'gold') {
   if (!isShieldActive(scene) && isShipDamageInvulnerable(scene)) return;
   if (isShieldActive(scene) && hostile && hostile.getData('hasBeenShieldBlocked')) return;
 
   const absorbKind = kind === 'contaminatedOrb' ? 'ball' : kind;
-  const absorbIsPurpleEnergy = kind === 'contaminatedOrb' ? false : isPurpleEnergy;
-  showAbsorbEffect(scene, x, y, absorbKind, absorbIsPurpleEnergy);
+  const absorbEnergyColor = kind === 'contaminatedOrb' ? 'gold' : energyOrbColor;
+  showAbsorbEffect(scene, x, y, absorbKind, absorbEnergyColor);
   if (!isShieldActive(scene) || kind === 'contaminatedOrb') {
     takeDirectDamage(scene);
     if (kind === 'contaminatedOrb' && hostile && hostile.active) hostile.destroy();
@@ -7988,6 +8145,7 @@ function playPurpleBoosterMusic(scene) {
 
 function playMusicTrack(scene, audioKey, path, volume) {
   if (!musicEnabled) return;
+  if (pageAudioSuspended || document.hidden) return;
   if (scene.currentMusicKey === audioKey && scene[audioKey] && !scene[audioKey].paused && !musicPlaybackBlocked) return;
 
   if (!scene[audioKey]) {
@@ -8003,6 +8161,13 @@ function playMusicTrack(scene, audioKey, path, volume) {
   pausedMusicTime = 0;
   scene[audioKey].play()
     .then(() => {
+      if (pageAudioSuspended || document.hidden) {
+        pausedMusicTime = scene[audioKey].currentTime || 0;
+        scene[audioKey].pause();
+        scene.currentMusicKey = audioKey;
+        pageAudioWasPlaying = true;
+        return;
+      }
       if (previousMusic) {
         previousMusic.pause();
         previousMusic.currentTime = 0;
@@ -8021,6 +8186,7 @@ function bindAudioUnlockListeners(scene) {
   audioUnlockListenersBound = true;
 
   const unlockAudio = () => {
+    if (pageAudioSuspended || document.hidden) return;
     if ((audioUnlocked && !musicPlaybackBlocked) || !musicEnabled) return;
     const targetScene = scene || gameScene;
     if (!targetScene) return;
@@ -8030,6 +8196,53 @@ function bindAudioUnlockListeners(scene) {
   ['pointerdown', 'touchstart', 'keydown'].forEach((eventName) => {
     window.addEventListener(eventName, unlockAudio, { capture: true, passive: true });
   });
+}
+
+function bindPageAudioPauseListeners(scene) {
+  if (pageAudioListenersBound) return;
+  pageAudioListenersBound = true;
+
+  const suspendAudio = () => suspendPageAudio(scene || gameScene);
+  const resumeAudio = () => {
+    if (document.hidden) return;
+    resumePageAudio(scene || gameScene);
+  };
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      suspendAudio();
+    } else {
+      resumeAudio();
+    }
+  });
+  window.addEventListener('blur', suspendAudio);
+  window.addEventListener('pagehide', suspendAudio);
+  window.addEventListener('focus', resumeAudio);
+  window.addEventListener('pageshow', resumeAudio);
+}
+
+function suspendPageAudio(scene) {
+  if (pageAudioSuspended) return;
+  pageAudioSuspended = true;
+  pageAudioWasPlaying = false;
+  const targetScene = scene || gameScene;
+  if (!targetScene || !targetScene.currentMusicKey || !targetScene[targetScene.currentMusicKey]) return;
+
+  const music = targetScene[targetScene.currentMusicKey];
+  pageAudioWasPlaying = !music.paused;
+  if (pageAudioWasPlaying) pauseCurrentMusic(targetScene);
+}
+
+function resumePageAudio(scene) {
+  if (!pageAudioSuspended) return;
+  pageAudioSuspended = false;
+  const shouldResumeMusic = pageAudioWasPlaying;
+  pageAudioWasPlaying = false;
+  if (!shouldResumeMusic || !musicEnabled) return;
+
+  const targetScene = scene || gameScene;
+  if (!targetScene) return;
+  resumeCurrentMusic(targetScene);
 }
 
 function getSoundEffectVolume(baseVolume = 1) {
@@ -8298,10 +8511,10 @@ function normalizeStoredVolume(value) {
   return Number.isFinite(parsedVolume) ? Phaser.Math.Clamp(parsedVolume, 0, 1) : 1;
 }
 
-function showAbsorbEffect(scene, x, y, kind, isPurpleEnergy = false) {
+function showAbsorbEffect(scene, x, y, kind, energyOrbColor = 'gold') {
   const targetX = scene.ship.x;
   const targetY = scene.ship.y - 4;
-  const tint = getAbsorbParticleTint(kind, isPurpleEnergy);
+  const tint = getAbsorbParticleTint(kind, energyOrbColor);
   const particleCount = kind === 'ball' ? 22 : 14;
 
   for (let i = 0; i < particleCount; i += 1) {
@@ -8357,8 +8570,10 @@ function showAbsorbEffect(scene, x, y, kind, isPurpleEnergy = false) {
   });
 }
 
-function getAbsorbParticleTint(kind, isPurpleEnergy = false) {
-  if (kind === 'ball' && isPurpleEnergy) return 0x9b5cff;
+function getAbsorbParticleTint(kind, energyOrbColor = 'gold') {
+  const normalizedColor = normalizeEnergyOrbColor(energyOrbColor);
+  if (kind === 'ball' && normalizedColor === 'pink') return 0xff66c4;
+  if (kind === 'ball' && normalizedColor === 'purple') return 0x9b5cff;
   if (isAsteroidKind(kind)) return 0xaeb7c8;
   if (kind === 'contaminatedOrb') return 0x0f7f37;
   if (kind === 'damageBooster') return 0xff3b4f;

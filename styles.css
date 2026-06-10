@@ -236,7 +236,7 @@ canvas {
 
 .hud-life-bar {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(var(--life-slots, 3), minmax(0, 1fr));
   gap: 3px;
   margin-top: 6px;
 }
@@ -335,23 +335,24 @@ canvas {
   position: relative;
   z-index: 1;
   display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  min-height: 21px;
+  flex-wrap: nowrap;
+  gap: 4px;
+  min-height: 19px;
   margin-top: 8px;
   align-content: flex-start;
 }
 
 .hud-upgrade-chip {
   position: relative;
-  min-width: 42px;
-  min-height: 21px;
-  padding: 5px 7px;
+  flex: 0 0 calc((100% - 28px) / 8);
+  min-width: 0;
+  min-height: 19px;
+  padding: 5px 2px;
   border: 1px solid color-mix(in srgb, var(--chip-color, #65d8ff) 72%, white 28%);
   border-radius: var(--ui-radius-small);
   background: linear-gradient(180deg, var(--chip-color, #65d8ff), color-mix(in srgb, var(--chip-color, #65d8ff) 72%, black 28%));
   color: #08111f;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   line-height: 1;
   text-align: center;
@@ -372,12 +373,12 @@ canvas {
   content: "";
   position: absolute;
   left: 50%;
-  top: 3px;
-  width: 9px;
-  height: 7px;
-  border: 1.5px solid var(--lock-color, rgba(255, 216, 77, 0.62));
+  top: 4px;
+  width: 7px;
+  height: 5px;
+  border: 1px solid var(--lock-color, rgba(255, 216, 77, 0.62));
   border-bottom: 0;
-  border-radius: 5px 5px 0 0;
+  border-radius: 4px 4px 0 0;
   transform: translateX(-50%);
 }
 
@@ -385,9 +386,9 @@ canvas {
   content: "";
   position: absolute;
   left: 50%;
-  top: 9px;
-  width: 13px;
-  height: 8px;
+  top: 8px;
+  width: 10px;
+  height: 7px;
   border-radius: 2px;
   background: var(--lock-color, rgba(255, 216, 77, 0.62));
   transform: translateX(-50%);
