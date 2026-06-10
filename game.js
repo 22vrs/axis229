@@ -884,7 +884,7 @@ function getEnergyOrbWispPalette(kind, isPurpleEnergy = false) {
     };
   }
 
-  if (isPurpleEnergy) {
+  if (isPurpleEnergy === true || isPurpleEnergy === 'purple') {
     return {
       shadow: 0x3a1478,
       mid: 0x6f38ff,
@@ -6818,7 +6818,7 @@ function setUpgradeButtonState(button, config, level) {
   const maxLevel = config.maxLevel || MAX_UPGRADE_LEVEL;
   const isMaxed = level >= maxLevel;
   const nextLevel = Math.min(maxLevel, level + 1);
-  const title = config.label + (isMaxed ? ' MAX' : ' ' + nextLevel);
+  const title = config.label + (isMaxed ? ' MAX' : maxLevel === 1 ? '' : ' ' + nextLevel);
   const description = isMaxed ? 'Mejora al nivel máximo.' : config.getDescription(nextLevel);
   button.setAlpha(1);
   if (button.setContent) {
