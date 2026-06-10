@@ -2,7 +2,7 @@
 
 Juego arcade vertical hecho con HTML, CSS, JavaScript y Phaser 3. Controlas una nave, recoges orbes de energia, encadenas rachas, eliges mejoras y sobrevives a oleadas de amenazas cada vez mas agresivas.
 
-Ultima revision del README: 2026-06-07.
+Ultima revision del README: 2026-06-10.
 
 ## Estado actual
 
@@ -33,7 +33,7 @@ Tambien puedes abrir `index.html` directamente en el navegador. Para jugar con r
 
 - Arrastra la nave para moverla libremente en X-Y dentro de la pantalla.
 - Recoge orbes amarillos para sumar puntos y llenar la barra de progreso.
-- Evita enemigos, asteroides, lasers, cometas, drones y barras de plasma.
+- Evita enemigos, asteroides, lasers, cometas, drones, barras de plasma y orbes contaminados.
 - Usa el boton de pausa del HUD para volver, rendirte o abrir opciones.
 - En opciones puedes activar/desactivar efectos y musica y ajustar sus volumenes por separado.
 - Las preferencias de audio se guardan en `localStorage`.
@@ -54,20 +54,22 @@ Claves usadas en `localStorage`:
 | Normal | `JUGAR` | Partida con progresion, mejoras, jefes cada 3 niveles y ranking. | Si |
 | Infinito | `MODO INFINITO` | Partida libre con amenazas desbloqueadas y jefes aleatorios. | No |
 
-En modo infinito, el primer jefe es `Lluvia de estrellas`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
+En modo infinito, el primer jefe es `Centinela`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
 
 ## Progresion
 
 - La partida empieza con `3` vidas.
-- Cada `10` puntos de progreso se sube de nivel al inicio.
+- El primer nivel requiere `10` puntos de progreso; despues el requisito crece con `getLevelRequirement(level)`.
 - Cada subida de nivel permite elegir entre `2` mejoras si quedan mejoras disponibles.
-- Cada mejora puede subir hasta nivel `5`.
+- Las mejoras base pueden subir hasta nivel `5`.
+- Algunas mejoras avanzadas tienen un solo nivel y se desbloquean al maximizar su mejora base.
 - Hay un jefe cada `3` niveles.
 - La gravedad base de los orbes es `220`.
 - La velocidad escala hasta `2.00x`.
 - El intervalo de aparicion empieza en `1500 ms` y baja hasta `600 ms`.
 - Al encadenar `50` orbes de energia sin recibir dano se concede una recompensa de racha.
 - La recompensa base de racha es de `50` puntos y crece con cada bloque de `50`.
+- Si puedes recibir kits de reparacion, una recompensa de racha tambien puede forzar la caida de un kit.
 
 ## Velocidad del juego
 
@@ -83,22 +85,47 @@ Como funciona:
 
 - La gravedad base es `220` y solo los orbes normales usan directamente la velocidad principal.
 - El multiplicador sube de `1.00x` a `2.00x` entre los niveles `1` y `3`; desde el nivel `3` queda en el maximo.
-- El intervalo de aparicion normal baja de `1500 ms` a `600 ms` usando una curva suavizada (`SPAWN_DELAY_EASING = 1.8`), asi que el salto intermedio no es lineal.
+- El intervalo de aparicion normal baja de `1500 ms` a `600 ms` usando una curva suavizada (`SPAWN_DELAY_EASING = 1.8`).
 - Los boosters que caen usan el `80%` de la velocidad principal (`BOOSTER_GRAVITY_RATIO = 0.8`), por eso el HUD muestra tambien `BOOST`.
 - Al cambiar la velocidad, los objetos que ya estan cayendo actualizan su velocidad para adaptarse al nuevo ritmo.
 - Las oleadas y jefes pueden usar sus propios intervalos fijos, por ejemplo Enjambre cada `400 ms`, Drones cada `680 ms`, Asteroides cada `760 ms`, Cometas cada `520 ms` y Plasma cada `2100 ms`.
 - Algunas amenazas no escalan con la velocidad principal y usan ratios o valores propios, como asteroides, drones, cometas, lasers y barras de plasma.
 
+## Orbes
+
+| Orbe | Condicion | Efecto |
+| --- | --- | --- |
+| Energia | Aparicion normal. | Suma puntos segun el valor actual del Refinador y aumenta la racha. |
+| Energia morada | Durante el Catalizador de energia. | Usa el multiplicador de puntos activo. |
+| Energia rosa | Durante Sincronia, si tienes Resonancia energetica. | Usa el multiplicador mejorado de Sincronia. |
+| Contaminado | `20%` de los orbes normales si no tienes Purificador. | Hace dano y rompe la racha. |
+
+El Purificador de energia elimina los orbes contaminados de la rotacion normal.
+
 ## Mejoras
 
-| Mejora | Efecto |
-| --- | --- |
-| Kit de reparacion | Desbloquea kits verdes. Cada kit cura `1` vida y su probabilidad aumenta `2` puntos porcentuales por nivel. |
-| Barrera protectora | Desbloquea escudos azules temporales. Bloquea amenazas y suma puntos al destruirlas por contacto. Su probabilidad aumenta `2` puntos porcentuales por nivel. |
-| Catalizador de energia | Desbloquea boosters morados temporales. Duplica los puntos obtenidos por orbes mientras esta activo. Su probabilidad aumenta `2` puntos porcentuales por nivel. |
-| Refinador de energia | Aumenta el valor de cada orbe. Al nivel maximo suma `+1` extra por cada nivel superado. |
+| Mejora | Niveles | Requisito | Efecto |
+| --- | ---: | --- | --- |
+| Kit de reparacion | `5` | Ninguno | Desbloquea kits verdes. Cada kit cura `1` vida y su probabilidad aumenta `2` puntos porcentuales por nivel. |
+| Barrera protectora | `5` | Ninguno | Desbloquea escudos azules temporales. Bloquea amenazas y suma puntos al destruirlas por contacto. Su probabilidad aumenta `2` puntos porcentuales por nivel. |
+| Catalizador de energia | `5` | Ninguno | Desbloquea boosters morados temporales. Duplica los puntos obtenidos por orbes mientras esta activo. Su probabilidad aumenta `2` puntos porcentuales por nivel. |
+| Refinador de energia | `5` | Ninguno | Aumenta el valor de cada orbe. Al nivel maximo suma `+1` extra por cada nivel superado. |
+| Resonancia energetica | `1` | Catalizador de energia nivel `5` | Tras recoger `3` orbes con el catalizador, activa Sincronia y sube el multiplicador a `3x`. |
+| Purificador de energia | `1` | Refinador de energia nivel `5` | Los orbes contaminados dejan de aparecer. |
+| Ayuda de Echo | `1` | Barrera protectora nivel `5` | Echo ataca amenazas cercanas con una probabilidad del `30%`. |
+| Expansor vital | `1` | Kit de reparacion nivel `5` | Aumenta la capacidad maxima en `+2` vidas y tambien cura `+2`. |
 
 Los boosters temporales duran `10 s`.
+
+## Echo
+
+Echo es el acompanante de la nave. Esta presente desde el inicio como apoyo visual y gana utilidad jugable con la mejora `Ayuda de Echo`.
+
+- Detecta amenazas a `128 px` de la nave.
+- Puede atacar obreras, drones de pinchos, cometas y asteroides.
+- Cada amenaza valida tira una vez una probabilidad del `30%`.
+- Al bloquear una amenaza concede `10` puntos, igual que la barrera protectora.
+- Tambien celebra las recompensas de racha antes de abrir la pantalla de mejora si corresponde.
 
 ## Boosters
 
@@ -144,7 +171,7 @@ Las probabilidades son por intento de aparicion. Algunas solo se desbloquean tra
 | Amenaza | Probabilidad | Condicion | Notas |
 | --- | ---: | --- | --- |
 | Obrera / enemigo rojo | `20%` | Tras vencer a Enjambre. | Puede aparecer durante el centinela viajero. |
-| Drone de pinchos | `10%` | Tras vencer a Drones. | Solo dana cuando esta expandido, salvo contacto con escudo. |
+| Drone de pinchos | `10%` | Tras vencer a Drones. | Solo dana cuando esta expandido; si esta verde se puede desactivar al tocarlo. |
 | Aguja Roja | `5%` | Tras vencer a Aguja Roja. | Solo puede haber una activa. |
 | Cometa | `15%` | Tras vencer a Lluvia de estrellas. | Entra desde arriba con deriva diagonal y estela. |
 | Asteroide | `15%` | Tras vencer a Cinturon. | Puede aparecer como normal o grande. |
@@ -160,7 +187,7 @@ Orden de decision en viaje normal:
 4. Cometa.
 5. Asteroide.
 6. Booster.
-7. Orbe normal, si nada anterior aparece.
+7. Orbe normal u orbe contaminado, si nada anterior aparece.
 
 Esto hace que varias probabilidades sean condicionales: se comprueban solo si las decisiones anteriores no generaron nada.
 
@@ -184,7 +211,7 @@ Datos guardados:
 - Nivel alcanzado.
 - Racha maxima.
 
-Si Supabase no esta disponible o no esta configurado, el juego muestra un aviso y permite seguir jugando sin guardar ranking.
+Si Supabase no esta disponible o no esta configurado, el juego muestra un aviso y permite seguir jugando sin guardar ranking. El modo infinito es sin ranking.
 
 ## Estructura del proyecto
 
@@ -209,12 +236,12 @@ Si Supabase no esta disponible o no esta configurado, el juego muestra un aviso 
 | `assets/level-up.mp3` | Subida de nivel. |
 | `assets/red-wave.mp3` | Entrada de oleada Enjambre. |
 | `assets/boss-laser.mp3` | Laser del Centinela. |
-| `assets/shield-block.mp3` | Bloqueo con escudo. |
+| `assets/shield-block.mp3` | Bloqueo con escudo o Echo. |
 | `assets/spike-drone.mp3` | Drone de pinchos. |
 | `assets/spike-drone-disable.mp3` | Drone desactivado. |
 | `assets/spike-drone-beep.mp3` | Aviso del drone. |
 | `assets/red-needle-shot.mp3` | Disparo de Aguja Roja. |
-| `assets/streak-success.mp3` | Recompensa de racha. |
+| `assets/streak-success.mp3` | Recompensa de racha y Sincronia. |
 | `assets/images/player-ship.svg` | Imagen de la nave. |
 
 ### Asset opcional
@@ -246,22 +273,27 @@ Se cargan desde `index.html`:
 | `MAX_UPGRADE_LEVEL` | `5` |
 | `ENERGY_STREAK_REWARD_TARGET` | `50` |
 | `ENERGY_STREAK_REWARD_SCORE` | `50` |
+| `CONTAMINATED_ORB_CHANCE` | `0.2` |
+| `ENERGY_RESONANCE_REQUIRED_ORBS` | `3` |
+| `ECHO_ATTACK_CHANCE` | `0.3` |
+| `ECHO_ATTACK_DETECTION_RADIUS` | `128` |
+| `VITAL_EXPANDER_LIFE_BONUS` | `2` |
 | `TIMED_BOOSTER_DURATION` | `10000 ms` |
 | `BOOSTER_CHANCE_PER_LEVEL` | `0.02` |
 | `BOSS_WAVE_ATTACKS` | `7` |
 | `TRAVEL_SENTINEL_ATTACKS` | `2` |
-| `TRAVEL_SENTINEL_CHANCE` | `0.018` |
+| `TRAVEL_SENTINEL_CHANCE` | `0.02` |
 | `TRAVEL_SENTINEL_COOLDOWN` | `26000 ms` |
-| `OBRERA_SPAWN_CHANCE` | `0.16` |
-| `SPIKE_DRONE_SPAWN_CHANCE` | `0.05` |
+| `OBRERA_SPAWN_CHANCE` | `0.2` |
+| `SPIKE_DRONE_SPAWN_CHANCE` | `0.1` |
 | `RED_NEEDLE_SPAWN_CHANCE` | `0.05` |
-| `TRAVEL_ASTEROID_CHANCE` | `0.1` |
-| `TRAVEL_COMET_CHANCE` | `0.2` |
+| `TRAVEL_ASTEROID_CHANCE` | `0.15` |
+| `TRAVEL_COMET_CHANCE` | `0.15` |
 | `TRAVEL_PLASMA_CHANCE` | `0.05` |
 
 ## Notas de mantenimiento
 
 - El titulo visible del menu es `HORIZONTE INFINITO`.
-- El `<title>` del documento aun dice `Juego de recoger bolas`; conviene cambiarlo si quieres que la pestana del navegador coincida con el nombre del juego.
+- El `<title>` del documento tambien es `Horizonte Infinito`.
 - Si se cambia el nombre de columnas de Supabase, tambien hay que actualizar las constantes `SUPABASE_SCORE_COLUMN` y `SUPABASE_STREAK_COLUMN` en `game.js`.
-- Si se anade `assets/purple-booster.mp3`, el README ya contempla esa pista como musica del booster morado.
+- Si se anade `assets/purple-booster.mp3`, conecta la ruta en `PURPLE_BOOSTER_MUSIC_PATH`.
