@@ -181,7 +181,6 @@ const LIFE_INDICATOR_HEAL_BORDER_COLOR = 0xfff0b8;
 const FINAL_DAMAGE_GAME_OVER_DELAY = 1450;
 const ENERGY_STREAK_REWARD_TARGET = 50;
 const ENERGY_STREAK_REWARD_SCORE = 50;
-const ENERGY_STREAK_UPGRADE_DELAY = 900;
 const CONTAMINATED_ORB_CHANCE = 0.2;
 const ENERGY_PURIFIER_COLOR = '#d9dee6';
 const VITAL_EXPANDER_COLOR = '#ff8a2a';
@@ -199,7 +198,6 @@ const STREAK_POINT_POPUP_COLORS = ['#ff4f68', '#ffd84d', '#7dffae', '#76ffe8', '
 const ENERGY_RESONANCE_COLOR = '#ff66c4';
 const ENERGY_RESONANCE_POPUP_COLORS = ['#ff66c4', '#ff9fdd', '#ffd5f0', '#ff4fb8'];
 const ENERGY_RESONANCE_REQUIRED_ORBS = 3;
-const ENERGY_RESONANCE_CHAIN_WINDOW = 1300;
 const ECHO_TEXTURE_SIZE = 72;
 const ECHO_SIZE = 28;
 const ECHO_HOME_OFFSET_X = -62;
@@ -218,6 +216,15 @@ const ECHO_COLLISION_RADIUS = 13;
 const ECHO_EYE_GLOW_RADIUS = 6;
 const ECHO_EYE_CORE_RADIUS = 2.7;
 const ECHO_FLOAT_RADIUS = 7;
+const ECHO_IDLE_SPIN_MIN_DELAY = 2800;
+const ECHO_IDLE_SPIN_MAX_DELAY = 6800;
+const ECHO_IDLE_SPIN_MIN_DURATION = 720;
+const ECHO_IDLE_SPIN_MAX_DURATION = 980;
+const ECHO_STREAK_ORBIT_DURATION = 1450;
+const ECHO_STREAK_ORBIT_TURNS = 2;
+const ECHO_STREAK_ORBIT_RADIUS_X = 66;
+const ECHO_STREAK_ORBIT_RADIUS_Y = 48;
+const ECHO_STREAK_UPGRADE_SETTLE_DELAY = 90;
 let streakGradientTextureId = 0;
 let pointPopupTextureId = 0;
 const ASTEROID_WAVE_BIG_ASTEROID_CHANCE = 0.16;
@@ -685,6 +692,7 @@ function create() {
     .setVisible(false);
   this.echoAttackTarget = null;
   this.echoReturningHome = false;
+  resetEchoPersonality(this);
   startEchoEyeAnimation(this);
   updateEchoCompanion(this, 0);
 
@@ -1883,7 +1891,6 @@ function update(time, delta) {
   this.balls.getChildren().forEach((ball) => {
     if (ball.active && ball.y > getGameHeight(this) + 32) {
       if (isCollectibleBallKind(ball.getData('kind'))) {
-        if (this.activeScoreBooster) breakEnergyResonance(this);
         ball.destroy();
         resetEnergyStreak();
         playBadSound(this);
@@ -2103,6 +2110,7 @@ function updateEchoCompanion(scene, delta = 0) {
   setEchoEyeVisible(scene, scene.echoCompanion.visible);
   if (!scene.echoCompanion.visible) return;
 
+  const now = scene.time ? scene.time.now : 0;
   const homePosition = getEchoHomePosition(scene);
   scene.echoCompanion.setScale(ECHO_SIZE / ECHO_TEXTURE_SIZE);
   scene.echoCompanion.setAlpha(isEchoHelpActive() ? 1 : 0.9);
@@ -2111,8 +2119,17 @@ function updateEchoCompanion(scene, delta = 0) {
     return;
   }
 
+  if (scene.pendingEchoStreakCelebration) {
+    startEchoStreakCelebration(scene);
+  }
+  if (updateEchoStreakCelebration(scene, now)) {
+    setEchoEyeAttacking(scene, false);
+    updateEchoEyePosition(scene);
+    return;
+  }
+
   scene.echoCompanion.setPosition(homePosition.x, homePosition.y);
-  scene.echoCompanion.setRotation(-0.18 + Math.sin((scene.time ? scene.time.now : 0) * 0.0021) * 0.08);
+  scene.echoCompanion.setRotation(getEchoIdleRotation(scene, now));
   setEchoEyeAttacking(scene, false);
   updateEchoEyePosition(scene);
 }
@@ -2123,6 +2140,118 @@ function getEchoHomePosition(scene) {
     x: scene.ship.x + ECHO_HOME_OFFSET_X + floatOffset.x,
     y: scene.ship.y + ECHO_HOME_OFFSET_Y + floatOffset.y,
   };
+}
+
+function getEchoIdleRotation(scene, now) {
+  const baseRotation = -0.18 + Math.sin(now * 0.0021) * 0.08;
+  const spinRotation = updateEchoIdleSpin(scene, now);
+  return baseRotation + spinRotation;
+}
+
+function updateEchoIdleSpin(scene, now) {
+  if (!scene.echoIdleSpin && now >= (scene.nextEchoIdleSpinAt || 0)) {
+    scene.echoIdleSpin = {
+      start: now,
+      duration: Phaser.Math.Between(ECHO_IDLE_SPIN_MIN_DURATION, ECHO_IDLE_SPIN_MAX_DURATION),
+      direction: Math.random() < 0.5 ? -1 : 1,
+    };
+  }
+
+  if (!scene.echoIdleSpin) return 0;
+
+  const spin = scene.echoIdleSpin;
+  const progress = Phaser.Math.Clamp((now - spin.start) / spin.duration, 0, 1);
+  const easedProgress = easeInOutSine(progress);
+  if (progress >= 1) {
+    scene.echoIdleSpin = null;
+    scheduleNextEchoIdleSpin(scene, now);
+    return 0;
+  }
+  return spin.direction * Math.PI * 2 * easedProgress;
+}
+
+function triggerEchoStreakCelebration(scene) {
+  if (!scene || !scene.echoCompanion || !scene.ship) return;
+  if (scene.echoAttackTarget || scene.echoReturningHome) {
+    scene.pendingEchoStreakCelebration = true;
+    return;
+  }
+  startEchoStreakCelebration(scene);
+}
+
+function startEchoStreakCelebration(scene) {
+  if (!scene || !scene.echoCompanion || !scene.ship) return;
+  const now = scene.time ? scene.time.now : 0;
+  const angleFromShip = Phaser.Math.Angle.Between(
+    scene.ship.x,
+    scene.ship.y,
+    scene.echoCompanion.x,
+    scene.echoCompanion.y
+  );
+
+  scene.pendingEchoStreakCelebration = false;
+  scene.echoIdleSpin = null;
+  scene.echoStreakCelebration = {
+    start: now,
+    startAngle: angleFromShip,
+    direction: Math.random() < 0.5 ? -1 : 1,
+  };
+}
+
+function updateEchoStreakCelebration(scene, now) {
+  if (!scene.echoStreakCelebration || !scene.ship) return false;
+
+  const celebration = scene.echoStreakCelebration;
+  const progress = Phaser.Math.Clamp((now - celebration.start) / ECHO_STREAK_ORBIT_DURATION, 0, 1);
+  const easedProgress = easeInOutSine(progress);
+  const orbitAngle = celebration.startAngle
+    + celebration.direction * Math.PI * 2 * ECHO_STREAK_ORBIT_TURNS * easedProgress;
+  const pulse = Math.sin(progress * Math.PI);
+  const radiusX = ECHO_STREAK_ORBIT_RADIUS_X + pulse * 8;
+  const radiusY = ECHO_STREAK_ORBIT_RADIUS_Y + pulse * 6;
+  const x = scene.ship.x + Math.cos(orbitAngle) * radiusX;
+  const y = scene.ship.y + Math.sin(orbitAngle) * radiusY;
+
+  scene.echoCompanion.setPosition(x, y);
+  scene.echoCompanion.setRotation(orbitAngle + Math.PI / 2 + celebration.direction * Math.PI * 2 * easedProgress);
+
+  if (progress >= 1) {
+    scene.echoStreakCelebration = null;
+    scheduleNextEchoIdleSpin(scene, now + 900);
+  }
+  return true;
+}
+
+function getEchoStreakUpgradeDelay(scene) {
+  if (!scene || !scene.time) return 0;
+  if (scene.echoStreakCelebration) {
+    const celebrationEnd = scene.echoStreakCelebration.start
+      + ECHO_STREAK_ORBIT_DURATION
+      + ECHO_STREAK_UPGRADE_SETTLE_DELAY;
+    return Math.max(0, celebrationEnd - scene.time.now);
+  }
+  if (scene.pendingEchoStreakCelebration) {
+    return ECHO_STREAK_UPGRADE_SETTLE_DELAY;
+  }
+  return 0;
+}
+
+function resetEchoPersonality(scene) {
+  if (!scene) return;
+  scene.echoIdleSpin = null;
+  scene.echoStreakCelebration = null;
+  scene.pendingEchoStreakCelebration = false;
+  scheduleNextEchoIdleSpin(scene);
+}
+
+function scheduleNextEchoIdleSpin(scene, fromTime = null) {
+  if (!scene) return;
+  const now = fromTime === null ? (scene.time ? scene.time.now : 0) : fromTime;
+  scene.nextEchoIdleSpinAt = now + Phaser.Math.Between(ECHO_IDLE_SPIN_MIN_DELAY, ECHO_IDLE_SPIN_MAX_DELAY);
+}
+
+function easeInOutSine(progress) {
+  return -(Math.cos(Math.PI * progress) - 1) / 2;
 }
 
 function updateEchoAttackMovement(scene, delta, homePosition) {
@@ -2242,6 +2371,7 @@ function hideEchoCompanion(scene) {
 function updateEchoAttacks(scene) {
   if (!isEchoHelpActive() || !scene.echoCompanion || !scene.echoCompanion.visible) return;
   if (scene.echoAttackTarget || scene.echoReturningHome) return;
+  if (scene.echoStreakCelebration || scene.pendingEchoStreakCelebration) return;
 
   scene.balls.getChildren().forEach((hostile) => {
     if (scene.echoAttackTarget) return;
@@ -3462,6 +3592,7 @@ function resetCounters() {
   enemyTrailTimer = 0;
   this.echoAttackTarget = null;
   this.echoReturningHome = false;
+  resetEchoPersonality(this);
   if (this.echoCompanion) this.echoCompanion.clearTint();
   setEchoEyeAttacking(this, false);
   clearShipTrail(this);
@@ -4367,11 +4498,12 @@ function awardEnergyStreakReward(scene) {
     color: '#ffd84d',
   });
   showStreakPointPopup(scene, scene.ship.x, scene.ship.y - 58, 'RACHA!');
+  triggerEchoStreakCelebration(scene);
 
   if (shouldDelayUpgrade) {
     scene.deferUpgradeChoiceUntil = Math.max(
       scene.deferUpgradeChoiceUntil || 0,
-      scene.time.now + ENERGY_STREAK_UPGRADE_DELAY
+      scene.time.now + getEchoStreakUpgradeDelay(scene)
     );
   }
 
@@ -4818,7 +4950,6 @@ function activateScoreBooster(scene) {
     endsAt: scene.time.now + duration,
     duration,
     resonanceCount: 0,
-    lastResonanceOrbAt: 0,
     isResonanceActive: false,
   };
 
@@ -4896,7 +5027,6 @@ function isEnergyResonanceActive(scene) {
 function resetEnergyResonance(scene) {
   if (!scene || !scene.activeScoreBooster) return;
   scene.activeScoreBooster.resonanceCount = 0;
-  scene.activeScoreBooster.lastResonanceOrbAt = 0;
   scene.activeScoreBooster.isResonanceActive = false;
 }
 
@@ -4905,19 +5035,10 @@ function activateEnergyResonance(scene) {
   scene.activeScoreBooster.isResonanceActive = true;
   scoreMultiplier = 3;
   applyScoreBoosterBallColor(scene);
+  playStreakSuccessSound(scene);
   if (scene.ship) {
     showStreakPointPopup(scene, scene.ship.x, scene.ship.y - 58, 'SINCRONÍA', ENERGY_RESONANCE_POPUP_COLORS);
   }
-}
-
-function breakEnergyResonance(scene) {
-  if (!scene || !scene.activeScoreBooster) return;
-  scene.activeScoreBooster.resonanceCount = 0;
-  scene.activeScoreBooster.lastResonanceOrbAt = 0;
-  if (!scene.activeScoreBooster.isResonanceActive) return;
-  scene.activeScoreBooster.isResonanceActive = false;
-  scoreMultiplier = 2;
-  applyScoreBoosterBallColor(scene);
 }
 
 function registerScoreBoosterOrbCatch(scene) {
@@ -4925,11 +5046,7 @@ function registerScoreBoosterOrbCatch(scene) {
   if (!booster || !isEnergyResonanceUnlocked()) return;
   if (booster.isResonanceActive) return;
 
-  const now = scene.time.now;
-  booster.resonanceCount = now - (booster.lastResonanceOrbAt || 0) <= ENERGY_RESONANCE_CHAIN_WINDOW
-    ? (booster.resonanceCount || 0) + 1
-    : 1;
-  booster.lastResonanceOrbAt = now;
+  booster.resonanceCount = (booster.resonanceCount || 0) + 1;
 
   if (booster.resonanceCount >= ENERGY_RESONANCE_REQUIRED_ORBS) {
     activateEnergyResonance(scene);
@@ -6405,6 +6522,13 @@ function updateUpgradeProgressText(scene, pointsTowardUpgrade = null) {
 
 function maybeOpenUpgradeChoice(scene) {
   if (levelProgressScore < nextUpgradeScore || state !== 'playing') return;
+  const echoStreakUpgradeDelay = getEchoStreakUpgradeDelay(scene);
+  if (echoStreakUpgradeDelay > 0) {
+    scene.deferUpgradeChoiceUntil = Math.max(
+      scene.deferUpgradeChoiceUntil || 0,
+      scene.time.now + echoStreakUpgradeDelay
+    );
+  }
   if (scene.deferUpgradeChoiceUntil && scene.time.now < scene.deferUpgradeChoiceUntil) {
     scheduleDeferredUpgradeChoice(scene);
     return;
@@ -6531,7 +6655,7 @@ function getUpgradeConfig(upgradeKind) {
     return {
       label: 'Resonancia energética',
       getDescription: () => getUpgradeDescriptionLines([
-        'Tras recoger 3 orbes multiplicados en rápida sucesión, activa Sincronía.',
+        'Tras recoger 3 orbes multiplicados con el catalizador, activa Sincronía.',
         'Durante la Sincronía los orbes rosas suman un multiplicador adicional.',
       ]),
       color: ENERGY_RESONANCE_COLOR,
