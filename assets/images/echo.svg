@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 620" role="img" aria-label="Echo">
+  <defs>
+    <radialGradient id="bodyGlow" cx="50%" cy="42%" r="58%">
+      <stop offset="0" stop-color="#f7fbff"/>
+      <stop offset="0.48" stop-color="#cfd1ce"/>
+      <stop offset="1" stop-color="#6f7782"/>
+    </radialGradient>
+    <radialGradient id="eyeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#fff8c8"/>
+      <stop offset="0.34" stop-color="#ffd84d"/>
+      <stop offset="0.68" stop-color="#6b541d"/>
+      <stop offset="1" stop-color="#071016"/>
+    </radialGradient>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#softGlow)">
+    <ellipse cx="210" cy="318" rx="152" ry="146" fill="#050b12" opacity="0.48"/>
+    <circle cx="210" cy="300" r="146" fill="#242b32"/>
+    <circle cx="210" cy="300" r="136" fill="url(#bodyGlow)"/>
+    <path d="M210 164a136 136 0 0 1 0 272c-70-30-109-76-109-136s39-106 109-136z" fill="#aeb1ae" opacity="0.38"/>
+    <path d="M122 216c26-36 66-54 118-54 41 0 75 11 101 32-49-2-92 10-129 36-38 27-67 39-90 36-13-2-17-18 0-50z" fill="#fff" opacity="0.24"/>
+    <path d="M210 164v84M210 352v84" stroke="#4d555d" stroke-width="10" stroke-linecap="round" opacity="0.7"/>
+    <ellipse cx="67" cy="300" rx="40" ry="78" fill="#202830"/>
+    <ellipse cx="353" cy="300" rx="40" ry="78" fill="#202830"/>
+    <ellipse cx="79" cy="300" rx="16" ry="58" fill="#4a545d" opacity="0.74"/>
+    <ellipse cx="341" cy="300" rx="16" ry="58" fill="#4a545d" opacity="0.74"/>
+    <ellipse cx="67" cy="300" rx="40" ry="78" fill="none" stroke="#10161c" stroke-width="9" opacity="0.72"/>
+    <ellipse cx="353" cy="300" rx="40" ry="78" fill="none" stroke="#10161c" stroke-width="9" opacity="0.72"/>
+    <rect x="48" y="302" width="44" height="12" rx="6" fill="#ffd84d"/>
+    <rect x="328" y="302" width="44" height="12" rx="6" fill="#ffd84d"/>
+    <circle cx="210" cy="300" r="96" fill="#172027"/>
+    <circle cx="210" cy="300" r="78" fill="#34434a"/>
+    <circle cx="210" cy="300" r="58" fill="#1b2e34"/>
+    <circle cx="210" cy="300" r="42" fill="none" stroke="#6b541d" stroke-width="18" opacity="0.44"/>
+    <circle cx="210" cy="300" r="25" fill="url(#eyeGlow)"/>
+    <circle cx="210" cy="300" r="96" fill="none" stroke="#071016" stroke-width="13" opacity="0.72"/>
+  </g>
+</svg>

@@ -220,11 +220,21 @@ const ECHO_IDLE_SPIN_MIN_DELAY = 2800;
 const ECHO_IDLE_SPIN_MAX_DELAY = 6800;
 const ECHO_IDLE_SPIN_MIN_DURATION = 720;
 const ECHO_IDLE_SPIN_MAX_DURATION = 980;
-const ECHO_STREAK_ORBIT_DURATION = 1450;
-const ECHO_STREAK_ORBIT_TURNS = 2;
-const ECHO_STREAK_ORBIT_RADIUS_X = 66;
-const ECHO_STREAK_ORBIT_RADIUS_Y = 48;
-const ECHO_STREAK_UPGRADE_SETTLE_DELAY = 90;
+const ECHO_LEVEL_ORBIT_DURATION = 1450;
+const ECHO_LEVEL_ORBIT_TURNS = 2;
+const ECHO_LEVEL_ORBIT_RADIUS_X = 66;
+const ECHO_LEVEL_ORBIT_RADIUS_Y = 48;
+const ECHO_LEVEL_UPGRADE_SETTLE_DELAY = 90;
+const ECHO_TUTORIAL_LINES = [
+  "Axis, has sido activado. Soy Echo, tu guía. Hemos sido programados para explorar el universo.",
+  "Durante décadas, una materia desconocida llamada 'La Corrupción' se ha propagado por el espacio. Ha contaminado tanto vida biológica como sistemas robóticos.",
+  "Otras naves robots como nosotros han sido infectadas y se han vuelto hostiles. Debemos tener cuidado.",
+  "Nuestra misión es llegar lo más lejos posible. Los humanos necesitan conocer los límites seguros del espacio. Si tenemos suerte, encontraremos la fuente de la Corrupción.",
+  "Pero debo ser honesto... eres la nave número 229 en intentarlo. Las 228 naves anteriores fracasaron. Mi IA centraliza información de todas esas expediciones fallidas. No tengo muchas esperanzas en que esta vez sea diferente.",
+  "Para sobrevivir, necesitarás recolectar Orbes de Energía. Son esenciales para avanzar. No pierdas ninguno o sufrirás daño.",
+  "Importante: Algunos orbes están contaminados por la Corrupción. Se distinguen por sus volutas verdes y su núcleo oscuro. Evítalos a toda costa. Causan daño grave.",
+  "Adelante, Axis. El universo te espera. Quién sabe, tal vez tú seas diferente.",
+];
 let streakGradientTextureId = 0;
 let pointPopupTextureId = 0;
 const ASTEROID_WAVE_BIG_ASTEROID_CHANCE = 0.16;
@@ -387,9 +397,19 @@ function setPauseSettingsVisible(visible) {
   const currentHud = initHud();
   if (!currentHud.root) return;
   currentHud.root.classList.toggle('is-pause-settings-visible', Boolean(visible));
+  setHudUpgradeChipsReadable(currentHud, visible);
   if (currentHud.pauseSettingsButton) {
     currentHud.pauseSettingsButton.setAttribute('aria-hidden', visible ? 'false' : 'true');
   }
+}
+
+function setHudUpgradeChipsReadable(currentHud, readable) {
+  if (!currentHud || !currentHud.root) return;
+  currentHud.root.classList.toggle('is-paused-upgrades-readable', Boolean(readable));
+  if (!currentHud.upgrades) return;
+  currentHud.upgrades.querySelectorAll('.hud-upgrade-chip').forEach((chip) => {
+    chip.setAttribute('tabindex', readable ? '0' : '-1');
+  });
 }
 
 function updateHud(scene = gameScene) {
@@ -737,6 +757,7 @@ function create() {
   this.pauseOverlay = createPauseOverlay(this);
   this.upgradeOverlay = createUpgradeOverlay(this);
   this.optionsOverlay = createOptionsOverlay(this);
+  this.echoTutorialOverlay = createEchoTutorialOverlay(this);
 
   // Menus
   this.menuContainer = createMenu(this);
@@ -1861,6 +1882,13 @@ function getGamePointFromClient(scene, clientX, clientY) {
 }
 
 function update(time, delta) {
+  if (state === 'tutorial') {
+    updateSpaceBackground(this, delta, time);
+    updateShipPropulsion(this, delta);
+    updateShipEyeGlow(this);
+    updateEchoCompanion(this, delta);
+    return;
+  }
   if (state !== 'playing') return;
 
   updateSpaceBackground(this, delta, time);
@@ -2119,10 +2147,10 @@ function updateEchoCompanion(scene, delta = 0) {
     return;
   }
 
-  if (scene.pendingEchoStreakCelebration) {
-    startEchoStreakCelebration(scene);
+  if (scene.pendingEchoLevelCelebration) {
+    startEchoLevelCelebration(scene);
   }
-  if (updateEchoStreakCelebration(scene, now)) {
+  if (updateEchoLevelCelebration(scene, now)) {
     setEchoEyeAttacking(scene, false);
     updateEchoEyePosition(scene);
     return;
@@ -2170,16 +2198,16 @@ function updateEchoIdleSpin(scene, now) {
   return spin.direction * Math.PI * 2 * easedProgress;
 }
 
-function triggerEchoStreakCelebration(scene) {
+function triggerEchoLevelCelebration(scene) {
   if (!scene || !scene.echoCompanion || !scene.ship) return;
   if (scene.echoAttackTarget || scene.echoReturningHome) {
-    scene.pendingEchoStreakCelebration = true;
+    scene.pendingEchoLevelCelebration = true;
     return;
   }
-  startEchoStreakCelebration(scene);
+  startEchoLevelCelebration(scene);
 }
 
-function startEchoStreakCelebration(scene) {
+function startEchoLevelCelebration(scene) {
   if (!scene || !scene.echoCompanion || !scene.ship) return;
   const now = scene.time ? scene.time.now : 0;
   const angleFromShip = Phaser.Math.Angle.Between(
@@ -2189,26 +2217,26 @@ function startEchoStreakCelebration(scene) {
     scene.echoCompanion.y
   );
 
-  scene.pendingEchoStreakCelebration = false;
+  scene.pendingEchoLevelCelebration = false;
   scene.echoIdleSpin = null;
-  scene.echoStreakCelebration = {
+  scene.echoLevelCelebration = {
     start: now,
     startAngle: angleFromShip,
     direction: Math.random() < 0.5 ? -1 : 1,
   };
 }
 
-function updateEchoStreakCelebration(scene, now) {
-  if (!scene.echoStreakCelebration || !scene.ship) return false;
+function updateEchoLevelCelebration(scene, now) {
+  if (!scene.echoLevelCelebration || !scene.ship) return false;
 
-  const celebration = scene.echoStreakCelebration;
-  const progress = Phaser.Math.Clamp((now - celebration.start) / ECHO_STREAK_ORBIT_DURATION, 0, 1);
+  const celebration = scene.echoLevelCelebration;
+  const progress = Phaser.Math.Clamp((now - celebration.start) / ECHO_LEVEL_ORBIT_DURATION, 0, 1);
   const easedProgress = easeInOutSine(progress);
   const orbitAngle = celebration.startAngle
-    + celebration.direction * Math.PI * 2 * ECHO_STREAK_ORBIT_TURNS * easedProgress;
+    + celebration.direction * Math.PI * 2 * ECHO_LEVEL_ORBIT_TURNS * easedProgress;
   const pulse = Math.sin(progress * Math.PI);
-  const radiusX = ECHO_STREAK_ORBIT_RADIUS_X + pulse * 8;
-  const radiusY = ECHO_STREAK_ORBIT_RADIUS_Y + pulse * 6;
+  const radiusX = ECHO_LEVEL_ORBIT_RADIUS_X + pulse * 8;
+  const radiusY = ECHO_LEVEL_ORBIT_RADIUS_Y + pulse * 6;
   const x = scene.ship.x + Math.cos(orbitAngle) * radiusX;
   const y = scene.ship.y + Math.sin(orbitAngle) * radiusY;
 
@@ -2216,22 +2244,22 @@ function updateEchoStreakCelebration(scene, now) {
   scene.echoCompanion.setRotation(orbitAngle + Math.PI / 2 + celebration.direction * Math.PI * 2 * easedProgress);
 
   if (progress >= 1) {
-    scene.echoStreakCelebration = null;
+    scene.echoLevelCelebration = null;
     scheduleNextEchoIdleSpin(scene, now + 900);
   }
   return true;
 }
 
-function getEchoStreakUpgradeDelay(scene) {
+function getEchoLevelUpgradeDelay(scene) {
   if (!scene || !scene.time) return 0;
-  if (scene.echoStreakCelebration) {
-    const celebrationEnd = scene.echoStreakCelebration.start
-      + ECHO_STREAK_ORBIT_DURATION
-      + ECHO_STREAK_UPGRADE_SETTLE_DELAY;
+  if (scene.echoLevelCelebration) {
+    const celebrationEnd = scene.echoLevelCelebration.start
+      + ECHO_LEVEL_ORBIT_DURATION
+      + ECHO_LEVEL_UPGRADE_SETTLE_DELAY;
     return Math.max(0, celebrationEnd - scene.time.now);
   }
-  if (scene.pendingEchoStreakCelebration) {
-    return ECHO_STREAK_UPGRADE_SETTLE_DELAY;
+  if (scene.pendingEchoLevelCelebration) {
+    return ECHO_LEVEL_UPGRADE_SETTLE_DELAY;
   }
   return 0;
 }
@@ -2239,8 +2267,8 @@ function getEchoStreakUpgradeDelay(scene) {
 function resetEchoPersonality(scene) {
   if (!scene) return;
   scene.echoIdleSpin = null;
-  scene.echoStreakCelebration = null;
-  scene.pendingEchoStreakCelebration = false;
+  scene.echoLevelCelebration = null;
+  scene.pendingEchoLevelCelebration = false;
   scheduleNextEchoIdleSpin(scene);
 }
 
@@ -2371,7 +2399,7 @@ function hideEchoCompanion(scene) {
 function updateEchoAttacks(scene) {
   if (!isEchoHelpActive() || !scene.echoCompanion || !scene.echoCompanion.visible) return;
   if (scene.echoAttackTarget || scene.echoReturningHome) return;
-  if (scene.echoStreakCelebration || scene.pendingEchoStreakCelebration) return;
+  if (scene.echoLevelCelebration || scene.pendingEchoLevelCelebration) return;
 
   scene.balls.getChildren().forEach((hostile) => {
     if (scene.echoAttackTarget) return;
@@ -2937,6 +2965,7 @@ function setOnlyOverlayVisible(scene, visibleOverlay) {
     scene.pauseOverlay,
     scene.optionsOverlay,
     scene.upgradeOverlay,
+    scene.echoTutorialOverlay,
   ].forEach((overlay) => {
     if (overlay) overlay.setVisible(overlay === visibleOverlay);
   });
@@ -2950,6 +2979,7 @@ function showOverlayScreen(scene, screenName) {
     pause: scene.pauseOverlay,
     options: scene.optionsOverlay,
     upgrade: scene.upgradeOverlay,
+    tutorial: scene.echoTutorialOverlay,
   };
 
   setOnlyOverlayVisible(scene, overlayByScreen[screenName] || null);
@@ -3148,10 +3178,13 @@ function setPauseOverlayMode(scene, mode = 'normal') {
   if (!scene.pauseOverlay || !scene.pauseOverlay.element) return;
 
   const isUpgradePause = mode === 'upgrade';
+  const isUpgradeDetailPause = mode === 'upgrade-detail';
   scene.pauseOverlay.element.classList.toggle('is-upgrade-pause', isUpgradePause);
+  scene.pauseOverlay.element.classList.toggle('is-upgrade-detail-pause', isUpgradeDetailPause);
   scene.pauseOverlay.element.classList.remove('is-frozen-pause-menu');
   if (scene.pauseOverlay.panel) {
     scene.pauseOverlay.panel.classList.toggle('ui-panel-upgrade-pause', isUpgradePause);
+    scene.pauseOverlay.panel.classList.toggle('ui-panel-upgrade-detail', isUpgradeDetailPause);
   }
   if (scene.pauseOverlay.title) {
     scene.pauseOverlay.title.textContent = 'PAUSA';
@@ -3178,9 +3211,24 @@ function hideFrozenPauseMenu(scene) {
   if (scene.pauseOverlay && scene.pauseOverlay.element) {
     scene.pauseOverlay.element.classList.remove('is-frozen-pause-menu');
   }
+  setPauseOverlayMode(scene, 'normal');
   prepareControlPauseResume(scene);
   showOverlayScreen(scene, null);
   setPauseSettingsVisible(true);
+}
+
+function showPausedUpgradeDetails(scene, upgradeKind) {
+  if (!scene || state !== 'paused') return;
+  const config = getUpgradeConfig(upgradeKind);
+  if (!config) return;
+
+  setPauseOverlayMode(scene, 'upgrade-detail');
+  setXyControlActive(scene, false);
+  setXyControlVisible(scene, false);
+  setPauseSettingsVisible(false);
+  if (scene.pauseOverlay.title) scene.pauseOverlay.title.textContent = config.label;
+  if (scene.pauseOverlay.copy) scene.pauseOverlay.copy.textContent = getPausedUpgradeDescription(upgradeKind, config);
+  showOverlayScreen(scene, 'pause');
 }
 
 function createUpgradeOverlay(scene) {
@@ -3190,6 +3238,83 @@ function createUpgradeOverlay(scene) {
     second: createDomUpgradeButton(scene, 'upgrade-second'),
   };
   return overlay;
+}
+
+function createEchoTutorialOverlay(scene) {
+  const overlay = createDomOverlay('echo-tutorial-overlay', false);
+  overlay.text = document.getElementById('echo-dialog-text');
+  overlay.progress = document.getElementById('echo-dialog-progress');
+  overlay.nextButton = document.getElementById('echo-dialog-next');
+  overlay.panel = overlay.element ? overlay.element.querySelector('.echo-dialog-panel') : null;
+
+  const advance = (event) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    advanceEchoTutorial(scene);
+  };
+
+  if (overlay.element) {
+    overlay.element.addEventListener('click', advance);
+  }
+  if (overlay.nextButton) {
+    overlay.nextButton.addEventListener('click', advance);
+  }
+
+  return overlay;
+}
+
+function startEchoTutorial(scene) {
+  if (!scene || !scene.echoTutorialOverlay) {
+    beginGameplayAfterEchoTutorial(scene);
+    return;
+  }
+
+  state = 'tutorial';
+  isDraggingShip = false;
+  scene.echoTutorialIndex = 0;
+  scene.echoTutorialTimer = null;
+  setXyControlVisible(scene, false);
+  updateEchoCompanion(scene, 0);
+  showOverlayScreen(scene, 'tutorial');
+  renderEchoTutorialLine(scene);
+}
+
+function renderEchoTutorialLine(scene) {
+  const overlay = scene && scene.echoTutorialOverlay;
+  if (!overlay) return;
+
+  const index = Phaser.Math.Clamp(scene.echoTutorialIndex || 0, 0, ECHO_TUTORIAL_LINES.length - 1);
+  const line = ECHO_TUTORIAL_LINES[index];
+  if (overlay.text) overlay.text.textContent = line;
+  if (overlay.progress) overlay.progress.textContent = (index + 1) + '/' + ECHO_TUTORIAL_LINES.length;
+  if (overlay.nextButton) overlay.nextButton.textContent = index >= ECHO_TUTORIAL_LINES.length - 1 ? 'CERRAR TRANSMISION' : 'CONTINUAR';
+}
+
+function advanceEchoTutorial(scene) {
+  if (!scene || state !== 'tutorial') return;
+  clearEchoTutorialTimer(scene);
+
+  scene.echoTutorialIndex = (scene.echoTutorialIndex || 0) + 1;
+  if (scene.echoTutorialIndex >= ECHO_TUTORIAL_LINES.length) {
+    finishEchoTutorial(scene);
+    return;
+  }
+  renderEchoTutorialLine(scene);
+}
+
+function finishEchoTutorial(scene) {
+  clearEchoTutorialTimer(scene);
+  showOverlayScreen(scene, null);
+  pauseBeforeFirstGameplaySpawn(scene);
+}
+
+function clearEchoTutorialTimer(scene) {
+  if (scene && scene.echoTutorialTimer) {
+    scene.echoTutorialTimer.remove(false);
+    scene.echoTutorialTimer = null;
+  }
 }
 
 function createOptionsOverlay(scene) {
@@ -3391,6 +3516,7 @@ function setUiDepth(scene) {
     scene.pauseOverlay,
     scene.optionsOverlay,
     scene.upgradeOverlay,
+    scene.echoTutorialOverlay,
   ].forEach((item) => {
     if (item) item.setDepth(UI_DEPTH);
   });
@@ -3406,6 +3532,7 @@ function setUiDepth(scene) {
 // --- Control de estados ---
 
 function showMenu() {
+  clearEchoTutorialTimer(this);
   state = 'menu';
   currentGameMode = 'xy';
   isDraggingShip = false;
@@ -3454,8 +3581,9 @@ function showRanking() {
 }
 
 function startGame(options = {}) {
-  state = 'playing';
+  clearEchoTutorialTimer(this);
   currentGameMode = getValidGameMode(options.mode);
+  state = isInfiniteGameMode() || options.skipEchoTutorial ? 'playing' : 'tutorial';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
   setPauseSettingsVisible(false);
@@ -3487,7 +3615,7 @@ function startGame(options = {}) {
     this.finalDamageGameOverEvent = null;
   }
 
-  setXyControlVisible(this, true);
+  setXyControlVisible(this, false);
   if (isXyGameMode()) {
     resetXyShipControl(this);
   } else {
@@ -3495,14 +3623,47 @@ function startGame(options = {}) {
     updateXyControlFromShip(this);
   }
 
+  if (state === 'tutorial') {
+    startEchoTutorial(this);
+    return;
+  }
+
+  beginGameplayAfterEchoTutorial(this);
+}
+
+function beginGameplayAfterEchoTutorial(scene) {
+  if (!scene) return;
+
+  state = 'playing';
+  showOverlayScreen(scene, null);
+  setXyControlVisible(scene, true);
+  if (isXyGameMode()) {
+    resetXyShipControl(scene);
+  }
+
   // Primera bola inmediata, luego spawn periodico
-  spawnBall(this);
-  scheduleNextSpawn(this);
-  restartBackgroundMusic(this);
+  spawnBall(scene);
+  scheduleNextSpawn(scene);
+  restartBackgroundMusic(scene);
+}
+
+function pauseBeforeFirstGameplaySpawn(scene) {
+  if (!scene) return;
+
+  state = 'paused';
+  isDraggingShip = false;
+  scene.resumeSpawnDelay = null;
+  setPauseOverlayMode(scene, 'normal');
+  setXyControlActive(scene, false);
+  prepareControlPauseResume(scene);
+  showOverlayScreen(scene, null);
+  setPauseSettingsVisible(true);
+  restartBackgroundMusic(scene);
 }
 
 function endGame() {
   if (state !== 'playing' && state !== 'paused' && state !== 'dying') return; // Evitar llamadas dobles
+  clearEchoTutorialTimer(this);
   state = 'gameover';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
@@ -4498,14 +4659,6 @@ function awardEnergyStreakReward(scene) {
     color: '#ffd84d',
   });
   showStreakPointPopup(scene, scene.ship.x, scene.ship.y - 58, 'RACHA!');
-  triggerEchoStreakCelebration(scene);
-
-  if (shouldDelayUpgrade) {
-    scene.deferUpgradeChoiceUntil = Math.max(
-      scene.deferUpgradeChoiceUntil || 0,
-      scene.time.now + getEchoStreakUpgradeDelay(scene)
-    );
-  }
 
   if (shouldDropRepairKit && shouldDelayUpgrade) {
     scene.pendingStreakRepairKit = true;
@@ -6521,12 +6674,37 @@ function updateUpgradeProgressText(scene, pointsTowardUpgrade = null) {
 }
 
 function maybeOpenUpgradeChoice(scene) {
-  if (levelProgressScore < nextUpgradeScore || state !== 'playing') return;
-  const echoStreakUpgradeDelay = getEchoStreakUpgradeDelay(scene);
-  if (echoStreakUpgradeDelay > 0) {
+  if (state !== 'playing') return;
+  const hasPendingLevelUpgradeChoice = Boolean(scene.pendingLevelUpgradeChoice);
+  if (!hasPendingLevelUpgradeChoice && levelProgressScore < nextUpgradeScore) return;
+
+  if (!hasPendingLevelUpgradeChoice) {
+    playLevelUpSound(scene);
+    advancePlayerLevel(scene);
+
+    while (levelProgressScore >= nextUpgradeScore && !hasAvailableUpgrades()) {
+      advancePlayerLevel(scene);
+      updateUpgradeBar(scene);
+    }
+
+    if (!hasAvailableUpgrades()) {
+      updateUpgradeBar(scene);
+      resumeFallingObjects(scene);
+      resumeTimedGameplay(scene);
+      releasePendingStreakRepairKit(scene);
+      if (!consumePendingBossWave(scene)) recoverGameplaySpawning(scene);
+      return;
+    }
+
+    scene.pendingLevelUpgradeChoice = true;
+    triggerEchoLevelCelebration(scene);
+  }
+
+  const echoLevelUpgradeDelay = getEchoLevelUpgradeDelay(scene);
+  if (echoLevelUpgradeDelay > 0) {
     scene.deferUpgradeChoiceUntil = Math.max(
       scene.deferUpgradeChoiceUntil || 0,
-      scene.time.now + echoStreakUpgradeDelay
+      scene.time.now + echoLevelUpgradeDelay
     );
   }
   if (scene.deferUpgradeChoiceUntil && scene.time.now < scene.deferUpgradeChoiceUntil) {
@@ -6534,23 +6712,7 @@ function maybeOpenUpgradeChoice(scene) {
     return;
   }
   scene.deferUpgradeChoiceUntil = 0;
-
-  playLevelUpSound(scene);
-  advancePlayerLevel(scene);
-
-  while (levelProgressScore >= nextUpgradeScore && !hasAvailableUpgrades()) {
-    advancePlayerLevel(scene);
-    updateUpgradeBar(scene);
-  }
-
-  if (!hasAvailableUpgrades()) {
-    updateUpgradeBar(scene);
-    resumeFallingObjects(scene);
-    resumeTimedGameplay(scene);
-    releasePendingStreakRepairKit(scene);
-    if (!consumePendingBossWave(scene)) recoverGameplaySpawning(scene);
-    return;
-  }
+  scene.pendingLevelUpgradeChoice = false;
 
   state = 'upgrading';
   isDraggingShip = false;
@@ -6829,6 +6991,7 @@ function releasePendingStreakRepairKit(scene) {
 function clearPendingStreakReward(scene) {
   if (!scene) return;
   scene.deferUpgradeChoiceUntil = 0;
+  scene.pendingLevelUpgradeChoice = false;
   scene.pendingStreakRepairKit = false;
   if (scene.deferredUpgradeChoiceEvent) {
     scene.deferredUpgradeChoiceEvent.remove(false);
@@ -6881,7 +7044,7 @@ function updateUpgradeStatusIcons(scene) {
 
     upgradePair.forEach((upgradeKind) => {
       const config = getUpgradeConfig(upgradeKind);
-      addUpgradeStatusIcon(scene, getUpgradeLevel(upgradeKind), config.color, config.label, {
+      addUpgradeStatusIcon(scene, upgradeKind, getUpgradeLevel(upgradeKind), config.color, config.label, {
         locked: isUpgradeLockedForHud(upgradeKind),
         lockLabel: getUpgradeLockLabel(upgradeKind),
         lockColor: getUpgradeLockColor(upgradeKind),
@@ -6915,7 +7078,7 @@ function getUpgradeLockColor(upgradeKind) {
   return 'rgba(255, 216, 77, 0.31)';
 }
 
-function addUpgradeStatusIcon(scene, level, color, label, options = {}) {
+function addUpgradeStatusIcon(scene, upgradeKind, level, color, label, options = {}) {
   const currentHud = initHud();
   if (!currentHud.upgrades) return;
   const parent = options.parent || currentHud.upgrades;
@@ -6930,8 +7093,61 @@ function addUpgradeStatusIcon(scene, level, color, label, options = {}) {
   const isMaxed = level > 0 && level >= (options.maxLevel || MAX_UPGRADE_LEVEL);
   const statusLabel = isMaxed ? 'nivel máximo' : (level > 0 ? 'nivel ' + level : 'sin desbloquear');
   chip.setAttribute('aria-label', label + ': ' + (isLocked ? options.lockLabel : statusLabel));
+  chip.setAttribute('role', 'button');
+  chip.setAttribute('tabindex', currentHud.root && currentHud.root.classList.contains('is-paused-upgrades-readable') ? '0' : '-1');
+  chip.dataset.upgradeKind = upgradeKind;
   chip.textContent = isMaxed ? 'MAX' : (level > 0 ? 'Nv.' + level : '');
+  ['pointerdown', 'pointerup', 'touchstart', 'touchend'].forEach((eventName) => {
+    chip.addEventListener(eventName, (event) => {
+      if (state !== 'paused') return;
+      event.stopPropagation();
+    }, { passive: true });
+  });
+  chip.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (state !== 'paused') return;
+    playButtonSound(scene);
+    showPausedUpgradeDetails(scene, upgradeKind);
+  });
+  chip.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (state !== 'paused') return;
+    playButtonSound(scene);
+    showPausedUpgradeDetails(scene, upgradeKind);
+  });
   parent.appendChild(chip);
+}
+
+function getPausedUpgradeDescription(upgradeKind, config = getUpgradeConfig(upgradeKind)) {
+  const level = getUpgradeLevel(upgradeKind);
+  const maxLevel = getUpgradeMaxLevel(upgradeKind);
+  const isLocked = isUpgradeLockedForHud(upgradeKind);
+  const nextLevel = Math.min(maxLevel, level + 1);
+  const lines = [];
+
+  if (isLocked) {
+    lines.push('Bloqueada: ' + getUpgradeLockLabel(upgradeKind) + '.');
+    lines.push('Cuando se desbloquee: ' + config.getDescription(1));
+    return getUpgradeDescriptionLines(lines);
+  }
+
+  if (level <= 0) {
+    lines.push('Sin desbloquear.');
+    lines.push('Próxima mejora: ' + config.getDescription(1));
+    return getUpgradeDescriptionLines(lines);
+  }
+
+  lines.push('Nivel actual ' + level + '/' + maxLevel + '.');
+  lines.push(config.getDescription(level));
+  if (level >= maxLevel) {
+    lines.push('Mejora al nivel máximo.');
+  } else {
+    lines.push('Siguiente nivel: ' + config.getDescription(nextLevel));
+  }
+  return getUpgradeDescriptionLines(lines);
 }
 
 function isEnergyPurifierActive() {
