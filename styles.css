@@ -484,13 +484,18 @@ a:focus-visible {
 
 .ui-screen {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 390px;
+  height: 700px;
   display: grid;
   place-items: center;
-  padding: clamp(14px, 5vw, 24px);
+  padding: 20px;
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
+  transform: scale(var(--ui-scale));
+  transform-origin: top left;
   transition: opacity 160ms ease;
 }
 
@@ -519,16 +524,8 @@ a:focus-visible {
 }
 
 #echo-tutorial-overlay {
-  inset: auto;
-  top: 0;
-  left: 0;
-  width: 390px;
-  height: 700px;
-  place-items: center;
   padding: 18px;
   overflow: visible;
-  transform: scale(var(--ui-scale));
-  transform-origin: top left;
 }
 
 #echo-tutorial-overlay::before {
@@ -611,7 +608,7 @@ a:focus-visible {
     inset 0 1px 0 var(--glass-line),
     inset 3px 0 0 rgba(255, 216, 77, 0.86);
   color: #ecf7ff;
-  cursor: pointer;
+  cursor: default;
   backdrop-filter: blur(18px) saturate(1.25);
   -webkit-backdrop-filter: blur(18px) saturate(1.25);
 }
@@ -626,6 +623,29 @@ a:focus-visible {
     linear-gradient(90deg, rgba(255, 216, 77, 0.1), transparent 18%, transparent 82%, rgba(74, 197, 255, 0.18)),
     linear-gradient(135deg, rgba(15, 56, 104, 0.82), rgba(5, 15, 34, 0.86));
   pointer-events: none;
+}
+
+.echo-dialog-skip {
+  position: absolute;
+  z-index: 5;
+  top: 10px;
+  right: 12px;
+  padding: 4px 7px;
+  border: 1px solid rgba(101, 216, 255, 0.48);
+  border-radius: 6px;
+  background: rgba(4, 14, 31, 0.58);
+  color: #aeeaff;
+  font: 700 10px/1 "Orbitron", "Rajdhani", Arial, sans-serif;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.echo-dialog-skip:hover,
+.echo-dialog-skip:focus-visible {
+  border-color: rgba(255, 216, 77, 0.86);
+  color: #ffe169;
+  outline: none;
+  box-shadow: 0 0 10px rgba(255, 216, 77, 0.2);
 }
 
 .echo-dialog-head {
@@ -666,6 +686,14 @@ a:focus-visible {
   font-weight: 700;
   line-height: 1.14;
   text-shadow: 0 0 10px rgba(5, 9, 20, 0.72);
+}
+
+.echo-dialog-word {
+  white-space: nowrap;
+}
+
+.echo-dialog-character.is-pending {
+  visibility: hidden;
 }
 
 .echo-dialog-next {

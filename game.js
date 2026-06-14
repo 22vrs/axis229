@@ -16,6 +16,8 @@ const MENU_MUSIC_PATH = 'assets/menu-music.mp3';
 const GAMEPLAY_MUSIC_PATH = 'assets/game-music.mp3';
 const PURPLE_BOOSTER_MUSIC_PATH = null;
 const PLAYER_SHIP_IMAGE_PATH = 'assets/images/player-ship.svg';
+const ECHO_DIALOG_CHARACTER_DELAY = 32;
+const ECHO_DIALOG_BEEP_DURATION = 0.018;
 const SUPABASE_URL = 'https://fqkpwigonxgnsynfdzyw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Up1cBihd6uOftnMkhj3A3w_ZH1q7YOR';
 const SUPABASE_RANKING_TABLE = 'ranking';
@@ -350,6 +352,7 @@ let musicPlaybackBlocked = false;
 let pageAudioListenersBound = false;
 let pageAudioSuspended = false;
 let pageAudioWasPlaying = false;
+let echoDialogAudioContext = null;
 
 loadAudioSettings();
 
@@ -3245,6 +3248,7 @@ function createEchoTutorialOverlay(scene) {
   overlay.text = document.getElementById('echo-dialog-text');
   overlay.progress = document.getElementById('echo-dialog-progress');
   overlay.nextButton = document.getElementById('echo-dialog-next');
+  overlay.skipButton = document.getElementById('echo-dialog-skip');
   overlay.panel = overlay.element ? overlay.element.querySelector('.echo-dialog-panel') : null;
 
   const advance = (event) => {
@@ -3255,11 +3259,15 @@ function createEchoTutorialOverlay(scene) {
     advanceEchoTutorial(scene);
   };
 
-  if (overlay.element) {
-    overlay.element.addEventListener('click', advance);
-  }
   if (overlay.nextButton) {
     overlay.nextButton.addEventListener('click', advance);
+  }
+  if (overlay.skipButton) {
+    overlay.skipButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (state === 'tutorial') finishEchoTutorial(scene);
+    });
   }
 
   return overlay;
@@ -3275,6 +3283,8 @@ function startEchoTutorial(scene) {
   isDraggingShip = false;
   scene.echoTutorialIndex = 0;
   scene.echoTutorialTimer = null;
+  scene.echoTutorialTyping = false;
+  scene.echoTutorialFullLine = '';
   setXyControlVisible(scene, false);
   updateEchoCompanion(scene, 0);
   showOverlayScreen(scene, 'tutorial');
@@ -3287,13 +3297,70 @@ function renderEchoTutorialLine(scene) {
 
   const index = Phaser.Math.Clamp(scene.echoTutorialIndex || 0, 0, ECHO_TUTORIAL_LINES.length - 1);
   const line = ECHO_TUTORIAL_LINES[index];
-  if (overlay.text) overlay.text.textContent = line;
+  clearEchoTutorialTimer(scene);
+  scene.echoTutorialFullLine = line;
+  scene.echoTutorialTyping = true;
+  let characterIndex = 0;
+  scene.echoTutorialCharacters = prepareEchoTutorialText(overlay.text, line);
   if (overlay.progress) overlay.progress.textContent = (index + 1) + '/' + ECHO_TUTORIAL_LINES.length;
   if (overlay.nextButton) overlay.nextButton.textContent = index >= ECHO_TUTORIAL_LINES.length - 1 ? 'CERRAR TRANSMISION' : 'CONTINUAR';
+
+  scene.echoTutorialTimer = scene.time.addEvent({
+    delay: ECHO_DIALOG_CHARACTER_DELAY,
+    loop: true,
+    callback: () => {
+      if (state !== 'tutorial' || characterIndex >= scene.echoTutorialCharacters.length) {
+        completeEchoTutorialLine(scene);
+        return;
+      }
+
+      const characterEntry = scene.echoTutorialCharacters[characterIndex];
+      characterIndex += 1;
+      if (characterEntry.element) characterEntry.element.classList.remove('is-pending');
+      if (/\S/.test(characterEntry.character)) playEchoDialogBeep();
+
+      if (characterIndex >= scene.echoTutorialCharacters.length) completeEchoTutorialLine(scene);
+    },
+  });
+}
+
+function prepareEchoTutorialText(textElement, line) {
+  if (!textElement) return [];
+
+  textElement.replaceChildren();
+  const characters = [];
+  const tokens = line.match(/\s+|\S+/g) || [];
+
+  tokens.forEach((token) => {
+    if (/^\s+$/.test(token)) {
+      textElement.appendChild(document.createTextNode(token));
+      Array.from(token).forEach((character) => {
+        characters.push({ character, element: null });
+      });
+      return;
+    }
+
+    const word = document.createElement('span');
+    word.className = 'echo-dialog-word';
+    Array.from(token).forEach((character) => {
+      const characterElement = document.createElement('span');
+      characterElement.className = 'echo-dialog-character is-pending';
+      characterElement.textContent = character;
+      word.appendChild(characterElement);
+      characters.push({ character, element: characterElement });
+    });
+    textElement.appendChild(word);
+  });
+
+  return characters;
 }
 
 function advanceEchoTutorial(scene) {
   if (!scene || state !== 'tutorial') return;
+  if (scene.echoTutorialTyping) {
+    completeEchoTutorialLine(scene);
+    return;
+  }
   clearEchoTutorialTimer(scene);
 
   scene.echoTutorialIndex = (scene.echoTutorialIndex || 0) + 1;
@@ -3306,8 +3373,21 @@ function advanceEchoTutorial(scene) {
 
 function finishEchoTutorial(scene) {
   clearEchoTutorialTimer(scene);
+  scene.echoTutorialTyping = false;
   showOverlayScreen(scene, null);
   pauseBeforeFirstGameplaySpawn(scene);
+}
+
+function completeEchoTutorialLine(scene) {
+  if (!scene) return;
+  clearEchoTutorialTimer(scene);
+  scene.echoTutorialTyping = false;
+  const overlay = scene.echoTutorialOverlay;
+  if (overlay && overlay.text) {
+    overlay.text.querySelectorAll('.echo-dialog-character.is-pending').forEach((characterElement) => {
+      characterElement.classList.remove('is-pending');
+    });
+  }
 }
 
 function clearEchoTutorialTimer(scene) {
@@ -3315,6 +3395,30 @@ function clearEchoTutorialTimer(scene) {
     scene.echoTutorialTimer.remove(false);
     scene.echoTutorialTimer = null;
   }
+}
+
+function playEchoDialogBeep() {
+  if (!soundEffectsEnabled || soundEffectsVolume <= 0) return;
+
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+  if (!echoDialogAudioContext) echoDialogAudioContext = new AudioContextClass();
+  if (echoDialogAudioContext.state === 'suspended') {
+    echoDialogAudioContext.resume().catch(() => {});
+    return;
+  }
+
+  const now = echoDialogAudioContext.currentTime;
+  const oscillator = echoDialogAudioContext.createOscillator();
+  const gain = echoDialogAudioContext.createGain();
+  oscillator.type = 'square';
+  oscillator.frequency.setValueAtTime(620 + Math.random() * 55, now);
+  gain.gain.setValueAtTime(0.025 * soundEffectsVolume, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + ECHO_DIALOG_BEEP_DURATION);
+  oscillator.connect(gain);
+  gain.connect(echoDialogAudioContext.destination);
+  oscillator.start(now);
+  oscillator.stop(now + ECHO_DIALOG_BEEP_DURATION);
 }
 
 function createOptionsOverlay(scene) {
