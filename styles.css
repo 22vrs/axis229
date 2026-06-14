@@ -680,6 +680,7 @@ a:focus-visible {
   position: relative;
   z-index: 3;
   min-height: 174px;
+  white-space: pre-wrap;
   color: #f5fbff;
   font-family: "Rajdhani", "Trebuchet MS", Arial, sans-serif;
   font-size: 20px;

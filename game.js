@@ -22,7 +22,8 @@ const INTRO_EMPTY_SPACE_DURATION = 550;
 const INTRO_AXIS_ARRIVAL_DURATION = 1450;
 const INTRO_ECHO_ARRIVAL_DURATION = 650;
 const INTRO_ECHO_ORBIT_DURATION = 1900;
-const INTRO_ECHO_ORBIT_TURNS = 2;
+const INTRO_ECHO_ORBIT_TURNS = 1;
+const INTRO_ENERGY_LINK_FADE_DURATION = 260;
 const INTRO_ECHO_HOP_HEIGHT = 13;
 const INTRO_ECHO_HOP_DURATION = 190;
 const INTRO_DIALOG_DELAY = 420;
@@ -238,19 +239,44 @@ const ECHO_LEVEL_ORBIT_RADIUS_Y = 48;
 const ECHO_LEVEL_ORBIT_TRANSITION_RATIO = 0.18;
 const ECHO_LEVEL_UPGRADE_SETTLE_DELAY = 90;
 const ECHO_TUTORIAL_LINES = [
-  "Axis, has sido activado. Soy Echo, tu guía. Hemos sido programados para explorar el universo.",
-  "Durante décadas, una materia desconocida llamada 'La Corrupción' se ha propagado por el espacio. Ha contaminado tanto vida biológica como sistemas robóticos.",
-  "Otras naves robots como nosotros han sido infectadas y se han vuelto hostiles. Debemos tener cuidado.",
-  "Nuestra misión es llegar lo más lejos posible. Los humanos necesitan conocer los límites seguros del espacio. Si tenemos suerte, encontraremos la fuente de la Corrupción.",
-  "Pero debo ser honesto... eres la nave número 229 en intentarlo. Las 228 naves anteriores fracasaron. Mi IA centraliza información de todas esas expediciones fallidas. No tengo muchas esperanzas en que esta vez sea diferente.",
-  "Para sobrevivir, necesitarás recolectar Orbes de Energía. Son esenciales para avanzar. No pierdas ninguno o sufrirás daño.",
-  "Importante: Algunos orbes están contaminados por la Corrupción. Se distinguen por sus volutas verdes y su núcleo oscuro. Evítalos a toda costa. Causan daño grave.",
-  "Adelante, Axis. El universo te espera. Quién sabe, tal vez tú seas diferente.",
+  "Iniciando sistema...",
+  "Despierta, Axis.\n\nSoy Echo, tu unidad de apoyo.",
+  "Nuestra misión es simple: explorar más allá de los límites conocidos del espacio.",
+  "Sin embargo, existe una amenaza.\n\nUna anomalía conocida como 'La Corrupción' se ha extendido por el universo durante décadas, contaminando todo lo que encuentra.",
+  "Las naves afectadas por ella se vuelven inestables y hostiles.\n\nMantén la distancia.",
+  "Para avanzar necesitarás recolectar Orbes de Energía.\n\nSon esenciales para mantener tu integridad operativa.",
+  "Atención: algunos orbes están contaminados. Podrás reconocerlos por su núcleo oscuro y las emisiones verdes que los rodean.\n\nNo los recojas.",
+  "Hay algo más que debes saber.",
+  "Eres la nave número 229 enviada en esta misión.",
+  "Las 228 anteriores no regresaron.",
+  "Mi base de datos contiene los registros de cada fracaso.",
+  "...Las probabilidades de éxito son bajas.",
+  "Pero cada expedición ha llegado un poco más lejos que la anterior.",
+  "Quizá tú también puedas hacerlo.",
+  "Adelante, Axis.\n\n (Mantén pulsado el botón azul para mover la nave)",
 ];
 const ECHO_SWARM_WARNING_LINES = [
-  "Atención Axis. Amenaza detectada.",
-  "Se aproxima un Enjambre. Las obreras son naves de minería corruptas que por sí solas no son muy peligrosas, pero cuando van en grupo la cosa cambia.",
-  "Evítalas a toda costa.",
+  "Atención, Axis. Amenaza detectada.",
+  "Se aproxima un Enjambre.",
+  "Las unidades obreras son antiguas naves mineras corrompidas. Individualmente representan un riesgo bajo.",
+  "En grupo son extremadamente peligrosas.",
+  "Recomendación: evita cualquier contacto.",
+];
+const ECHO_SENTINEL_WARNING_LINES = [
+  "Atención, Axis. Detecto una unidad de clase Centinela.",
+  "Antes de la Corrupción, estas naves servían como plataformas móviles de minería a gran escala.",
+  "Las obreras operaban a su alrededor, extrayendo recursos y regresando periódicamente para descargar material y realizar reparaciones.",
+  "Sus emisores láser estaban diseñados para fracturar asteroides enteros.",
+  "Ahora esos mismos sistemas apuntan a cualquier objetivo cercano.",
+  "Mantente alejado de sus haces. No sobrevivirás a un impacto directo.",
+];
+const ECHO_ASTEROID_BELT_WARNING_LINES = [
+  "Atención, Axis. Entramos en un Cinturón de Asteroides.",
+  "Esta región contiene una concentración inusual de fragmentos rocosos.",
+  "Antes de la Corrupción, las flotas mineras operaban en zonas como esta.",
+  "Ahora solo quedan restos a la deriva.",
+  "Evita las colisiones.",
+  "Sería una forma particularmente decepcionante de terminar la misión.",
 ];
 let streakGradientTextureId = 0;
 let pointPopupTextureId = 0;
@@ -3875,6 +3901,9 @@ function startIntroEchoArrival(scene, sequence) {
 function startIntroEchoOrbit(scene, sequence, startAngle, radiusX, radiusY) {
   if (!isIntroSequenceActive(scene, sequence)) return;
 
+  sequence.energyLink = scene.add.graphics()
+    .setDepth(SHIP_DEPTH + 1)
+    .setBlendMode(Phaser.BlendModes.ADD);
   sequence.orbit.progress = 0;
   sequence.echoOrbitTween = scene.tweens.add({
     targets: sequence.orbit,
@@ -3890,15 +3919,146 @@ function startIntroEchoOrbit(scene, sequence, startAngle, radiusX, radiusY) {
       );
       scene.echoCompanion.setRotation(angle + Math.PI / 2 + Math.PI * 4 * progress);
       updateEchoEyePosition(scene);
+      drawIntroEnergyLink(scene, sequence);
     },
     onComplete: () => illuminateAxisEyeForIntro(scene, sequence),
   });
+}
+
+function drawIntroEnergyLink(scene, sequence) {
+  if (!sequence.energyLink || !scene.ship || !scene.echoCompanion) return;
+
+  const graphics = sequence.energyLink;
+  const angle = Phaser.Math.DegToRad(scene.ship.angle || 0);
+  const eyeOffsetX = SHIP_EYE_LOCAL_X * SHIP_SCALE;
+  const eyeOffsetY = SHIP_EYE_LOCAL_Y * SHIP_SCALE;
+  const targetX = scene.ship.x + Math.cos(angle) * eyeOffsetX - Math.sin(angle) * eyeOffsetY;
+  const targetY = scene.ship.y + Math.sin(angle) * eyeOffsetX + Math.cos(angle) * eyeOffsetY;
+  const sourceX = scene.echoCompanion.x;
+  const sourceY = scene.echoCompanion.y;
+  const progress = sequence.orbit.progress;
+  const charge = Phaser.Math.Easing.Sine.InOut(progress);
+  const pulse = 0.5 + Math.sin(progress * Math.PI * 14) * 0.5;
+  const linkAngle = Phaser.Math.Angle.Between(sourceX, sourceY, targetX, targetY);
+  const perpendicularX = Math.cos(linkAngle + Math.PI / 2);
+  const perpendicularY = Math.sin(linkAngle + Math.PI / 2);
+
+  graphics.clear();
+  graphics.lineStyle(10 + charge * 7 + pulse * 3, 0xffb52e, 0.06 + charge * 0.08);
+  graphics.lineBetween(sourceX, sourceY, targetX, targetY);
+
+  [4, 1.5].forEach((width, layerIndex) => {
+    graphics.lineStyle(
+      width,
+      layerIndex === 0 ? 0xffe16b : 0xffffff,
+      layerIndex === 0 ? 0.48 + charge * 0.22 : 0.82 + pulse * 0.18
+    );
+    graphics.beginPath();
+    graphics.moveTo(sourceX, sourceY);
+    for (let pointIndex = 1; pointIndex <= 12; pointIndex += 1) {
+      const travel = pointIndex / 12;
+      const jitter = Math.sin(progress * 54 + pointIndex * 2.7 + layerIndex) * (2.4 + charge * 2);
+      graphics.lineTo(
+        Phaser.Math.Linear(sourceX, targetX, travel) + perpendicularX * jitter * Math.sin(Math.PI * travel),
+        Phaser.Math.Linear(sourceY, targetY, travel) + perpendicularY * jitter * Math.sin(Math.PI * travel)
+      );
+    }
+    graphics.strokePath();
+  });
+
+  const particleCount = 4 + Math.floor(charge * 4);
+  for (let index = 0; index < particleCount; index += 1) {
+    const travel = (progress * (5 + charge * 3) + index / particleCount) % 1;
+    const x = Phaser.Math.Linear(sourceX, targetX, travel);
+    const y = Phaser.Math.Linear(sourceY, targetY, travel);
+    const sparkSize = 1.4 + travel * 1.8 + pulse * 0.5;
+    graphics.fillStyle(0xffd84d, 0.2 + travel * 0.35);
+    graphics.fillCircle(x, y, sparkSize * 2.4);
+    graphics.fillStyle(0xffffff, 0.75 + travel * 0.25);
+    graphics.fillCircle(x, y, sparkSize);
+  }
+
+  graphics.lineStyle(1.5 + pulse, 0xffe16b, 0.22 + charge * 0.45);
+  graphics.strokeCircle(targetX, targetY, 7 + charge * 17 + pulse * 3);
+  graphics.lineStyle(1, 0xffffff, 0.16 + charge * 0.35);
+  graphics.strokeCircle(targetX, targetY, 13 + charge * 23 - pulse * 3);
+  graphics.fillStyle(0xffd84d, 0.08 + charge * 0.12);
+  graphics.fillCircle(targetX, targetY, 10 + charge * 8);
+
+  graphics.fillStyle(0xffd84d, 0.08 + pulse * 0.06);
+  graphics.fillCircle(sourceX, sourceY, 10 + charge * 5);
+}
+
+function fadeIntroEnergyLink(scene, sequence) {
+  if (!sequence.energyLink) return;
+
+  sequence.energyLinkFadeTween = scene.tweens.add({
+    targets: sequence.energyLink,
+    alpha: 0,
+    duration: INTRO_ENERGY_LINK_FADE_DURATION,
+    ease: 'Sine.easeOut',
+    onComplete: () => clearIntroEnergyLink(sequence),
+  });
+}
+
+function clearIntroEnergyLink(sequence) {
+  if (!sequence || !sequence.energyLink) return;
+  sequence.energyLink.destroy();
+  sequence.energyLink = null;
+}
+
+function triggerIntroAxisActivationBurst(scene, sequence) {
+  if (!isIntroSequenceActive(scene, sequence)) return;
+
+  const angle = Phaser.Math.DegToRad(scene.ship.angle || 0);
+  const eyeOffsetX = SHIP_EYE_LOCAL_X * SHIP_SCALE;
+  const eyeOffsetY = SHIP_EYE_LOCAL_Y * SHIP_SCALE;
+  const x = scene.ship.x + Math.cos(angle) * eyeOffsetX - Math.sin(angle) * eyeOffsetY;
+  const y = scene.ship.y + Math.sin(angle) * eyeOffsetX + Math.cos(angle) * eyeOffsetY;
+
+  sequence.activationBurst = scene.add.graphics()
+    .setPosition(x, y)
+    .setDepth(SHIP_DEPTH + 3)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  sequence.activationBurst.fillStyle(0xffffff, 0.82);
+  sequence.activationBurst.fillCircle(0, 0, 10);
+  sequence.activationBurst.lineStyle(3, 0xffd84d, 0.9);
+  sequence.activationBurst.strokeCircle(0, 0, 15);
+  sequence.activationBurst.lineStyle(1.5, 0xffffff, 0.75);
+  sequence.activationBurst.strokeCircle(0, 0, 23);
+
+  sequence.activationBurstTween = scene.tweens.add({
+    targets: sequence.activationBurst,
+    scaleX: 2.4,
+    scaleY: 2.4,
+    alpha: 0,
+    duration: 480,
+    ease: 'Cubic.easeOut',
+    onComplete: () => {
+      if (sequence.activationBurst) sequence.activationBurst.destroy();
+      sequence.activationBurst = null;
+    },
+  });
+  sequence.shipActivationTween = scene.tweens.add({
+    targets: scene.ship,
+    scaleX: SHIP_SCALE * 1.035,
+    scaleY: SHIP_SCALE * 1.035,
+    duration: 110,
+    yoyo: true,
+    ease: 'Sine.easeOut',
+    onComplete: () => scene.ship.setScale(SHIP_SCALE),
+  });
+  if (scene.cameras && scene.cameras.main) {
+    scene.cameras.main.shake(100, 0.0015);
+  }
 }
 
 function illuminateAxisEyeForIntro(scene, sequence) {
   if (!isIntroSequenceActive(scene, sequence)) return;
 
   setIntroAxisEyeLit(scene);
+  triggerIntroAxisActivationBurst(scene, sequence);
+  fadeIntroEnergyLink(scene, sequence);
 
   sequence.eyeGlowTween = scene.tweens.add({
     targets: scene.shipEyeGlow,
@@ -3929,7 +4089,10 @@ function illuminateAxisEyeForIntro(scene, sequence) {
     rotation: -0.18,
     duration: 520,
     ease: 'Sine.easeInOut',
-    onUpdate: () => updateEchoEyePosition(scene),
+    onUpdate: () => {
+      updateEchoEyePosition(scene);
+      drawIntroEnergyLink(scene, sequence);
+    },
     onComplete: () => startIntroEchoHops(scene, sequence),
   });
 }
@@ -3994,6 +4157,9 @@ function cancelIntroSequence(scene) {
     sequence.axisArrivalTween,
     sequence.echoArrivalTween,
     sequence.echoOrbitTween,
+    sequence.energyLinkFadeTween,
+    sequence.activationBurstTween,
+    sequence.shipActivationTween,
     sequence.eyeGlowTween,
     sequence.eyeCoreTween,
     sequence.echoSettleTween,
@@ -4001,6 +4167,9 @@ function cancelIntroSequence(scene) {
   ].forEach((tween) => {
     if (tween && tween.stop) tween.stop();
   });
+  clearIntroEnergyLink(sequence);
+  if (sequence.activationBurst) sequence.activationBurst.destroy();
+  if (scene.ship) scene.ship.setScale(SHIP_SCALE);
   if (scene.tweens && sequence.orbit) scene.tweens.killTweensOf(sequence.orbit);
   scene.introSequence = null;
 }
@@ -5714,6 +5883,7 @@ function activateAsteroidWave(scene, bossConfig = getBossConfigForLevel(6)) {
     duration: bossConfig.duration || ASTEROID_WAVE_DURATION,
     isSpawningAsteroids: false,
     hasStarted: false,
+    hasShownEchoWarning: false,
     isDraining: false,
     bossName: bossConfig.name || 'Cinturón',
   };
@@ -5832,6 +6002,7 @@ function activateBossWave(scene, bossConfig = getBossConfigForLevel(9)) {
     endsAt: null,
     duration: bossConfig.duration || BOSS_WAVE_DURATION,
     hasStarted: false,
+    hasShownEchoWarning: false,
     attacksDone: 0,
     attacksTotal: bossConfig.attacks || BOSS_WAVE_ATTACKS,
     isRetreating: false,
@@ -6527,6 +6698,25 @@ function startWaveCountdown(scene, waveKind) {
   if (waveKind === 'red' && scene.activeRedWave && !scene.activeRedWave.hasShownEchoWarning) {
     scene.activeRedWave.hasShownEchoWarning = true;
     startEchoDialog(scene, ECHO_SWARM_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (
+    waveKind === 'asteroid' &&
+    scene.activeAsteroidWave &&
+    !scene.activeAsteroidWave.hasShownEchoWarning
+  ) {
+    scene.activeAsteroidWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_ASTEROID_BELT_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (
+    waveKind === 'boss' &&
+    scene.activeBossWave &&
+    scene.activeBossWave.kind === 'boss' &&
+    !scene.activeBossWave.hasShownEchoWarning
+  ) {
+    scene.activeBossWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_SENTINEL_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
     return;
   }
   showBossCueBand(scene, waveKind, 'warning', () => startWaveAfterCue(scene, waveKind));
