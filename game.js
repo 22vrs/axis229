@@ -18,6 +18,14 @@ const PURPLE_BOOSTER_MUSIC_PATH = null;
 const PLAYER_SHIP_IMAGE_PATH = 'assets/images/player-ship.svg';
 const ECHO_DIALOG_CHARACTER_DELAY = 32;
 const ECHO_DIALOG_BEEP_DURATION = 0.018;
+const INTRO_EMPTY_SPACE_DURATION = 550;
+const INTRO_AXIS_ARRIVAL_DURATION = 1450;
+const INTRO_ECHO_ARRIVAL_DURATION = 650;
+const INTRO_ECHO_ORBIT_DURATION = 1900;
+const INTRO_ECHO_ORBIT_TURNS = 2;
+const INTRO_ECHO_HOP_HEIGHT = 13;
+const INTRO_ECHO_HOP_DURATION = 190;
+const INTRO_DIALOG_DELAY = 420;
 const SUPABASE_URL = 'https://fqkpwigonxgnsynfdzyw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Up1cBihd6uOftnMkhj3A3w_ZH1q7YOR';
 const SUPABASE_RANKING_TABLE = 'ranking';
@@ -1885,6 +1893,15 @@ function getGamePointFromClient(scene, clientX, clientY) {
 }
 
 function update(time, delta) {
+  if (state === 'intro') {
+    updateSpaceBackground(this, delta, time);
+    if (this.ship && this.ship.visible) {
+      updateShipPropulsion(this, delta);
+      updateShipEyeGlow(this);
+    }
+    updateEchoEyePosition(this);
+    return;
+  }
   if (state === 'tutorial') {
     updateSpaceBackground(this, delta, time);
     updateShipPropulsion(this, delta);
@@ -3286,6 +3303,7 @@ function startEchoTutorial(scene) {
   scene.echoTutorialTyping = false;
   scene.echoTutorialFullLine = '';
   setXyControlVisible(scene, false);
+  setHudVisible(scene, false);
   updateEchoCompanion(scene, 0);
   showOverlayScreen(scene, 'tutorial');
   renderEchoTutorialLine(scene);
@@ -3375,6 +3393,7 @@ function finishEchoTutorial(scene) {
   clearEchoTutorialTimer(scene);
   scene.echoTutorialTyping = false;
   showOverlayScreen(scene, null);
+  setHudVisible(scene, true);
   pauseBeforeFirstGameplaySpawn(scene);
 }
 
@@ -3636,6 +3655,7 @@ function setUiDepth(scene) {
 // --- Control de estados ---
 
 function showMenu() {
+  cancelIntroSequence(this);
   clearEchoTutorialTimer(this);
   state = 'menu';
   currentGameMode = 'xy';
@@ -3670,6 +3690,7 @@ function showMenu() {
 }
 
 function showRanking() {
+  cancelIntroSequence(this);
   state = 'ranking';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
@@ -3685,9 +3706,11 @@ function showRanking() {
 }
 
 function startGame(options = {}) {
+  cancelIntroSequence(this);
   clearEchoTutorialTimer(this);
   currentGameMode = getValidGameMode(options.mode);
-  state = isInfiniteGameMode() || options.skipEchoTutorial ? 'playing' : 'tutorial';
+  const shouldShowEchoTutorial = !isInfiniteGameMode() && !options.skipEchoTutorial;
+  state = shouldShowEchoTutorial ? 'intro' : 'playing';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
   setPauseSettingsVisible(false);
@@ -3699,7 +3722,7 @@ function startGame(options = {}) {
   this.tweens.resumeAll();
   clearGameplayVisuals(this);
   showOverlayScreen(this, null);
-  setHudVisible(this, true);
+  setHudVisible(this, !shouldShowEchoTutorial);
   resetCounters.call(this);
   if (isInfiniteGameMode()) {
     enableInfiniteModeThreats(this);
@@ -3727,12 +3750,221 @@ function startGame(options = {}) {
     updateXyControlFromShip(this);
   }
 
-  if (state === 'tutorial') {
-    startEchoTutorial(this);
+  if (shouldShowEchoTutorial) {
+    startGameIntro(this);
     return;
   }
 
   beginGameplayAfterEchoTutorial(this);
+}
+
+function startGameIntro(scene) {
+  if (!scene || !scene.ship || !scene.echoCompanion) {
+    startEchoTutorial(scene);
+    return;
+  }
+
+  cancelIntroSequence(scene);
+  state = 'intro';
+  isDraggingShip = false;
+  showOverlayScreen(scene, null);
+  setHudVisible(scene, false);
+  setXyControlVisible(scene, false);
+  clearShipTrail(scene);
+
+  const centerX = getGameWidth(scene) / 2;
+  const shipHomeY = getShipY(scene);
+  const sequence = {
+    orbit: { progress: 0 },
+  };
+  scene.introSequence = sequence;
+
+  scene.ship
+    .setVisible(false)
+    .setPosition(centerX - 34, getGameHeight(scene) + SHIP_HEIGHT)
+    .setAngle(-7);
+  scene.ship.body.reset(scene.ship.x, scene.ship.y);
+  scene.shipEyeGlow.setAlpha(0).setScale(0.72).setVisible(false);
+  scene.shipEyeCore.setAlpha(0).setScale(0.82).setVisible(false);
+  hideEchoCompanion(scene);
+
+  scene.time.delayedCall(INTRO_EMPTY_SPACE_DURATION, () => {
+    if (!isIntroSequenceActive(scene, sequence)) return;
+
+    scene.ship.setVisible(true);
+    sequence.axisArrivalTween = scene.tweens.add({
+      targets: scene.ship,
+      x: centerX,
+      y: shipHomeY,
+      angle: 0,
+      duration: INTRO_AXIS_ARRIVAL_DURATION,
+      ease: 'Sine.easeInOut',
+      onUpdate: () => {
+        scene.ship.body.reset(scene.ship.x, scene.ship.y);
+        updateShipEyeGlow(scene);
+      },
+      onComplete: () => startIntroEchoArrival(scene, sequence),
+    });
+  });
+}
+
+function startIntroEchoArrival(scene, sequence) {
+  if (!isIntroSequenceActive(scene, sequence)) return;
+
+  const orbitRadiusX = ECHO_LEVEL_ORBIT_RADIUS_X + 10;
+  const orbitRadiusY = ECHO_LEVEL_ORBIT_RADIUS_Y + 8;
+  const startAngle = Math.PI / 2;
+  scene.echoCompanion
+    .setVisible(true)
+    .setAlpha(0.9)
+    .setScale(ECHO_SIZE / ECHO_TEXTURE_SIZE)
+    .setPosition(scene.ship.x, getGameHeight(scene) + ECHO_SIZE * 2)
+    .setRotation(0);
+  setEchoEyeVisible(scene, true);
+  updateEchoEyePosition(scene);
+
+  sequence.echoArrivalTween = scene.tweens.add({
+    targets: scene.echoCompanion,
+    x: scene.ship.x + Math.cos(startAngle) * orbitRadiusX,
+    y: scene.ship.y + Math.sin(startAngle) * orbitRadiusY,
+    duration: INTRO_ECHO_ARRIVAL_DURATION,
+    ease: 'Sine.easeOut',
+    onUpdate: () => updateEchoEyePosition(scene),
+    onComplete: () => startIntroEchoOrbit(scene, sequence, startAngle, orbitRadiusX, orbitRadiusY),
+  });
+}
+
+function startIntroEchoOrbit(scene, sequence, startAngle, radiusX, radiusY) {
+  if (!isIntroSequenceActive(scene, sequence)) return;
+
+  sequence.orbit.progress = 0;
+  sequence.echoOrbitTween = scene.tweens.add({
+    targets: sequence.orbit,
+    progress: 1,
+    duration: INTRO_ECHO_ORBIT_DURATION,
+    ease: 'Sine.easeInOut',
+    onUpdate: () => {
+      const progress = sequence.orbit.progress;
+      const angle = startAngle + Math.PI * 2 * INTRO_ECHO_ORBIT_TURNS * progress;
+      scene.echoCompanion.setPosition(
+        scene.ship.x + Math.cos(angle) * radiusX,
+        scene.ship.y + Math.sin(angle) * radiusY
+      );
+      scene.echoCompanion.setRotation(angle + Math.PI / 2 + Math.PI * 4 * progress);
+      updateEchoEyePosition(scene);
+    },
+    onComplete: () => illuminateAxisEyeForIntro(scene, sequence),
+  });
+}
+
+function illuminateAxisEyeForIntro(scene, sequence) {
+  if (!isIntroSequenceActive(scene, sequence)) return;
+
+  setIntroAxisEyeLit(scene);
+
+  sequence.eyeGlowTween = scene.tweens.add({
+    targets: scene.shipEyeGlow,
+    alpha: 0.24,
+    scale: 1.16,
+    duration: 420,
+    yoyo: true,
+    repeat: 1,
+    ease: 'Sine.easeInOut',
+    onUpdate: () => updateShipEyeGlow(scene),
+  });
+  sequence.eyeCoreTween = scene.tweens.add({
+    targets: scene.shipEyeCore,
+    alpha: 0.72,
+    scale: 1.06,
+    duration: 320,
+    yoyo: true,
+    repeat: 1,
+    ease: 'Sine.easeInOut',
+    onUpdate: () => updateShipEyeGlow(scene),
+  });
+
+  const homePosition = getEchoHomePosition(scene);
+  sequence.echoSettleTween = scene.tweens.add({
+    targets: scene.echoCompanion,
+    x: homePosition.x,
+    y: homePosition.y,
+    rotation: -0.18,
+    duration: 520,
+    ease: 'Sine.easeInOut',
+    onUpdate: () => updateEchoEyePosition(scene),
+    onComplete: () => startIntroEchoHops(scene, sequence),
+  });
+}
+
+function startIntroEchoHops(scene, sequence) {
+  if (!isIntroSequenceActive(scene, sequence)) return;
+
+  sequence.echoHopTween = scene.tweens.add({
+    targets: scene.echoCompanion,
+    y: scene.echoCompanion.y - INTRO_ECHO_HOP_HEIGHT,
+    duration: INTRO_ECHO_HOP_DURATION,
+    yoyo: true,
+    repeat: 1,
+    ease: 'Sine.easeOut',
+    onUpdate: () => updateEchoEyePosition(scene),
+    onComplete: () => {
+      if (!isIntroSequenceActive(scene, sequence)) return;
+      scene.time.delayedCall(INTRO_DIALOG_DELAY, () => {
+        if (!isIntroSequenceActive(scene, sequence)) return;
+        clearIntroAxisEyeLight(scene);
+        scene.introSequence = null;
+        resetEchoPersonality(scene);
+        startEchoTutorial(scene);
+      });
+    },
+  });
+}
+
+function setIntroAxisEyeLit(scene) {
+  if (!scene || !scene.shipEyeGlow || !scene.shipEyeCore) return;
+
+  scene.shipEyeGlow
+    .setFillStyle(0xffd84d, 1)
+    .setAlpha(0.42)
+    .setScale(1.08)
+    .setVisible(true);
+  scene.shipEyeCore
+    .setFillStyle(0xffffb8, 1)
+    .setAlpha(0.95)
+    .setScale(1)
+    .setVisible(true);
+  updateShipEyeGlow(scene);
+}
+
+function clearIntroAxisEyeLight(scene) {
+  if (!scene || !scene.shipEyeGlow || !scene.shipEyeCore) return;
+
+  scene.tweens.killTweensOf([scene.shipEyeGlow, scene.shipEyeCore]);
+  scene.shipEyeGlow.setAlpha(0).setScale(1).setVisible(false);
+  scene.shipEyeCore.setAlpha(0).setScale(1).setVisible(false);
+  updateShipEyeGlow(scene);
+}
+
+function isIntroSequenceActive(scene, sequence) {
+  return Boolean(scene && state === 'intro' && scene.introSequence === sequence);
+}
+
+function cancelIntroSequence(scene) {
+  if (!scene || !scene.introSequence) return;
+  const sequence = scene.introSequence;
+  [
+    sequence.axisArrivalTween,
+    sequence.echoArrivalTween,
+    sequence.echoOrbitTween,
+    sequence.eyeGlowTween,
+    sequence.eyeCoreTween,
+    sequence.echoSettleTween,
+    sequence.echoHopTween,
+  ].forEach((tween) => {
+    if (tween && tween.stop) tween.stop();
+  });
+  if (scene.tweens && sequence.orbit) scene.tweens.killTweensOf(sequence.orbit);
+  scene.introSequence = null;
 }
 
 function beginGameplayAfterEchoTutorial(scene) {
@@ -3740,6 +3972,7 @@ function beginGameplayAfterEchoTutorial(scene) {
 
   state = 'playing';
   showOverlayScreen(scene, null);
+  setHudVisible(scene, true);
   setXyControlVisible(scene, true);
   if (isXyGameMode()) {
     resetXyShipControl(scene);
@@ -3767,6 +4000,7 @@ function pauseBeforeFirstGameplaySpawn(scene) {
 
 function endGame() {
   if (state !== 'playing' && state !== 'paused' && state !== 'dying') return; // Evitar llamadas dobles
+  cancelIntroSequence(this);
   clearEchoTutorialTimer(this);
   state = 'gameover';
   isDraggingShip = false;
