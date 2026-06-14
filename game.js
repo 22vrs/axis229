@@ -124,6 +124,7 @@ const SENTINEL_TARGET_Y = 86;
 const BOSS_LASER_WIDTH = 32;
 const BOSS_HORIZONTAL_LASER_HEIGHT = 30;
 const WAVE_CLEAR_DELAY = 2200;
+const ECHO_WAVE_WARNING_RESUME_DELAY = 2000;
 const WAVE_POST_DELAY = 900;
 const BOSS_CUE_BAND_HEIGHT = 76;
 const BOSS_CUE_HOLD_DURATION = 900;
@@ -234,6 +235,7 @@ const ECHO_LEVEL_ORBIT_DURATION = 1450;
 const ECHO_LEVEL_ORBIT_TURNS = 2;
 const ECHO_LEVEL_ORBIT_RADIUS_X = 66;
 const ECHO_LEVEL_ORBIT_RADIUS_Y = 48;
+const ECHO_LEVEL_ORBIT_TRANSITION_RATIO = 0.18;
 const ECHO_LEVEL_UPGRADE_SETTLE_DELAY = 90;
 const ECHO_TUTORIAL_LINES = [
   "Axis, has sido activado. Soy Echo, tu guía. Hemos sido programados para explorar el universo.",
@@ -244,6 +246,11 @@ const ECHO_TUTORIAL_LINES = [
   "Para sobrevivir, necesitarás recolectar Orbes de Energía. Son esenciales para avanzar. No pierdas ninguno o sufrirás daño.",
   "Importante: Algunos orbes están contaminados por la Corrupción. Se distinguen por sus volutas verdes y su núcleo oscuro. Evítalos a toda costa. Causan daño grave.",
   "Adelante, Axis. El universo te espera. Quién sabe, tal vez tú seas diferente.",
+];
+const ECHO_SWARM_WARNING_LINES = [
+  "Atención Axis. Amenaza detectada.",
+  "Se aproxima un Enjambre. Las obreras son naves de minería corruptas que por sí solas no son muy peligrosas, pero cuando van en grupo la cosa cambia.",
+  "Evítalas a toda costa.",
 ];
 let streakGradientTextureId = 0;
 let pointPopupTextureId = 0;
@@ -2242,6 +2249,8 @@ function startEchoLevelCelebration(scene) {
   scene.echoLevelCelebration = {
     start: now,
     startAngle: angleFromShip,
+    startOffsetX: scene.echoCompanion.x - scene.ship.x,
+    startOffsetY: scene.echoCompanion.y - scene.ship.y,
     direction: Math.random() < 0.5 ? -1 : 1,
   };
 }
@@ -2257,11 +2266,29 @@ function updateEchoLevelCelebration(scene, now) {
   const pulse = Math.sin(progress * Math.PI);
   const radiusX = ECHO_LEVEL_ORBIT_RADIUS_X + pulse * 8;
   const radiusY = ECHO_LEVEL_ORBIT_RADIUS_Y + pulse * 6;
-  const x = scene.ship.x + Math.cos(orbitAngle) * radiusX;
-  const y = scene.ship.y + Math.sin(orbitAngle) * radiusY;
+  const orbitOffsetX = Math.cos(orbitAngle) * radiusX;
+  const orbitOffsetY = Math.sin(orbitAngle) * radiusY;
+  const entryProgress = easeInOutSine(Phaser.Math.Clamp(
+    progress / ECHO_LEVEL_ORBIT_TRANSITION_RATIO,
+    0,
+    1
+  ));
+  const exitProgress = easeInOutSine(Phaser.Math.Clamp(
+    (progress - (1 - ECHO_LEVEL_ORBIT_TRANSITION_RATIO)) / ECHO_LEVEL_ORBIT_TRANSITION_RATIO,
+    0,
+    1
+  ));
+  const homePosition = getEchoHomePosition(scene);
+  const orbitX = scene.ship.x + Phaser.Math.Linear(celebration.startOffsetX, orbitOffsetX, entryProgress);
+  const orbitY = scene.ship.y + Phaser.Math.Linear(celebration.startOffsetY, orbitOffsetY, entryProgress);
+  const x = Phaser.Math.Linear(orbitX, homePosition.x, exitProgress);
+  const y = Phaser.Math.Linear(orbitY, homePosition.y, exitProgress);
+  const orbitRotation = orbitAngle + Math.PI / 2 + celebration.direction * Math.PI * 2 * easedProgress;
+  const homeRotation = -0.18 + Math.sin(now * 0.0021) * 0.08;
+  const rotationDelta = Phaser.Math.Angle.Wrap(homeRotation - orbitRotation);
 
   scene.echoCompanion.setPosition(x, y);
-  scene.echoCompanion.setRotation(orbitAngle + Math.PI / 2 + celebration.direction * Math.PI * 2 * easedProgress);
+  scene.echoCompanion.setRotation(orbitRotation + rotationDelta * exitProgress);
 
   if (progress >= 1) {
     scene.echoLevelCelebration = null;
@@ -3291,13 +3318,19 @@ function createEchoTutorialOverlay(scene) {
 }
 
 function startEchoTutorial(scene) {
+  startEchoDialog(scene, ECHO_TUTORIAL_LINES, () => pauseBeforeFirstGameplaySpawn(scene));
+}
+
+function startEchoDialog(scene, lines, onComplete) {
   if (!scene || !scene.echoTutorialOverlay) {
-    beginGameplayAfterEchoTutorial(scene);
+    if (onComplete) onComplete();
     return;
   }
 
   state = 'tutorial';
   isDraggingShip = false;
+  scene.echoTutorialLines = lines;
+  scene.echoTutorialOnComplete = onComplete;
   scene.echoTutorialIndex = 0;
   scene.echoTutorialTimer = null;
   scene.echoTutorialTyping = false;
@@ -3313,15 +3346,16 @@ function renderEchoTutorialLine(scene) {
   const overlay = scene && scene.echoTutorialOverlay;
   if (!overlay) return;
 
-  const index = Phaser.Math.Clamp(scene.echoTutorialIndex || 0, 0, ECHO_TUTORIAL_LINES.length - 1);
-  const line = ECHO_TUTORIAL_LINES[index];
+  const lines = scene.echoTutorialLines || ECHO_TUTORIAL_LINES;
+  const index = Phaser.Math.Clamp(scene.echoTutorialIndex || 0, 0, lines.length - 1);
+  const line = lines[index];
   clearEchoTutorialTimer(scene);
   scene.echoTutorialFullLine = line;
   scene.echoTutorialTyping = true;
   let characterIndex = 0;
   scene.echoTutorialCharacters = prepareEchoTutorialText(overlay.text, line);
-  if (overlay.progress) overlay.progress.textContent = (index + 1) + '/' + ECHO_TUTORIAL_LINES.length;
-  if (overlay.nextButton) overlay.nextButton.textContent = index >= ECHO_TUTORIAL_LINES.length - 1 ? 'CERRAR TRANSMISION' : 'CONTINUAR';
+  if (overlay.progress) overlay.progress.textContent = (index + 1) + '/' + lines.length;
+  if (overlay.nextButton) overlay.nextButton.textContent = index >= lines.length - 1 ? 'CERRAR TRANSMISION' : 'CONTINUAR';
 
   scene.echoTutorialTimer = scene.time.addEvent({
     delay: ECHO_DIALOG_CHARACTER_DELAY,
@@ -3382,7 +3416,8 @@ function advanceEchoTutorial(scene) {
   clearEchoTutorialTimer(scene);
 
   scene.echoTutorialIndex = (scene.echoTutorialIndex || 0) + 1;
-  if (scene.echoTutorialIndex >= ECHO_TUTORIAL_LINES.length) {
+  const lines = scene.echoTutorialLines || ECHO_TUTORIAL_LINES;
+  if (scene.echoTutorialIndex >= lines.length) {
     finishEchoTutorial(scene);
     return;
   }
@@ -3392,9 +3427,12 @@ function advanceEchoTutorial(scene) {
 function finishEchoTutorial(scene) {
   clearEchoTutorialTimer(scene);
   scene.echoTutorialTyping = false;
+  const onComplete = scene.echoTutorialOnComplete;
+  scene.echoTutorialLines = null;
+  scene.echoTutorialOnComplete = null;
   showOverlayScreen(scene, null);
   setHudVisible(scene, true);
-  pauseBeforeFirstGameplaySpawn(scene);
+  if (onComplete) onComplete();
 }
 
 function completeEchoTutorialLine(scene) {
@@ -4646,6 +4684,15 @@ function resumeGame() {
   resumeTimedGameplay(this);
   releasePendingStreakRepairKit(this);
 
+  if (this.pendingEchoWaveWarningKind) {
+    const waveKind = this.pendingEchoWaveWarningKind;
+    this.pendingEchoWaveWarningKind = null;
+    this.waveStartEvent = this.time.addEvent({
+      delay: ECHO_WAVE_WARNING_RESUME_DELAY,
+      callback: () => startWaveCountdown(this, waveKind),
+    });
+  }
+
   resumeGameplaySpawning(this, this.resumeSpawnDelay || null);
   this.resumeSpawnDelay = null;
 }
@@ -5572,6 +5619,7 @@ function activateRedWave(scene, bossConfig = getBossConfigForLevel(3)) {
     duration: bossConfig.duration || RED_WAVE_DURATION,
     isSpawningDamageBoosters: false,
     hasStarted: false,
+    hasShownEchoWarning: false,
     isDraining: false,
     bossName: bossConfig.name || 'Enjambre',
   };
@@ -6476,7 +6524,26 @@ function startWaveCountdown(scene, waveKind) {
   }
 
   scene.waveStartEvent = null;
+  if (waveKind === 'red' && scene.activeRedWave && !scene.activeRedWave.hasShownEchoWarning) {
+    scene.activeRedWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_SWARM_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
   showBossCueBand(scene, waveKind, 'warning', () => startWaveAfterCue(scene, waveKind));
+}
+
+function pauseBeforeEchoWaveWarning(scene, waveKind) {
+  if (!scene) return;
+
+  state = 'paused';
+  isDraggingShip = false;
+  scene.pendingEchoWaveWarningKind = waveKind;
+  scene.resumeSpawnDelay = null;
+  setPauseOverlayMode(scene, 'normal');
+  setXyControlActive(scene, false);
+  prepareControlPauseResume(scene);
+  showOverlayScreen(scene, null);
+  setPauseSettingsVisible(true);
 }
 
 function startWaveAfterCue(scene, waveKind) {
