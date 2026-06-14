@@ -2262,6 +2262,7 @@ function triggerEchoLevelCelebration(scene) {
 
 function startEchoLevelCelebration(scene) {
   if (!scene || !scene.echoCompanion || !scene.ship) return;
+  clearEchoLevelEnergyEffect(scene);
   const now = scene.time ? scene.time.now : 0;
   const angleFromShip = Phaser.Math.Angle.Between(
     scene.ship.x,
@@ -2278,6 +2279,10 @@ function startEchoLevelCelebration(scene) {
     startOffsetX: scene.echoCompanion.x - scene.ship.x,
     startOffsetY: scene.echoCompanion.y - scene.ship.y,
     direction: Math.random() < 0.5 ? -1 : 1,
+    energyLink: scene.add.graphics()
+      .setDepth(SHIP_DEPTH + 1)
+      .setBlendMode(Phaser.BlendModes.ADD),
+    activationTriggered: false,
   };
 }
 
@@ -2315,8 +2320,17 @@ function updateEchoLevelCelebration(scene, now) {
 
   scene.echoCompanion.setPosition(x, y);
   scene.echoCompanion.setRotation(orbitRotation + rotationDelta * exitProgress);
+  celebration.energyLink.setAlpha(Math.min(entryProgress * 2, 1) * (1 - exitProgress));
+  drawEchoEnergyLink(scene, celebration.energyLink, easedProgress);
+
+  if (!celebration.activationTriggered && progress >= 0.66) {
+    celebration.activationTriggered = true;
+    flashShipEye(scene);
+    triggerAxisActivationBurst(scene, celebration);
+  }
 
   if (progress >= 1) {
+    clearEchoLevelEnergyEffect(scene);
     scene.echoLevelCelebration = null;
     scheduleNextEchoIdleSpin(scene, now + 900);
   }
@@ -2339,10 +2353,27 @@ function getEchoLevelUpgradeDelay(scene) {
 
 function resetEchoPersonality(scene) {
   if (!scene) return;
+  clearEchoLevelEnergyEffect(scene);
   scene.echoIdleSpin = null;
   scene.echoLevelCelebration = null;
   scene.pendingEchoLevelCelebration = false;
   scheduleNextEchoIdleSpin(scene);
+}
+
+function clearEchoLevelEnergyEffect(scene) {
+  if (!scene || !scene.echoLevelCelebration) return;
+  const celebration = scene.echoLevelCelebration;
+  if (celebration.activationBurstTween && celebration.activationBurstTween.stop) {
+    celebration.activationBurstTween.stop();
+  }
+  if (celebration.shipActivationTween && celebration.shipActivationTween.stop) {
+    celebration.shipActivationTween.stop();
+  }
+  if (celebration.energyLink) celebration.energyLink.destroy();
+  if (celebration.activationBurst) celebration.activationBurst.destroy();
+  celebration.energyLink = null;
+  celebration.activationBurst = null;
+  if (scene.ship) scene.ship.setScale(SHIP_SCALE);
 }
 
 function scheduleNextEchoIdleSpin(scene, fromTime = null) {
@@ -2465,6 +2496,7 @@ function setEchoEyeVisible(scene, visible) {
 }
 
 function hideEchoCompanion(scene) {
+  clearEchoLevelEnergyEffect(scene);
   if (scene.echoCompanion) scene.echoCompanion.setVisible(false);
   setEchoEyeVisible(scene, false);
 }
@@ -3927,8 +3959,11 @@ function startIntroEchoOrbit(scene, sequence, startAngle, radiusX, radiusY) {
 
 function drawIntroEnergyLink(scene, sequence) {
   if (!sequence.energyLink || !scene.ship || !scene.echoCompanion) return;
+  drawEchoEnergyLink(scene, sequence.energyLink, sequence.orbit.progress);
+}
 
-  const graphics = sequence.energyLink;
+function drawEchoEnergyLink(scene, graphics, progress) {
+  if (!graphics || !scene.ship || !scene.echoCompanion) return;
   const angle = Phaser.Math.DegToRad(scene.ship.angle || 0);
   const eyeOffsetX = SHIP_EYE_LOCAL_X * SHIP_SCALE;
   const eyeOffsetY = SHIP_EYE_LOCAL_Y * SHIP_SCALE;
@@ -3936,7 +3971,6 @@ function drawIntroEnergyLink(scene, sequence) {
   const targetY = scene.ship.y + Math.sin(angle) * eyeOffsetX + Math.cos(angle) * eyeOffsetY;
   const sourceX = scene.echoCompanion.x;
   const sourceY = scene.echoCompanion.y;
-  const progress = sequence.orbit.progress;
   const charge = Phaser.Math.Easing.Sine.InOut(progress);
   const pulse = 0.5 + Math.sin(progress * Math.PI * 14) * 0.5;
   const linkAngle = Phaser.Math.Angle.Between(sourceX, sourceY, targetX, targetY);
@@ -4007,8 +4041,8 @@ function clearIntroEnergyLink(sequence) {
   sequence.energyLink = null;
 }
 
-function triggerIntroAxisActivationBurst(scene, sequence) {
-  if (!isIntroSequenceActive(scene, sequence)) return;
+function triggerAxisActivationBurst(scene, sequence) {
+  if (!scene || !sequence || !scene.ship) return;
 
   const angle = Phaser.Math.DegToRad(scene.ship.angle || 0);
   const eyeOffsetX = SHIP_EYE_LOCAL_X * SHIP_SCALE;
@@ -4057,7 +4091,7 @@ function illuminateAxisEyeForIntro(scene, sequence) {
   if (!isIntroSequenceActive(scene, sequence)) return;
 
   setIntroAxisEyeLit(scene);
-  triggerIntroAxisActivationBurst(scene, sequence);
+  triggerAxisActivationBurst(scene, sequence);
   fadeIntroEnergyLink(scene, sequence);
 
   sequence.eyeGlowTween = scene.tweens.add({
