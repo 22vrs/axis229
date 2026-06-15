@@ -57,7 +57,7 @@ Claves usadas en `localStorage`:
 
 En modo infinito, el primer jefe es `Replicadores`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
 
-En Solo Jefes, `Lluvia de estrellas` es el primer jefe. Despues continua la rotacion de historia desde `Enjambre` y, tras `Tormenta Cristalizada`, la sucesion vuelve a empezar.
+En Solo Jefes, `Tormenta Cristalizada` es el primer jefe. Despues continua la rotacion con `Lluvia de estrellas`, seguida de la historia desde `Enjambre`; tras `Agujas Rojas`, la sucesion vuelve a empezar.
 La partida comienza pausada sobre el control azul; el primer dialogo de jefe solo se activa despues de pulsarlo.
 
 ## Progresion
@@ -103,7 +103,7 @@ Como funciona:
 | Energia morada | Durante el Catalizador de energia. | Usa el multiplicador de puntos activo. |
 | Energia rosa | Durante Sincronia, si tienes Resonancia energetica. | Usa el multiplicador mejorado de Sincronia. |
 | Contaminado | `20%` de los orbes normales si no tienes Purificador. | Hace dano y rompe la racha. |
-| Cristalizado | `5%` durante el viaje normal. | Se recoge por la cara superior; la costra inferior hace dano. Si cae fuera de pantalla, se pierde una vida. |
+| Cristalizado | `5%` durante el viaje normal tras superar Tormenta Cristalizada. | Se recoge por la cara superior; la costra inferior hace dano. Si cae fuera de pantalla, se pierde una vida. |
 
 El Purificador de energia elimina los orbes contaminados de la rotacion normal, pero no afecta a los cristalizados.
 
@@ -112,7 +112,7 @@ El Purificador de energia elimina los orbes contaminados de la rotacion normal, 
 | Mejora | Niveles | Requisito | Efecto |
 | --- | ---: | --- | --- |
 | Kit de reparacion | `5` | Ninguno | Desbloquea kits verdes. Cada kit cura `1` vida y su probabilidad aumenta `2` puntos porcentuales por nivel. |
-| Barrera protectora | `5` | Ninguno | Desbloquea escudos azules temporales. Bloquea amenazas y suma puntos al destruirlas por contacto. Su probabilidad aumenta `2` puntos porcentuales por nivel. |
+| Barrera protectora | `5` | Ninguno | Desbloquea escudos azules temporales. Bloquea amenazas y suma puntos al destruirlas por contacto. Su probabilidad aumenta `2` puntos porcentuales por nivel. Al nivel maximo, cada nivel superado añade `+1` a cualquier recompensa por derrotar enemigos. |
 | Catalizador de energia | `5` | Ninguno | Desbloquea boosters morados temporales. Duplica los puntos obtenidos por orbes mientras esta activo. Su probabilidad aumenta `2` puntos porcentuales por nivel. |
 | Refinador de energia | `5` | Ninguno | Aumenta el valor de cada orbe. Al nivel maximo suma `+1` extra por cada nivel superado. |
 | Resonancia energetica | `1` | Catalizador de energia nivel `5` | Tras recoger `3` orbes con el catalizador, activa Sincronia y sube el multiplicador a `3x`. |
@@ -131,7 +131,7 @@ Echo es el acompanante de la nave. Esta presente desde el inicio como apoyo visu
 - Detecta amenazas a `128 px` de la nave.
 - Puede atacar obreras, drones de pinchos, cometas y asteroides.
 - Cada amenaza valida tira una vez una probabilidad del `30%`.
-- Al bloquear una amenaza concede `10` puntos, igual que la barrera protectora.
+- Al bloquear una amenaza concede `10` puntos, igual que la barrera protectora, mas el bono de derrotas desbloqueado por esta al nivel `5`.
 - Tambien celebra las recompensas de racha antes de abrir la pantalla de mejora si corresponde.
 
 ## Boosters
@@ -160,7 +160,7 @@ Hay un jefe cada 3 niveles en modo normal. Despues del nivel 27, la rotacion se 
 | 18 | Drones | Drones de pinchos cada `680 ms`. | Drones en viaje normal. |
 | 21 | Aguja Roja | `6` pasadas horizontales con disparos laser. | Aguja Roja en viaje normal. |
 | 24 | Lluvia de estrellas | Parejas simetricas cuyas entradas se abren desde el centro hasta los limites laterales antes de cruzarse cada `900 ms`. | Cometas en viaje normal. |
-| 27 | Tormenta Cristalizada | Sucesion de orbes cristalizados cada `600 ms`: se recogen por arriba y causan dano por la costra inferior. | Ninguno; los orbes cristalizados aparecen durante el viaje desde el inicio. |
+| 27 | Tormenta Cristalizada | Sucesion de orbes cristalizados cada `600 ms`: se recogen por arriba y causan dano por la costra inferior. | Desbloquea los orbes cristalizados durante el viaje normal. |
 
 El patron de `Lluvia de estrellas` es identico en Normal, Infinito y Solo Jefes: mismas parejas, posiciones, velocidades e intervalo de aparicion.
 
@@ -192,7 +192,7 @@ Las probabilidades son por intento de aparicion. Algunas solo se desbloquean tra
 | Barra de plasma | `5%` | Tras vencer a Marea de Plasma. | No aparece durante jefes de nivel. |
 | Centinela viajero | `2%` | Tras vencer a Centinela. | Cooldown de `26000 ms`; no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. Mientras ataca no aparecen Replicadores ni boosters morados. |
 | Replicador | `10%` | Tras vencer a Replicadores. | Copia invertida de Axis con estela corta y glitch RGB; imita el eje horizontal con `70-120 ms` de retraso y cae al `56%` de la velocidad actual. No aparece mientras hay un Centinela activo. |
-| Orbe cristalizado | `5%` | Desde el inicio. | La cara superior limpia se puede recoger. La costra inferior causa dano. Si se pierde, también se pierde una vida porque su energía sigue siendo válida. |
+| Orbe cristalizado | `5%` | Tras superar Tormenta Cristalizada. | La cara superior limpia se puede recoger. La costra inferior causa dano. Si se pierde, también se pierde una vida porque su energía sigue siendo válida. |
 
 Orden de decision en viaje normal:
 
