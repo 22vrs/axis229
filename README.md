@@ -54,7 +54,7 @@ Claves usadas en `localStorage`:
 | Normal | `JUGAR` | Partida con progresion, mejoras, jefes cada 3 niveles y ranking. | Si |
 | Infinito | `MODO INFINITO` | Partida libre con amenazas desbloqueadas y jefes aleatorios. | No |
 
-En modo infinito, el primer jefe es `Centinela`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
+En modo infinito, el primer jefe es `Replicadores`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
 
 ## Progresion
 
@@ -117,6 +117,8 @@ El Purificador de energia elimina los orbes contaminados de la rotacion normal.
 
 Los boosters temporales duran `10 s`.
 
+Si queda un jefe pendiente mientras hay un booster temporal activo, los elementos normales siguen apareciendo hasta que termina el efecto. Entonces se vacia la pantalla y comienza el jefe.
+
 ## Echo
 
 Echo es el acompanante de la nave. Esta presente desde el inicio como apoyo visual y gana utilidad jugable con la mejora `Ayuda de Echo`.
@@ -141,7 +143,7 @@ Si los tres boosters pueden aparecer, la probabilidad total por intento va de `6
 
 ## Jefes
 
-Hay un jefe cada 3 niveles en modo normal. Despues del nivel 21, la rotacion se repite cada 21 niveles.
+Hay un jefe cada 3 niveles en modo normal. Despues del nivel 24, la rotacion se repite cada 24 niveles.
 
 | Nivel | Jefe | Patron principal | Desbloquea despues |
 | ---: | --- | --- | --- |
@@ -149,9 +151,10 @@ Hay un jefe cada 3 niveles en modo normal. Despues del nivel 21, la rotacion se 
 | 6 | Centinela | Laser vertical con aviso y laser horizontal encadenado. | Centinela viajero. |
 | 9 | Cinturon | Asteroides normales y grandes cada `760 ms`. | Asteroides en viaje normal. |
 | 12 | Marea de Plasma | Barras horizontales con hueco movil cada `2100 ms`. | Barras de plasma en viaje normal. |
-| 15 | Drones | Drones de pinchos cada `680 ms`. | Drones en viaje normal. |
-| 18 | Aguja Roja | `6` pasadas horizontales con disparos laser. | Aguja Roja en viaje normal. |
-| 21 | Lluvia de estrellas | Cometas diagonales cada `520 ms`. | Cometas en viaje normal. |
+| 15 | Replicadores | Formación serpenteante cada `900 ms`: cada copia recorre la trayectoria anterior y vuelve a seguir horizontalmente a Axis si pierde su eslabón. | Replicadores en viaje normal. |
+| 18 | Drones | Drones de pinchos cada `680 ms`. | Drones en viaje normal. |
+| 21 | Aguja Roja | `6` pasadas horizontales con disparos laser. | Aguja Roja en viaje normal. |
+| 24 | Lluvia de estrellas | Cometas diagonales cada `520 ms`. | Cometas en viaje normal. |
 
 Duraciones principales:
 
@@ -162,6 +165,7 @@ Duraciones principales:
 | Marea de Plasma | `15000 ms` |
 | Drones | `15000 ms` |
 | Lluvia de estrellas | `15000 ms` |
+| Replicadores | `15000 ms` |
 | Centinela / Aguja Roja | `30000 ms` |
 
 ## Amenazas de viaje
@@ -177,12 +181,13 @@ Las probabilidades son por intento de aparicion. Algunas solo se desbloquean tra
 | Asteroide | `15%` | Tras vencer a Cinturon. | Puede aparecer como normal o grande. |
 | Asteroide grande | `24%` de los asteroides de viaje | Si aparece asteroide. | Aproximadamente `3.6%` por intento total. |
 | Barra de plasma | `5%` | Tras vencer a Marea de Plasma. | No aparece durante jefes de nivel. |
-| Centinela viajero | `2%` | Tras vencer a Centinela. | Cooldown de `26000 ms`; no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. |
+| Centinela viajero | `2%` | Tras vencer a Centinela. | Cooldown de `26000 ms`; no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. Mientras ataca no aparecen Replicadores ni boosters morados. |
+| Replicador | `10%` | Tras vencer a Replicadores. | Copia invertida de Axis con estela corta y glitch RGB; imita el eje horizontal con `70-120 ms` de retraso y cae al `56%` de la velocidad actual. No aparece mientras hay un Centinela activo. |
 
 Orden de decision en viaje normal:
 
 1. Centinela viajero, si cumple condiciones.
-2. Amenaza viajera: Aguja Roja, drone de pinchos u obrera.
+2. Amenaza viajera: Replicador, Aguja Roja, drone de pinchos u obrera.
 3. Barra de plasma.
 4. Cometa.
 5. Asteroide.
