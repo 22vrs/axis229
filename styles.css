@@ -367,6 +367,22 @@ a:focus-visible {
   display: none;
 }
 
+.hud.is-boss-only .hud-streak {
+  display: none;
+}
+
+.hud.is-boss-only .hud-main-row {
+  align-items: flex-start;
+}
+
+.hud.is-boss-only .hud-score {
+  min-width: 0;
+}
+
+.hud.is-boss-only .hud-score .hud-value {
+  font-size: 14px;
+}
+
 .hud-upgrade-pair {
   position: relative;
   z-index: 1;

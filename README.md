@@ -33,7 +33,7 @@ Tambien puedes abrir `index.html` directamente en el navegador. Para jugar con r
 
 - Arrastra la nave para moverla libremente en X-Y dentro de la pantalla.
 - Recoge orbes amarillos para sumar puntos y llenar la barra de progreso.
-- Evita enemigos, asteroides, lasers, cometas, drones, barras de plasma y orbes contaminados.
+- Evita enemigos, asteroides, lasers, cometas, drones, barras de plasma, orbes contaminados y la costra inferior de los orbes cristalizados.
 - Usa el boton de pausa del HUD para volver, rendirte o abrir opciones.
 - En opciones puedes activar/desactivar efectos y musica y ajustar sus volumenes por separado.
 - Las preferencias de audio se guardan en `localStorage`.
@@ -57,7 +57,7 @@ Claves usadas en `localStorage`:
 
 En modo infinito, el primer jefe es `Replicadores`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
 
-En Solo Jefes, `Lluvia de estrellas` es el primer jefe. Despues continua la rotacion de historia desde `Enjambre` y, tras `Aguja Roja`, la sucesion vuelve a empezar.
+En Solo Jefes, `Lluvia de estrellas` es el primer jefe. Despues continua la rotacion de historia desde `Enjambre` y, tras `Tormenta Cristalizada`, la sucesion vuelve a empezar.
 La partida comienza pausada sobre el control azul; el primer dialogo de jefe solo se activa despues de pulsarlo.
 
 ## Progresion
@@ -103,8 +103,9 @@ Como funciona:
 | Energia morada | Durante el Catalizador de energia. | Usa el multiplicador de puntos activo. |
 | Energia rosa | Durante Sincronia, si tienes Resonancia energetica. | Usa el multiplicador mejorado de Sincronia. |
 | Contaminado | `20%` de los orbes normales si no tienes Purificador. | Hace dano y rompe la racha. |
+| Cristalizado | `5%` durante el viaje normal. | Se recoge por la cara superior; la costra inferior hace dano. Si cae fuera de pantalla, se pierde una vida. |
 
-El Purificador de energia elimina los orbes contaminados de la rotacion normal.
+El Purificador de energia elimina los orbes contaminados de la rotacion normal, pero no afecta a los cristalizados.
 
 ## Mejoras
 
@@ -147,7 +148,7 @@ Si los tres boosters pueden aparecer, la probabilidad total por intento va de `6
 
 ## Jefes
 
-Hay un jefe cada 3 niveles en modo normal. Despues del nivel 24, la rotacion se repite cada 24 niveles.
+Hay un jefe cada 3 niveles en modo normal. Despues del nivel 27, la rotacion se repite cada 27 niveles.
 
 | Nivel | Jefe | Patron principal | Desbloquea despues |
 | ---: | --- | --- | --- |
@@ -159,6 +160,7 @@ Hay un jefe cada 3 niveles en modo normal. Despues del nivel 24, la rotacion se 
 | 18 | Drones | Drones de pinchos cada `680 ms`. | Drones en viaje normal. |
 | 21 | Aguja Roja | `6` pasadas horizontales con disparos laser. | Aguja Roja en viaje normal. |
 | 24 | Lluvia de estrellas | Parejas simetricas cuyas entradas se abren desde el centro hasta los limites laterales antes de cruzarse cada `900 ms`. | Cometas en viaje normal. |
+| 27 | Tormenta Cristalizada | Sucesion de orbes cristalizados cada `600 ms`: se recogen por arriba y causan dano por la costra inferior. | Ninguno; los orbes cristalizados aparecen durante el viaje desde el inicio. |
 
 El patron de `Lluvia de estrellas` es identico en Normal, Infinito y Solo Jefes: mismas parejas, posiciones, velocidades e intervalo de aparicion.
 
@@ -172,6 +174,7 @@ Duraciones principales:
 | Drones | `15000 ms` |
 | Lluvia de estrellas | `15000 ms` |
 | Replicadores | `15000 ms` |
+| Tormenta Cristalizada | `15000 ms` |
 | Centinela / Aguja Roja | `30000 ms` |
 
 ## Amenazas de viaje
@@ -189,6 +192,7 @@ Las probabilidades son por intento de aparicion. Algunas solo se desbloquean tra
 | Barra de plasma | `5%` | Tras vencer a Marea de Plasma. | No aparece durante jefes de nivel. |
 | Centinela viajero | `2%` | Tras vencer a Centinela. | Cooldown de `26000 ms`; no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. Mientras ataca no aparecen Replicadores ni boosters morados. |
 | Replicador | `10%` | Tras vencer a Replicadores. | Copia invertida de Axis con estela corta y glitch RGB; imita el eje horizontal con `70-120 ms` de retraso y cae al `56%` de la velocidad actual. No aparece mientras hay un Centinela activo. |
+| Orbe cristalizado | `5%` | Desde el inicio. | La cara superior limpia se puede recoger. La costra inferior causa dano. Si se pierde, también se pierde una vida porque su energía sigue siendo válida. |
 
 Orden de decision en viaje normal:
 
@@ -198,7 +202,8 @@ Orden de decision en viaje normal:
 4. Cometa.
 5. Asteroide.
 6. Booster.
-7. Orbe normal u orbe contaminado, si nada anterior aparece.
+7. Orbe cristalizado con una probabilidad del `5%`.
+8. Orbe normal u orbe contaminado, si nada anterior aparece.
 
 Esto hace que varias probabilidades sean condicionales: se comprueban solo si las decisiones anteriores no generaron nada.
 

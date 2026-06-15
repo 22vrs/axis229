@@ -75,6 +75,10 @@ const REPLICATOR_HITBOX_WIDTH = 96;
 const REPLICATOR_HITBOX_HEIGHT = 28;
 const DRONE_WAVE_DURATION = 15000;
 const DRONE_WAVE_SPAWN_DELAY = 680;
+const CRYSTALLIZED_WAVE_DURATION = 15000;
+const CRYSTALLIZED_WAVE_SPAWN_DELAY = 600;
+const CRYSTALLIZED_ORB_CHANCE = 0.05;
+const CRYSTALLIZED_ORB_SAFE_SIDE_MARGIN = 2;
 const ASTEROID_WAVE_DURATION = 15000;
 const ASTEROID_WAVE_SPAWN_DELAY = 760;
 const TRAVEL_ASTEROID_CHANCE = 0.10;
@@ -299,6 +303,13 @@ const ECHO_DRONE_WARNING_LINES = [
   "Cuando cambien a rojo, desplegarán cuchillas energéticas de medio alcance.",
   "Evita el contacto hasta que vuelvan a estabilizarse.",
 ];
+const ECHO_CRYSTALLIZED_WAVE_WARNING_LINES = [
+  "Atención, Axis. Detecto una Tormenta Cristalizada.",
+  "Los orbes conservan su energía, pero han acumulado hielo y residuos minerales en su cara inferior.",
+  "La parte superior permanece estable y puede recogerse con seguridad.",
+  "No permitas que la costra inferior impacte contra la nave.",
+  "Y no dejes escapar los orbes. Su energía sigue siendo esencial.",
+];
 const ECHO_SENTINEL_WARNING_LINES = [
   "Atención, Axis. Detecto una unidad de clase Centinela.",
   "Antes de la Corrupción, estas naves servían como plataformas móviles de minería a gran escala.",
@@ -353,8 +364,8 @@ const ASTEROID_WAVE_GRAVITY_RATIO = 0.82;
 const ASTEROID_WAVE_HORIZONTAL_SPEED_RATIO = 0.58;
 const ASTEROID_WRAP_MARGIN = 28;
 const UPGRADE_POINTS_REQUIRED = 10;
-const STORY_BOSS_KINDS = ['red', 'boss', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss', 'comet'];
-const BOSS_ONLY_BOSS_KINDS = ['comet', 'red', 'boss', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss'];
+const STORY_BOSS_KINDS = ['red', 'boss', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss', 'comet', 'crystallized'];
+const BOSS_ONLY_BOSS_KINDS = ['comet', 'red', 'boss', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss', 'crystallized'];
 const SHIELD_BLOCK_SCORE = 10;
 const SPIKE_DRONE_DISABLE_SCORE = 5;
 const INITIAL_HEART_CAPACITY = 3;
@@ -501,8 +512,11 @@ function setHudVisible(scene, visible) {
   currentHud.root.classList.toggle('is-visible', visible);
   currentHud.root.classList.toggle('is-boss-only', isBossOnlyGameMode());
   const levelContainer = currentHud.level && currentHud.level.closest('.hud-level');
+  const scoreContainer = currentHud.score && currentHud.score.closest('.hud-score');
   const levelLabel = levelContainer && levelContainer.querySelector('.hud-label');
+  const scoreLabel = scoreContainer && scoreContainer.querySelector('.hud-label');
   if (levelLabel) levelLabel.textContent = isBossOnlyGameMode() ? 'JEFE' : 'NIVEL';
+  if (scoreLabel) scoreLabel.textContent = isBossOnlyGameMode() ? 'TIPO' : 'PUNTOS';
   if (!visible) setPauseSettingsVisible(false);
   updateHud(scene);
 }
@@ -531,12 +545,32 @@ function updateHud(scene = gameScene) {
   if (!currentHud.root) return;
 
   updatePlayerLevelText(scene);
-  currentHud.score.textContent = score;
+  currentHud.score.textContent = isBossOnlyGameMode() ? getBossOnlyHudName(scene) : score;
   updateStreakText();
   updateSpeedTexts(scene);
   updateUpgradeBar(scene);
   updateLivesText(scene);
   updateUpgradeStatusIcons(scene);
+}
+
+function getBossOnlyHudName(scene) {
+  if (!scene) return createBossConfig(BOSS_ONLY_BOSS_KINDS[0]).name;
+  if (!scene.bossOnlyTypeRevealed) return '???';
+
+  const activeWave = scene.activeRedWave ||
+    scene.activeDroneWave ||
+    scene.activeAsteroidWave ||
+    scene.activeCometWave ||
+    scene.activePlasmaWave ||
+    (scene.activeBossWave && !scene.activeBossWave.isTravelEncounter ? scene.activeBossWave : null);
+  if (activeWave && activeWave.bossName) return activeWave.bossName;
+
+  const pendingBoss = scene.pendingBossWave ||
+    (scene.pendingBossWaves && scene.pendingBossWaves.length ? scene.pendingBossWaves[0] : null);
+  if (pendingBoss && pendingBoss.name) return pendingBoss.name;
+
+  const bossNumber = Math.max(0, (scene.bossOnlyBossNumber || 1) - 1);
+  return createBossConfig(BOSS_ONLY_BOSS_KINDS[bossNumber % BOSS_ONLY_BOSS_KINDS.length]).name;
 }
 
 function setHudBoosterVisible(visible, color = '#76ffe8', label = null) {
@@ -598,6 +632,13 @@ function createBossConfig(kind) {
       kind: 'replicators',
       name: 'Replicadores',
       duration: REPLICATOR_WAVE_DURATION,
+    };
+  }
+  if (kind === 'crystallized') {
+    return {
+      kind: 'crystallized',
+      name: 'Tormenta Cristalizada',
+      duration: CRYSTALLIZED_WAVE_DURATION,
     };
   }
   if (kind === 'boss') {
@@ -696,6 +737,7 @@ function create() {
     core: 0x063719,
     ring: 0xfff0a8,
   });
+  createCrystallizedOrbTexture(this);
   createEnergyBallTexture(this, 'purpleBall', {
     outer: 0x6f38ff,
     mid: 0x9b5cff,
@@ -980,6 +1022,58 @@ function createEnergyBallTexture(scene, ballKey, colors) {
   ballGraphics.strokeCircle(22, 22, 7);
   ballGraphics.generateTexture(ballKey, 44, 44);
   ballGraphics.destroy();
+}
+
+function createCrystallizedOrbTexture(scene) {
+  createEnergyBallTexture(scene, 'crystallizedBall', {
+    outer: 0xff9f2a,
+    mid: 0xffd76a,
+    core: 0xffffd2,
+    ring: 0xfff0a8,
+  });
+
+  const source = scene.textures.get('crystallizedBall').getSourceImage();
+  const canvasTexture = scene.textures.createCanvas('crystallizedOrb', 44, 50);
+  const context = canvasTexture.getContext();
+  context.drawImage(source, 0, 0);
+
+  context.fillStyle = 'rgba(116, 205, 255, 0.88)';
+  context.beginPath();
+  context.moveTo(8, 29);
+  context.lineTo(13, 27);
+  context.lineTo(18, 31);
+  context.lineTo(23, 28);
+  context.lineTo(29, 31);
+  context.lineTo(36, 28);
+  context.lineTo(39, 34);
+  context.lineTo(35, 43);
+  context.lineTo(30, 40);
+  context.lineTo(26, 48);
+  context.lineTo(21, 41);
+  context.lineTo(16, 46);
+  context.lineTo(12, 39);
+  context.lineTo(6, 41);
+  context.closePath();
+  context.fill();
+
+  context.strokeStyle = 'rgba(224, 249, 255, 0.95)';
+  context.lineWidth = 1.5;
+  context.stroke();
+  context.fillStyle = 'rgba(239, 253, 255, 0.8)';
+  context.beginPath();
+  context.moveTo(13, 31);
+  context.lineTo(18, 32);
+  context.lineTo(15, 39);
+  context.closePath();
+  context.fill();
+  context.beginPath();
+  context.moveTo(27, 32);
+  context.lineTo(34, 31);
+  context.lineTo(30, 40);
+  context.closePath();
+  context.fill();
+  canvasTexture.refresh();
+  scene.textures.remove('crystallizedBall');
 }
 
 function attachEnergyOrbOverlay(scene, orb, palette) {
@@ -4454,6 +4548,7 @@ function resetCounters() {
   this.pendingBossWave = null;
   this.pendingBossWaves = [];
   this.bossOnlyBossNumber = 0;
+  this.bossOnlyTypeRevealed = false;
   this.levelUpgradeSequenceActive = false;
   resetBossWave(this);
   updatePlayerLevelText(this);
@@ -4986,8 +5081,9 @@ function queueNextBossOnlyWave(scene) {
   const bossNumber = scene.bossOnlyBossNumber || 0;
   const bossKind = BOSS_ONLY_BOSS_KINDS[bossNumber % BOSS_ONLY_BOSS_KINDS.length];
   scene.bossOnlyBossNumber = bossNumber + 1;
+  scene.bossOnlyTypeRevealed = false;
   queuePendingBossWave(scene, createBossConfig(bossKind));
-  updatePlayerLevelText(scene);
+  updateHud(scene);
 }
 
 function isBlockingBossWave(scene) {
@@ -5418,7 +5514,9 @@ function addScore(scene, points, animate = true, feedback = null) {
   score += points;
   levelProgressScore += points;
   const currentHud = initHud();
-  if (currentHud.score) currentHud.score.textContent = score;
+  if (currentHud.score) {
+    currentHud.score.textContent = isBossOnlyGameMode() ? getBossOnlyHudName(scene) : score;
+  }
   updateUpgradeBar(scene, animate);
   if (feedback && feedback.style === 'streak') {
     showStreakPointPopup(scene, feedback.x, feedback.y, feedback.label || 'RACHA!');
@@ -6030,6 +6128,34 @@ function activateReplicatorWave(scene, bossConfig = createBossConfig('replicator
   scheduleWaveStart(scene, 'red');
 }
 
+function activateCrystallizedWave(scene, bossConfig = createBossConfig('crystallized')) {
+  resetTimedBoosters(scene);
+  playBackgroundMusic(scene);
+  scene.activeRedWave = {
+    endsAt: null,
+    duration: bossConfig.duration || CRYSTALLIZED_WAVE_DURATION,
+    isSpawningDamageBoosters: false,
+    hasStarted: false,
+    hasShownEchoWarning: false,
+    isDraining: false,
+    spawnKind: 'crystallizedOrb',
+    bossKind: 'crystallized',
+    bossName: bossConfig.name || 'Tormenta Cristalizada',
+  };
+
+  setShipTextureForCurrentState(scene);
+  refreshShipSize(scene);
+  moveShipTo(scene, clampShipX(scene, scene.ship.x));
+  hideWaveBar(scene);
+
+  if (spawnEvent) {
+    spawnEvent.remove(false);
+    spawnEvent = null;
+  }
+
+  scheduleWaveStart(scene, 'red');
+}
+
 function clearFallingBoosters(scene) {
   if (!scene.balls) return;
   scene.balls.getChildren().forEach((ball) => {
@@ -6306,6 +6432,8 @@ function activateLevelBoss(scene, bossConfig) {
     activateRedNeedleBossWave(scene, bossConfig);
   } else if (bossConfig.kind === 'replicators') {
     activateReplicatorWave(scene, bossConfig);
+  } else if (bossConfig.kind === 'crystallized') {
+    activateCrystallizedWave(scene, bossConfig);
   } else if (bossConfig.kind === 'boss') {
     activateBossWave(scene, bossConfig);
   }
@@ -6926,6 +7054,16 @@ function startWaveCountdown(scene, waveKind) {
   if (
     waveKind === 'red' &&
     scene.activeRedWave &&
+    scene.activeRedWave.bossKind === 'crystallized' &&
+    !scene.activeRedWave.hasShownEchoWarning
+  ) {
+    scene.activeRedWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_CRYSTALLIZED_WAVE_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (
+    waveKind === 'red' &&
+    scene.activeRedWave &&
     scene.activeRedWave.bossKind === 'replicators' &&
     !scene.activeRedWave.hasShownEchoWarning
   ) {
@@ -7000,6 +7138,10 @@ function startWaveCountdown(scene, waveKind) {
 function pauseBeforeEchoWaveWarning(scene, waveKind) {
   if (!scene) return;
 
+  if (isBossOnlyGameMode()) {
+    scene.bossOnlyTypeRevealed = true;
+    updateHud(scene);
+  }
   state = 'paused';
   isDraggingShip = false;
   scene.pendingEchoWaveWarningKind = waveKind;
@@ -7195,7 +7337,7 @@ function endWaveAfterPause(scene, waveKind) {
   if (waveKind === 'red') {
     if (currentWave.bossKind === 'replicators') {
       scene.replicatorSpawnsUnlocked = true;
-    } else {
+    } else if (currentWave.bossKind === 'red') {
       scene.obreraSpawnsUnlocked = true;
     }
     scene.activeRedWave = null;
@@ -8322,6 +8464,9 @@ function spawnFallingKind(scene, kind, forcedX = null) {
     attachEnergyOrbOverlay(scene, ball, getEnergyOrbWispPalette(kind));
   } else if (kind === 'contaminatedOrb') {
     attachEnergyOrbOverlay(scene, ball, getEnergyOrbWispPalette(kind));
+  } else if (kind === 'crystallizedOrb') {
+    setBallEnergyColorData(ball, 'gold');
+    attachEnergyOrbOverlay(scene, ball, getEnergyOrbWispPalette(kind, getEnergyOrbColor(ball)));
   } else if (isAsteroidKind(kind)) {
     ball.setAngularVelocity(Phaser.Math.Between(-110, 110));
   } else if (kind === 'damageBooster') {
@@ -9020,6 +9165,13 @@ function setBallEnergyColor(ball, isPurple) {
   ball.setData('isPinkEnergy', color === 'pink');
 }
 
+function setBallEnergyColorData(ball, color) {
+  const normalizedColor = normalizeEnergyOrbColor(color);
+  ball.setData('energyColor', normalizedColor);
+  ball.setData('isPurpleEnergy', normalizedColor !== 'gold');
+  ball.setData('isPinkEnergy', normalizedColor === 'pink');
+}
+
 function normalizeEnergyOrbColor(color) {
   if (color === 'pink' || color === 'purple' || color === 'gold') return color;
   return color ? 'purple' : 'gold';
@@ -9107,6 +9259,7 @@ function getNextSpawnKind(scene) {
   const boosterKind = getNextBoosterKind(scene);
   if (scene.activeBossWave && scene.activeBossWave.isTravelEncounter) return boosterKind;
   if (boosterKind) return boosterKind;
+  if (Math.random() < CRYSTALLIZED_ORB_CHANCE) return 'crystallizedOrb';
   if (isEnergyPurifierActive()) return 'ball';
   return Math.random() < CONTAMINATED_ORB_CHANCE ? 'contaminatedOrb' : 'ball';
 }
@@ -9221,6 +9374,7 @@ function getTextureForKind(kind) {
   if (kind === 'scoreBooster') return 'scoreBooster';
   if (kind === 'shieldBooster') return 'shieldBooster';
   if (kind === 'contaminatedOrb') return 'contaminatedBall';
+  if (kind === 'crystallizedOrb') return 'crystallizedOrb';
   return 'goldBall';
 }
 
@@ -9233,11 +9387,11 @@ function isHelpfulBoosterKind(kind) {
 }
 
 function isCollectibleBallKind(kind) {
-  return kind === 'ball';
+  return kind === 'ball' || kind === 'crystallizedOrb';
 }
 
 function isEnergyOrbSpeedKind(kind) {
-  return kind === 'ball' || kind === 'contaminatedOrb';
+  return kind === 'ball' || kind === 'contaminatedOrb' || kind === 'crystallizedOrb';
 }
 
 function isAsteroidKind(kind) {
@@ -9249,7 +9403,7 @@ function isCometKind(kind) {
 }
 
 function isShieldBlockedKind(kind) {
-  return kind === 'damageBooster' || kind === 'replicator' || kind === 'spikeDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || kind === 'comet' || isAsteroidKind(kind);
+  return kind === 'damageBooster' || kind === 'replicator' || kind === 'spikeDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || kind === 'comet' || kind === 'crystallizedOrb' || isAsteroidKind(kind);
 }
 
 function isHostileContactKind(kind) {
@@ -9482,7 +9636,9 @@ function getCurrentSpawnDelay(scene) {
   if (scene.activeCometWave) return COMET_WAVE_SPAWN_DELAY;
   if (scene.activeAsteroidWave) return ASTEROID_WAVE_SPAWN_DELAY;
   if (scene.activeRedWave) {
-    return scene.activeRedWave.bossKind === 'replicators' ? REPLICATOR_WAVE_SPAWN_DELAY : RED_WAVE_SPAWN_DELAY;
+    if (scene.activeRedWave.bossKind === 'replicators') return REPLICATOR_WAVE_SPAWN_DELAY;
+    if (scene.activeRedWave.bossKind === 'crystallized') return CRYSTALLIZED_WAVE_SPAWN_DELAY;
+    return RED_WAVE_SPAWN_DELAY;
   }
   return currentSpawnDelay;
 }
@@ -9507,6 +9663,7 @@ function catchBall(ball, scene) {
   const isPurpleEnergy = energyOrbColor !== 'gold';
   const isPurifiedContaminatedOrb = kind === 'contaminatedOrb' && isEnergyPurifierActive();
   let hitFeedbackShown = false;
+  let crystallizedOrbCollected = false;
   if (kind === 'spikeDrone') {
     const spikeState = ball.getData('spikeState');
     if (!isShieldActive(scene) && isSpikeDroneGreenState(spikeState)) {
@@ -9516,7 +9673,15 @@ function catchBall(ball, scene) {
     if (spikeState !== 'expanded' && !isShieldActive(scene)) return;
   }
 
-  if (isPurifiedContaminatedOrb) {
+  if (kind === 'crystallizedOrb') {
+    if (isCrystallizedOrbDangerousContact(scene, ball)) {
+      handleHostileShipContact(scene, ball, x, y, kind, energyOrbColor);
+      hitFeedbackShown = true;
+    } else {
+      collectEnergyOrb(scene, ball, x, y, energyOrbColor);
+      crystallizedOrbCollected = true;
+    }
+  } else if (isPurifiedContaminatedOrb) {
     ball.destroy();
     const points = getEnergyBallValue() * scoreMultiplier;
     addScore(scene, points, true, { x, y, color: '#ffd84d' });
@@ -9547,7 +9712,7 @@ function catchBall(ball, scene) {
   if (state !== 'playing') return;
 
   if (!hitFeedbackShown) {
-    if (isHostileContactKind(kind) && !isPurifiedContaminatedOrb) {
+    if (isHostileContactKind(kind) && kind !== 'crystallizedOrb' && !isPurifiedContaminatedOrb) {
       playBadSound(scene);
     } else if (isBoosterKind(kind)) {
       playBoosterSound(scene);
@@ -9559,21 +9724,37 @@ function catchBall(ball, scene) {
     showAbsorbEffect(scene, x, y, isPurifiedContaminatedOrb ? 'ball' : kind, energyOrbColor);
   }
 
-  if (kind === 'ball' || isPurifiedContaminatedOrb) {
+  if (kind === 'ball' || crystallizedOrbCollected || isPurifiedContaminatedOrb) {
     maybeOpenUpgradeChoice(scene);
   }
+}
+
+function isCrystallizedOrbDangerousContact(scene, orb) {
+  return scene.ship.y > orb.y - CRYSTALLIZED_ORB_SAFE_SIDE_MARGIN;
+}
+
+function collectEnergyOrb(scene, orb, x, y, energyOrbColor) {
+  orb.destroy();
+  const isPurpleEnergy = energyOrbColor !== 'gold';
+  const points = getEnergyBallValue() * scoreMultiplier;
+  const feedbackColor = energyOrbColor === 'pink' ? ENERGY_RESONANCE_COLOR : isPurpleEnergy ? '#d7a8ff' : '#ffd84d';
+  addScore(scene, points, true, { x, y, color: feedbackColor });
+  ballsCaught += 1;
+  increaseEnergyStreak(scene);
+  registerScoreBoosterOrbCatch(scene);
 }
 
 function handleHostileShipContact(scene, hostile, x, y, kind, energyOrbColor = 'gold') {
   if (!isShieldActive(scene) && isShipDamageInvulnerable(scene)) return;
   if (isShieldActive(scene) && hostile && hostile.getData('hasBeenShieldBlocked')) return;
 
-  const absorbKind = kind === 'contaminatedOrb' ? 'ball' : kind;
+  const isDangerousEnergyOrb = kind === 'contaminatedOrb' || kind === 'crystallizedOrb';
+  const absorbKind = isDangerousEnergyOrb ? 'ball' : kind;
   const absorbEnergyColor = kind === 'contaminatedOrb' ? 'gold' : energyOrbColor;
   showAbsorbEffect(scene, x, y, absorbKind, absorbEnergyColor);
   if (!isShieldActive(scene) || kind === 'contaminatedOrb') {
     takeDirectDamage(scene);
-    if (kind === 'contaminatedOrb' && hostile && hostile.active) hostile.destroy();
+    if (isDangerousEnergyOrb && hostile && hostile.active) hostile.destroy();
     return;
   }
 
