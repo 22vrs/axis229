@@ -79,21 +79,18 @@ const ASTEROID_WAVE_DURATION = 15000;
 const ASTEROID_WAVE_SPAWN_DELAY = 760;
 const TRAVEL_ASTEROID_CHANCE = 0.10;
 const COMET_WAVE_DURATION = 15000;
-const COMET_WAVE_SPAWN_DELAY = 520;
+const COMET_WAVE_SPAWN_DELAY = 900;
 const TRAVEL_COMET_CHANCE = 0.10;
 const COMET_GRAVITY_RATIO = 1.02;
 const COMET_HORIZONTAL_SPEED_RATIO = 0.96;
 const COMET_WAVE_GRAVITY_RATIO = 0.96;
 const COMET_WAVE_HORIZONTAL_SPEED_RATIO = 0.92;
-const COMET_WAVE_AIMED_INTERVAL = 3;
-const COMET_WAVE_MIN_SPEED_VARIANCE = 0.84;
-const COMET_WAVE_MAX_SPEED_VARIANCE = 1.16;
+const COMET_WAVE_PAIR_LEFT_RATIOS = [0.485, 0.36, 0.22, 0.08, 0, 0.08, 0.22, 0.36];
 const COMET_TRAIL_LIFETIME = 560;
 const COMET_TRAIL_HITBOX = 12;
 const COMET_TRAIL_MAX_POINTS = 28;
 const COMET_TRAIL_MIN_POINT_DISTANCE = 4;
 const COMET_TRAIL_WIDTH = 18;
-const COMET_WAVE_MIN_SPAWN_SPACING = SHIP_WIDTH + 44;
 const COMET_OFFSCREEN_MARGIN = 62;
 const TRAVEL_PLASMA_CHANCE = 0.04;
 const SPIKE_DRONE_SPAWN_CHANCE = 0.07;
@@ -356,6 +353,8 @@ const ASTEROID_WAVE_GRAVITY_RATIO = 0.82;
 const ASTEROID_WAVE_HORIZONTAL_SPEED_RATIO = 0.58;
 const ASTEROID_WRAP_MARGIN = 28;
 const UPGRADE_POINTS_REQUIRED = 10;
+const STORY_BOSS_KINDS = ['red', 'boss', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss', 'comet'];
+const BOSS_ONLY_BOSS_KINDS = ['comet', 'red', 'boss', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss'];
 const SHIELD_BLOCK_SCORE = 10;
 const SPIKE_DRONE_DISABLE_SCORE = 5;
 const INITIAL_HEART_CAPACITY = 3;
@@ -500,6 +499,10 @@ function setHudVisible(scene, visible) {
   const currentHud = initHud();
   if (!currentHud.root) return;
   currentHud.root.classList.toggle('is-visible', visible);
+  currentHud.root.classList.toggle('is-boss-only', isBossOnlyGameMode());
+  const levelContainer = currentHud.level && currentHud.level.closest('.hud-level');
+  const levelLabel = levelContainer && levelContainer.querySelector('.hud-label');
+  if (levelLabel) levelLabel.textContent = isBossOnlyGameMode() ? 'JEFE' : 'NIVEL';
   if (!visible) setPauseSettingsVisible(false);
   updateHud(scene);
 }
@@ -527,7 +530,7 @@ function updateHud(scene = gameScene) {
   const currentHud = initHud();
   if (!currentHud.root) return;
 
-  currentHud.level.textContent = playerLevel;
+  updatePlayerLevelText(scene);
   currentHud.score.textContent = score;
   updateStreakText();
   updateSpeedTexts(scene);
@@ -555,10 +558,9 @@ function getBossConfigForLevel(level) {
   const bossIndex = getBossIndexForLevel(level);
   if (bossIndex === -1) return null;
 
-  const bossKinds = ['red', 'boss', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss', 'comet'];
   const bossKind = isInfiniteGameMode()
-    ? (bossIndex === 0 ? 'replicators' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
-    : bossKinds[bossIndex % bossKinds.length];
+    ? (bossIndex === 0 ? 'replicators' : STORY_BOSS_KINDS[Math.floor(Math.random() * STORY_BOSS_KINDS.length)])
+    : STORY_BOSS_KINDS[bossIndex % STORY_BOSS_KINDS.length];
   return createBossConfig(bossKind);
 }
 
@@ -627,15 +629,19 @@ function getBossIndexForLevel(level) {
 }
 
 function getValidGameMode(mode) {
-  return ['xy', 'xyInfinite'].includes(mode) ? mode : 'xy';
+  return ['xy', 'xyInfinite', 'xyBossOnly'].includes(mode) ? mode : 'xy';
 }
 
 function isInfiniteGameMode() {
   return currentGameMode === 'xyInfinite';
 }
 
+function isBossOnlyGameMode() {
+  return currentGameMode === 'xyBossOnly';
+}
+
 function isXyGameMode() {
-  return currentGameMode === 'xy' || currentGameMode === 'xyInfinite';
+  return currentGameMode === 'xy' || currentGameMode === 'xyInfinite' || currentGameMode === 'xyBossOnly';
 }
 
 function isXyInfiniteGameMode() {
@@ -3073,6 +3079,10 @@ function createMenu(scene) {
     playButtonSound(scene);
     startGame.call(scene, { mode: 'xyInfinite' });
   });
+  bindScreenClick('menu', 'boss-only-mode-button', () => {
+    playButtonSound(scene);
+    startGame.call(scene, { mode: 'xyBossOnly' });
+  });
   bindScreenClick('menu', 'ranking-button', () => {
     playButtonSound(scene);
     showRanking.call(scene);
@@ -3887,7 +3897,7 @@ function startGame(options = {}) {
   cancelIntroSequence(this);
   clearEchoTutorialTimer(this);
   currentGameMode = getValidGameMode(options.mode);
-  const shouldShowEchoTutorial = !isInfiniteGameMode() && !options.skipEchoTutorial;
+  const shouldShowEchoTutorial = currentGameMode === 'xy' && !options.skipEchoTutorial;
   state = shouldShowEchoTutorial ? 'intro' : 'playing';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
@@ -4302,6 +4312,12 @@ function beginGameplayAfterEchoTutorial(scene) {
     resetXyShipControl(scene);
   }
 
+  if (isBossOnlyGameMode()) {
+    queueNextBossOnlyWave(scene);
+    pauseBeforeFirstGameplaySpawn(scene);
+    return;
+  }
+
   // Primera bola inmediata, luego spawn periodico
   spawnBall(scene);
   scheduleNextSpawn(scene);
@@ -4356,7 +4372,10 @@ function endGame() {
   playMenuMusic(this);
   setHudVisible(this, false);
   showOverlayScreen(this, 'gameover');
-  if (isXyInfiniteGameMode()) {
+  if (isBossOnlyGameMode()) {
+    this.gameOverContainer.finalScore.setText('Solo Jefes - Jefes superados: ' + Math.max(0, this.bossOnlyBossNumber - 1));
+    prepareUnrankedGameOver(this);
+  } else if (isXyInfiniteGameMode()) {
     this.gameOverContainer.finalScore.setText('Modo Infinito - Puntuación: ' + score);
     prepareUnrankedGameOver(this);
   } else {
@@ -4396,9 +4415,9 @@ function resetCounters() {
   ballsCaught = 0;
   energyStreak = 0;
   maxEnergyStreak = 0;
-  currentGravity = BASE_GRAVITY;
-  currentBoosterGravity = Math.round(BASE_GRAVITY * BOOSTER_GRAVITY_RATIO);
-  currentSpawnDelay = INITIAL_SPAWN_DELAY;
+  currentGravity = isBossOnlyGameMode() ? MAX_BALL_GRAVITY : BASE_GRAVITY;
+  currentBoosterGravity = Math.round(currentGravity * BOOSTER_GRAVITY_RATIO);
+  currentSpawnDelay = isBossOnlyGameMode() ? MIN_SPAWN_DELAY : INITIAL_SPAWN_DELAY;
   maxLives = INITIAL_HEART_CAPACITY;
   lives = maxLives;
   levelProgressScore = 0;
@@ -4434,6 +4453,7 @@ function resetCounters() {
   this.nextTravelSentinelEligibleAt = 0;
   this.pendingBossWave = null;
   this.pendingBossWaves = [];
+  this.bossOnlyBossNumber = 0;
   this.levelUpgradeSequenceActive = false;
   resetBossWave(this);
   updatePlayerLevelText(this);
@@ -4879,9 +4899,21 @@ function scheduleNextSpawn(scene, delayOverride = null) {
     spawnEvent = null;
   }
 
+  if (isBossOnlyGameMode() && !hasPendingBossWave(scene) && !hasActiveLevelBossEncounter(scene)) {
+    queueNextBossOnlyWave(scene);
+  }
+
   if (consumePendingBossWave(scene)) {
     return;
   }
+
+  if (
+    isBossOnlyGameMode() &&
+    !scene.activeRedWave &&
+    !scene.activeDroneWave &&
+    !scene.activeAsteroidWave &&
+    !scene.activeCometWave
+  ) return;
 
   if (scene.activeRedWave && !scene.activeRedWave.isSpawningDamageBoosters) {
     return;
@@ -4936,6 +4968,26 @@ function recoverGameplaySpawning(scene) {
   if (isBlockingBossWave(scene)) return;
 
   scheduleNextSpawn(scene);
+}
+
+function hasActiveLevelBossEncounter(scene) {
+  return Boolean(
+    scene.activeRedWave ||
+    scene.activeDroneWave ||
+    scene.activeAsteroidWave ||
+    scene.activeCometWave ||
+    scene.activePlasmaWave ||
+    (scene.activeBossWave && !scene.activeBossWave.isTravelEncounter)
+  );
+}
+
+function queueNextBossOnlyWave(scene) {
+  if (!scene || !isBossOnlyGameMode() || hasPendingBossWave(scene) || hasActiveLevelBossEncounter(scene)) return;
+  const bossNumber = scene.bossOnlyBossNumber || 0;
+  const bossKind = BOSS_ONLY_BOSS_KINDS[bossNumber % BOSS_ONLY_BOSS_KINDS.length];
+  scene.bossOnlyBossNumber = bossNumber + 1;
+  queuePendingBossWave(scene, createBossConfig(bossKind));
+  updatePlayerLevelText(scene);
 }
 
 function isBlockingBossWave(scene) {
@@ -7522,21 +7574,9 @@ function maybeOpenUpgradeChoice(scene) {
 
     if (!scene.levelUpgradeSequenceActive) {
       scene.levelUpgradeSequenceActive = true;
-      state = 'leveling';
-      isDraggingShip = false;
-      scene.input.setDefaultCursor('default');
-      setXyControlActive(scene, false);
-      setXyControlVisible(scene, false);
-      if (spawnEvent) {
-        spawnEvent.remove(false);
-        spawnEvent = null;
-      }
-      pauseFallingObjects(scene);
-      pauseTimedGameplay(scene);
       triggerEchoLevelCelebration(scene);
     }
 
-    state = 'leveling';
     scene.pendingLevelUpgradeChoice = true;
   }
 
@@ -7552,27 +7592,31 @@ function maybeOpenUpgradeChoice(scene) {
     return;
   }
   scene.deferUpgradeChoiceUntil = 0;
-  scene.pendingLevelUpgradeChoice = false;
+  if (scene.upgradeChoiceOpening) return;
 
-  state = 'upgrading';
-  isDraggingShip = false;
-  scene.input.setDefaultCursor('default');
-  setXyControlActive(scene, false);
-  if (isXyGameMode()) updateXyControlFromShip(scene);
+  scene.upgradeChoiceOpening = true;
+  scene.upgradeChoiceOpenEvent = scene.time.delayedCall(UPGRADE_BAR_TWEEN_DURATION, () => {
+    scene.upgradeChoiceOpenEvent = null;
+    scene.upgradeChoiceOpening = false;
+    if (state !== 'playing' && state !== 'leveling') return;
 
-  if (spawnEvent) {
-    spawnEvent.remove(false);
-    spawnEvent = null;
-  }
+    scene.pendingLevelUpgradeChoice = false;
+    state = 'upgrading';
+    isDraggingShip = false;
+    scene.input.setDefaultCursor('default');
+    setXyControlActive(scene, false);
+    if (isXyGameMode()) updateXyControlFromShip(scene);
 
-  pauseFallingObjects(scene);
-  pauseTimedGameplay(scene);
-  scene.availableUpgradeChoices = getRandomUpgradeChoices();
-  updateUpgradeButtons(scene);
-  updateUpgradeBar(scene, true, () => {
-    if (state === 'upgrading') {
-      showOverlayScreen(scene, 'upgrade');
+    if (spawnEvent) {
+      spawnEvent.remove(false);
+      spawnEvent = null;
     }
+
+    pauseFallingObjects(scene);
+    pauseTimedGameplay(scene);
+    scene.availableUpgradeChoices = getRandomUpgradeChoices();
+    updateUpgradeButtons(scene);
+    showOverlayScreen(scene, 'upgrade');
   });
 }
 
@@ -7836,7 +7880,12 @@ function clearPendingStreakReward(scene) {
   scene.deferUpgradeChoiceUntil = 0;
   scene.pendingLevelUpgradeChoice = false;
   scene.levelUpgradeSequenceActive = false;
+  scene.upgradeChoiceOpening = false;
   scene.pendingStreakRepairKit = false;
+  if (scene.upgradeChoiceOpenEvent) {
+    scene.upgradeChoiceOpenEvent.remove(false);
+    scene.upgradeChoiceOpenEvent = null;
+  }
   if (scene.deferredUpgradeChoiceEvent) {
     scene.deferredUpgradeChoiceEvent.remove(false);
     scene.deferredUpgradeChoiceEvent = null;
@@ -8225,7 +8274,11 @@ function spawnBall(scene) {
     return;
   }
   if (kind === 'comet') {
-    spawnComet(scene);
+    if (scene.activeCometWave) {
+      spawnCometPair(scene);
+    } else {
+      spawnComet(scene);
+    }
     return;
   }
   spawnFallingKind(scene, kind);
@@ -8357,11 +8410,13 @@ function spawnRedNeedleLaser(scene, x, y) {
   playRedNeedleShotSound(scene);
 }
 
-function spawnComet(scene) {
-  const startY = getCometSpawnY(scene);
-  const speedVariance = getCometSpeedVariance(scene);
+function spawnComet(scene, spawnOverride = null, options = {}) {
+  const startY = options.startY === undefined ? getCometSpawnY(scene) : options.startY;
+  const speedVariance = options.speedVariance === undefined
+    ? getCometSpeedVariance(scene)
+    : options.speedVariance;
   const fallVelocity = getCometFallingVelocity(scene) * speedVariance;
-  const spawn = getCometSpawn(scene, startY, fallVelocity, speedVariance);
+  const spawn = spawnOverride || getCometSpawn(scene);
   const horizontalVelocity = getCometHorizontalVelocity(scene, spawn.direction) * speedVariance;
   const startX = spawn.x;
   const comet = scene.balls.create(startX, startY, 'comet');
@@ -8381,122 +8436,41 @@ function spawnComet(scene) {
 
 }
 
-function getCometSpawn(scene, startY, fallVelocity, speedVariance) {
+function spawnCometPair(scene) {
   const width = getGameWidth(scene);
   const safeMin = 28;
   const safeMax = width - 28;
-  if (!scene.activeCometWave) {
-    const x = Phaser.Math.Between(safeMin, safeMax);
-    const targetX = scene.ship ? scene.ship.x : width / 2;
-    return {
-      x,
-      direction: Math.abs(x - targetX) < 28
-        ? (Math.random() < 0.5 ? 1 : -1)
-        : (x < targetX ? 1 : -1),
-    };
-  }
+  const wave = scene.activeCometWave;
+  wave.spawnCount = (wave.spawnCount || 0) + 1;
+  const ratioIndex = (wave.spawnCount - 1) % COMET_WAVE_PAIR_LEFT_RATIOS.length;
+  const leftRatio = COMET_WAVE_PAIR_LEFT_RATIOS[ratioIndex];
+  const rightRatio = 1 - leftRatio;
+  const leftX = Phaser.Math.Linear(safeMin, safeMax, leftRatio);
+  const rightX = Phaser.Math.Linear(safeMin, safeMax, rightRatio);
+  const startY = getCometSpawnY(scene);
+  const speedVariance = getCometSpeedVariance(scene);
 
-  scene.activeCometWave.spawnCount = (scene.activeCometWave.spawnCount || 0) + 1;
-  const aimedSpawn = getAimedCometSpawn(
-    scene,
-    scene.activeCometWave.spawnCount,
-    startY,
-    fallVelocity,
-    speedVariance,
-    safeMin,
-    safeMax
-  );
-  if (aimedSpawn) {
-    scene.activeCometWave.lastSpawnX = aimedSpawn.x;
-    return aimedSpawn;
-  }
-
-  const lastX = scene.activeCometWave.lastSpawnX;
-  const recentComets = scene.balls
-    ? scene.balls.getChildren().filter((ball) => (
-      ball.active &&
-      ball.getData('kind') === 'comet' &&
-      ball.y < 230
-    ))
-    : [];
-  const candidates = [];
-  for (let i = 0; i < 16; i += 1) {
-    const x = Phaser.Math.Between(safeMin, safeMax);
-    const hasRoomFromLast = lastX === undefined || Math.abs(x - lastX) >= COMET_WAVE_MIN_SPAWN_SPACING;
-    const hasRoomFromRecent = recentComets.every((comet) => Math.abs(comet.x - x) >= COMET_WAVE_MIN_SPAWN_SPACING);
-    if (hasRoomFromLast && hasRoomFromRecent) candidates.push(x);
-  }
-  if (candidates.length) {
-    const x = Phaser.Utils.Array.GetRandom(candidates);
-    scene.activeCometWave.lastSpawnX = x;
-    return { x, direction: getCometDirectionTowardShip(scene, x) };
-  }
-
-  const fallbackCandidates = [];
-  for (let i = 0; i < 8; i += 1) {
-    fallbackCandidates.push(Phaser.Math.Linear(safeMin, safeMax, i / 7));
-  }
-  fallbackCandidates.sort((a, b) => (
-    getClosestEnemyDistance(b, recentComets) - getClosestEnemyDistance(a, recentComets)
-  ));
-  const fallbackX = Phaser.Math.Clamp(fallbackCandidates[0] || width / 2, safeMin, safeMax);
-  scene.activeCometWave.lastSpawnX = fallbackX;
-  return { x: fallbackX, direction: getCometDirectionTowardShip(scene, fallbackX) };
+  spawnComet(scene, { x: leftX, direction: 1 }, { startY, speedVariance });
+  spawnComet(scene, { x: rightX, direction: -1 }, { startY, speedVariance });
 }
 
-function getAimedCometSpawn(scene, spawnCount, startY, fallVelocity, speedVariance, safeMin, safeMax) {
-  if (spawnCount % COMET_WAVE_AIMED_INTERVAL !== 0 || !scene.ship) return null;
-
-  const bounceMin = 16;
-  const bounceMax = getGameWidth(scene) - 16;
-  const bounceWidth = bounceMax - bounceMin;
-  const targetX = Phaser.Math.Clamp(scene.ship.x, bounceMin, bounceMax) - bounceMin;
-  const targetY = Math.max(scene.ship.y, startY + 1);
-  const travelSeconds = (targetY - startY) / fallVelocity;
-  const horizontalSpeed = Math.abs(getCometHorizontalVelocity(scene, 1) * speedVariance);
-  const horizontalDistance = horizontalSpeed * travelSeconds;
-  const recentComets = scene.balls
-    ? scene.balls.getChildren().filter((ball) => (
-      ball.active &&
-      ball.getData('kind') === 'comet' &&
-      ball.y < 180
-    ))
-    : [];
-  const preferredDirection = spawnCount % 2 === 0 ? -1 : 1;
-  const candidates = [];
-
-  [-1, 1].forEach((direction) => {
-    for (let reflection = -4; reflection <= 4; reflection += 1) {
-      [targetX, -targetX].forEach((reflectedTargetX) => {
-        const unfoldedTargetX = reflectedTargetX + reflection * bounceWidth * 2;
-        const x = bounceMin + unfoldedTargetX - direction * horizontalDistance;
-        if (x < safeMin || x > safeMax) return;
-        if (!recentComets.every((comet) => Math.abs(comet.x - x) >= SHIP_WIDTH + 12)) return;
-        candidates.push({ x, direction });
-      });
-    }
-  });
-
-  candidates.sort((a, b) => {
-    const aDirectionPenalty = a.direction === preferredDirection ? 0 : 1;
-    const bDirectionPenalty = b.direction === preferredDirection ? 0 : 1;
-    if (aDirectionPenalty !== bDirectionPenalty) return aDirectionPenalty - bDirectionPenalty;
-    const lastX = scene.activeCometWave.lastSpawnX;
-    if (!Number.isFinite(lastX)) return 0;
-    return Math.abs(b.x - lastX) - Math.abs(a.x - lastX);
-  });
-  return candidates[0] || null;
-}
-
-function getCometDirectionTowardShip(scene, startX) {
-  const targetX = scene.ship ? scene.ship.x : getGameWidth(scene) / 2;
-  if (Math.abs(startX - targetX) < 28) return Math.random() < 0.5 ? 1 : -1;
-  return startX < targetX ? 1 : -1;
+function getCometSpawn(scene) {
+  const width = getGameWidth(scene);
+  const safeMin = 28;
+  const safeMax = width - 28;
+  const x = Phaser.Math.Between(safeMin, safeMax);
+  const targetX = scene.ship ? scene.ship.x : width / 2;
+  return {
+    x,
+    direction: Math.abs(x - targetX) < 28
+      ? (Math.random() < 0.5 ? 1 : -1)
+      : (x < targetX ? 1 : -1),
+  };
 }
 
 function getCometSpawnY(scene) {
   return scene.activeCometWave
-    ? Phaser.Math.Between(-96, -28)
+    ? -48
     : Phaser.Math.Between(-76, -24);
 }
 
@@ -8511,8 +8485,7 @@ function getCometHorizontalVelocity(scene, direction) {
 }
 
 function getCometSpeedVariance(scene) {
-  if (!scene.activeCometWave) return 1;
-  return Phaser.Math.FloatBetween(COMET_WAVE_MIN_SPEED_VARIANCE, COMET_WAVE_MAX_SPEED_VARIANCE);
+  return 1;
 }
 
 function updateComets(scene) {
@@ -9413,7 +9386,11 @@ function updateSpeedTexts(scene) {
 
 function updatePlayerLevelText(scene) {
   const currentHud = initHud();
-  if (currentHud.level) currentHud.level.textContent = playerLevel;
+  if (currentHud.level) {
+    currentHud.level.textContent = isBossOnlyGameMode()
+      ? Math.max(1, (scene && scene.bossOnlyBossNumber) || 1)
+      : playerLevel;
+  }
 }
 
 function updateStreakText() {

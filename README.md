@@ -53,8 +53,12 @@ Claves usadas en `localStorage`:
 | --- | --- | --- | --- |
 | Normal | `JUGAR` | Partida con progresion, mejoras, jefes cada 3 niveles y ranking. | Si |
 | Infinito | `MODO INFINITO` | Partida libre con amenazas desbloqueadas y jefes aleatorios. | No |
+| Solo Jefes | `SOLO JEFES` | Modo de prueba que encadena los jefes de historia sin viajes normales, niveles ni mejoras. | No |
 
 En modo infinito, el primer jefe es `Replicadores`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
+
+En Solo Jefes, `Lluvia de estrellas` es el primer jefe. Despues continua la rotacion de historia desde `Enjambre` y, tras `Aguja Roja`, la sucesion vuelve a empezar.
+La partida comienza pausada sobre el control azul; el primer dialogo de jefe solo se activa despues de pulsarlo.
 
 ## Progresion
 
@@ -88,7 +92,7 @@ Como funciona:
 - El intervalo de aparicion normal baja de `1500 ms` a `600 ms` usando una curva suavizada (`SPAWN_DELAY_EASING = 1.8`).
 - Los boosters que caen usan el `80%` de la velocidad principal (`BOOSTER_GRAVITY_RATIO = 0.8`), por eso el HUD muestra tambien `BOOST`.
 - Al cambiar la velocidad, los objetos que ya estan cayendo actualizan su velocidad para adaptarse al nuevo ritmo.
-- Las oleadas y jefes pueden usar sus propios intervalos fijos, por ejemplo Enjambre cada `400 ms`, Drones cada `680 ms`, Asteroides cada `760 ms`, Cometas cada `520 ms` y Plasma cada `2100 ms`.
+- Las oleadas y jefes pueden usar sus propios intervalos fijos, por ejemplo Enjambre cada `400 ms`, Drones cada `680 ms`, Asteroides cada `760 ms`, parejas de Cometas cada `900 ms` y Plasma cada `2100 ms`.
 - Algunas amenazas no escalan con la velocidad principal y usan ratios o valores propios, como asteroides, drones, cometas, lasers y barras de plasma.
 
 ## Orbes
@@ -154,7 +158,9 @@ Hay un jefe cada 3 niveles en modo normal. Despues del nivel 24, la rotacion se 
 | 15 | Replicadores | Formación serpenteante cada `900 ms`: cada copia recorre la trayectoria anterior y vuelve a seguir horizontalmente a Axis si pierde su eslabón. | Replicadores en viaje normal. |
 | 18 | Drones | Drones de pinchos cada `680 ms`. | Drones en viaje normal. |
 | 21 | Aguja Roja | `6` pasadas horizontales con disparos laser. | Aguja Roja en viaje normal. |
-| 24 | Lluvia de estrellas | Cometas diagonales cada `520 ms`. | Cometas en viaje normal. |
+| 24 | Lluvia de estrellas | Parejas simetricas cuyas entradas se abren desde el centro hasta los limites laterales antes de cruzarse cada `900 ms`. | Cometas en viaje normal. |
+
+El patron de `Lluvia de estrellas` es identico en Normal, Infinito y Solo Jefes: mismas parejas, posiciones, velocidades e intervalo de aparicion.
 
 Duraciones principales:
 

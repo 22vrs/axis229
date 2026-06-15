@@ -362,6 +362,11 @@ a:focus-visible {
   align-content: flex-start;
 }
 
+.hud.is-boss-only .hud-progress-block,
+.hud.is-boss-only .hud-upgrades {
+  display: none;
+}
+
 .hud-upgrade-pair {
   position: relative;
   z-index: 1;
