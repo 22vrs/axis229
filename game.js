@@ -61,7 +61,7 @@ const RED_WAVE_RECENT_ENEMY_HEIGHT = 230;
 const OBRERA_SPAWN_CHANCE = 0.14;
 const REPLICATOR_WAVE_DURATION = 15000;
 const REPLICATOR_WAVE_SPAWN_DELAY = 900;
-const REPLICATOR_SPAWN_CHANCE = 0.10;
+const REPLICATOR_SPAWN_CHANCE = 0.02;
 const TRAVEL_REPLICATOR_GRAVITY_RATIO = 0.56;
 const REPLICATOR_SCALE = SHIP_SCALE * 0.72;
 const REPLICATOR_FOLLOW_DELAY_MIN = 70;
@@ -75,8 +75,10 @@ const REPLICATOR_HITBOX_WIDTH = 96;
 const REPLICATOR_HITBOX_HEIGHT = 28;
 const DRONE_WAVE_DURATION = 15000;
 const DRONE_WAVE_SPAWN_DELAY = 680;
+const GIRODRONE_WAVE_DURATION = 15000;
+const GIRODRONE_WAVE_SPAWN_DELAY = 920;
 const CRYSTALLIZED_WAVE_DURATION = 15000;
-const CRYSTALLIZED_WAVE_SPAWN_DELAY = 600;
+const CRYSTALLIZED_WAVE_SPAWN_DELAY = 850;
 const CRYSTALLIZED_ORB_CHANCE = 0.05;
 const CRYSTALLIZED_ORB_RADIUS = 20;
 const CRYSTALLIZED_ORB_CRYSTAL_SHAPE = [
@@ -105,6 +107,7 @@ const COMET_TRAIL_WIDTH = 18;
 const COMET_OFFSCREEN_MARGIN = 62;
 const TRAVEL_PLASMA_CHANCE = 0.04;
 const SPIKE_DRONE_SPAWN_CHANCE = 0.07;
+const GIRODRONE_SPAWN_CHANCE = 0.05;
 const SPIKE_DRONE_FOLDED_RADIUS = 18;
 const SPIKE_DRONE_EXPANDED_RADIUS = SPIKE_DRONE_FOLDED_RADIUS * 3;
 const SPIKE_DRONE_FOLDED_DURATION = 1100;
@@ -114,6 +117,15 @@ const SPIKE_DRONE_WARNING_DURATION = SPIKE_DRONE_WARNING_GREEN_DURATION + SPIKE_
 const SPIKE_DRONE_EXPANDED_DURATION = 1000;
 const SPIKE_DRONE_GRAVITY_RATIO = 0.68;
 const SPIKE_DRONE_TEXTURE_SIZE = 120;
+const GIRODRONE_SCALE = 0.72;
+const GIRODRONE_CORE_RADIUS = Math.round(SPIKE_DRONE_FOLDED_RADIUS * GIRODRONE_SCALE);
+const GIRODRONE_SATELLITE_RADIUS = GIRODRONE_CORE_RADIUS;
+const GIRODRONE_DAMAGE_HALO_RADIUS = 30;
+const GIRODRONE_ORBIT_RADIUS = 46;
+const GIRODRONE_ORBIT_SPEED = 0.0018;
+const GIRODRONE_ENERGY_PARTICLE_COUNT = 9;
+const GIRODRONE_CORE_ENERGY_PARTICLE_COUNT = 7;
+const GIRODRONE_DISABLE_SCORE = 8;
 const RED_NEEDLE_SPAWN_CHANCE = 0.04;
 const RED_NEEDLE_WIDTH = 76;
 const RED_NEEDLE_HEIGHT = 28;
@@ -148,6 +160,7 @@ const BOSS_WIDTH = 560;
 const BOSS_HEIGHT = 220;
 const SENTINEL_TARGET_Y = 112;
 const BOSS_LASER_WIDTH = 32;
+const BOSS_LASER_SENTINEL_OVERLAP = 96;
 const BOSS_HORIZONTAL_LASER_HEIGHT = 30;
 const WAVE_CLEAR_DELAY = 2200;
 const ECHO_WAVE_WARNING_RESUME_DELAY = 2000;
@@ -301,7 +314,7 @@ const ECHO_REPLICATOR_WARNING_LINES = [
 ];
 const ECHO_DRONE_WARNING_LINES = [
   "Atención, Axis. Identificando unidades de combate autónomas.",
-  "Los registros las identifican como Drones de Seguridad.",
+  "Los registros las identifican como Drones.",
   "Originalmente protegían infraestructuras críticas de ataques y sabotajes.",
   "La Corrupción ha alterado sus protocolos de identificación.",
   "Ahora consideran cualquier nave una amenaza.",
@@ -309,6 +322,13 @@ const ECHO_DRONE_WARNING_LINES = [
   "Ese es el momento de neutralizarlos.",
   "Cuando cambien a rojo, desplegarán cuchillas energéticas de medio alcance.",
   "Evita el contacto hasta que vuelvan a estabilizarse.",
+];
+const ECHO_GIRODRONE_WARNING_LINES = [
+  "Atención, Axis. Girodrones identificados.",
+  "Son una variante de los Drones de Seguridad: un núcleo central y una unidad roja orbitando.",
+  "El dron exterior mantiene un halo de energía activa. Ese campo provocará daños si lo cruzas.",
+  "El núcleo central sigue el ciclo habitual: verde para neutralizar, naranja sin efecto y rojo expandido peligroso.",
+  "Espera la ventana verde. Evita la órbita exterior.",
 ];
 const ECHO_CRYSTALLIZED_WAVE_WARNING_LINES = [
   "Atención, Axis. Detecto una Tormenta Cristalizada.",
@@ -371,8 +391,8 @@ const ASTEROID_WAVE_GRAVITY_RATIO = 0.82;
 const ASTEROID_WAVE_HORIZONTAL_SPEED_RATIO = 0.58;
 const ASTEROID_WRAP_MARGIN = 28;
 const UPGRADE_POINTS_REQUIRED = 10;
-const STORY_BOSS_KINDS = ['red', 'boss', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss', 'comet', 'crystallized'];
-const BOSS_ONLY_BOSS_KINDS = ['boss', 'crystallized', 'comet', 'red', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss'];
+const STORY_BOSS_KINDS = ['red', 'boss', 'asteroid', 'plasma', 'replicators', 'drones', 'girodrones', 'redNeedleBoss', 'comet', 'crystallized'];
+const BOSS_ONLY_BOSS_KINDS = ['girodrones', 'boss', 'crystallized', 'comet', 'red', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss'];
 const SHIELD_BLOCK_SCORE = 10;
 const SPIKE_DRONE_DISABLE_SCORE = 5;
 const INITIAL_HEART_CAPACITY = 3;
@@ -635,6 +655,13 @@ function createBossConfig(kind) {
       duration: DRONE_WAVE_DURATION,
     };
   }
+  if (kind === 'girodrones') {
+    return {
+      kind: 'girodrones',
+      name: 'Girodrones',
+      duration: GIRODRONE_WAVE_DURATION,
+    };
+  }
   if (kind === 'replicators') {
     return {
       kind: 'replicators',
@@ -783,6 +810,7 @@ function create() {
   createEnemyShipTexture(this);
   createRedNeedleTextures(this);
   createSpikeDroneTextures(this);
+  createGiroDroneTextures(this);
   createBossShipTexture(this);
   createAsteroidTexture(this);
   createBigAsteroidTexture(this);
@@ -1657,6 +1685,61 @@ function createSpikeDroneTextures(scene) {
   createSpikeDroneTexture(scene, 'spikeDroneDisabled', 'disabled');
 }
 
+function createGiroDroneTextures(scene) {
+  createGiroDroneTexture(scene, 'giroDroneCoreGreen', 'green');
+  createGiroDroneTexture(scene, 'giroDroneCoreOrange', 'orange');
+  createGiroDroneTexture(scene, 'giroDroneCoreRedWarning', 'redWarning');
+  createGiroDroneTexture(scene, 'giroDroneCoreRed', 'red');
+  createGiroDroneTexture(scene, 'giroDroneSatelliteRed', 'red');
+  createGiroDroneTexture(scene, 'giroDroneDisabled', 'disabled');
+}
+
+function createGiroDroneTexture(scene, key, mode) {
+  const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+  const center = SPIKE_DRONE_TEXTURE_SIZE / 2;
+  const disabled = mode === 'disabled';
+  const red = mode === 'red';
+  const redWarning = mode === 'redWarning';
+  const redLight = red || redWarning;
+  const orange = mode === 'orange';
+  const lightColor = disabled ? 0x9aa3af : redLight ? 0xff1f32 : orange ? 0xff8f2a : 0x4dff88;
+
+  graphics.fillStyle(disabled ? 0x2d323a : 0x141b2a, 1);
+  graphics.fillCircle(center, center, 20);
+  graphics.fillStyle(disabled ? 0x767d88 : 0x596272, 1);
+  graphics.fillCircle(center, center, 17);
+  graphics.fillStyle(disabled ? 0x3f4650 : 0x252d3d, 1);
+  graphics.fillCircle(center, center, 13);
+  graphics.lineStyle(2, disabled ? 0xc3c8d0 : redLight ? 0xff9aaa : 0xaeb8c9, disabled ? 0.42 : 0.62);
+  graphics.strokeCircle(center, center, 18);
+
+  graphics.lineStyle(1, disabled ? 0x1f242b : 0x111827, disabled ? 0.75 : 0.55);
+  graphics.beginPath();
+  graphics.moveTo(center - 14, center);
+  graphics.lineTo(center + 14, center);
+  graphics.moveTo(center, center - 14);
+  graphics.lineTo(center, center + 14);
+  graphics.strokePath();
+
+  if (orange) {
+    graphics.fillStyle(0x263142, 0.82);
+    graphics.fillCircle(center, center, 7);
+  }
+  const green = mode === 'green';
+  const lightGlowRadius = green || red ? 14 : 10;
+  const lightCoreRadius = green || red ? 7 : 5;
+  graphics.fillStyle(lightColor, disabled ? 0.16 : green ? 0.16 : redLight ? 0.18 : 0.16);
+  graphics.fillCircle(center, center, lightGlowRadius);
+  graphics.fillStyle(lightColor, disabled ? 0.7 : 1);
+  graphics.fillCircle(center, center, lightCoreRadius);
+  graphics.fillStyle(0xffffff, disabled ? 0.28 : 0.78);
+  graphics.fillCircle(center - 2, center - 2, 1.5);
+
+  if (scene.textures.exists(key)) scene.textures.remove(key);
+  graphics.generateTexture(key, SPIKE_DRONE_TEXTURE_SIZE, SPIKE_DRONE_TEXTURE_SIZE);
+  graphics.destroy();
+}
+
 function createSpikeDroneTexture(scene, key, mode) {
   const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
   const center = SPIKE_DRONE_TEXTURE_SIZE / 2;
@@ -2293,6 +2376,7 @@ function update(time, delta) {
   updateRedEnemySway(this, time);
   updateReplicators(this, time, delta);
   updateSpikeDrones(this);
+  updateGiroDrones(this, delta);
   updateScoreBooster(this);
   updateShieldBooster(this);
   updateRedWave(this);
@@ -2860,7 +2944,7 @@ function updateEchoAttacks(scene) {
 }
 
 function isEchoAttackableKind(kind) {
-  return kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'comet' || isAsteroidKind(kind);
+  return kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'giroDrone' || kind === 'comet' || isAsteroidKind(kind);
 }
 
 function isHostileInsideEchoAttackRadius(scene, hostile) {
@@ -4639,6 +4723,7 @@ function endGame() {
 function enableInfiniteModeThreats(scene) {
   scene.obreraSpawnsUnlocked = true;
   scene.droneSpawnsUnlocked = true;
+  scene.giroDroneSpawnsUnlocked = true;
   scene.asteroidSpawnsUnlocked = true;
   scene.cometSpawnsUnlocked = true;
   scene.plasmaSpawnsUnlocked = true;
@@ -4697,6 +4782,7 @@ function resetCounters() {
   this.nextAsteroidWaveEligibleAt = 0;
   this.obreraSpawnsUnlocked = false;
   this.droneSpawnsUnlocked = false;
+  this.giroDroneSpawnsUnlocked = false;
   this.asteroidSpawnsUnlocked = false;
   this.cometSpawnsUnlocked = false;
   this.plasmaSpawnsUnlocked = false;
@@ -4756,8 +4842,7 @@ function clearGameplayVisuals(scene) {
 
   if (scene.ship) {
     scene.tweens.killTweensOf(scene.ship);
-    scene.ship.clearTint();
-    scene.ship.setAlpha(1);
+    clearShipDamageFeedback(scene);
     setShipTextureForCurrentState(scene);
     refreshShipSize(scene);
     moveShipTo(scene, getGameWidth(scene) / 2, getShipY(scene));
@@ -4840,6 +4925,21 @@ function isShipDamageInvulnerable(scene) {
   return Boolean(scene && scene.shipDamageTween);
 }
 
+function clearShipDamageFeedback(scene, stopDamageTween = true) {
+  if (!scene || !scene.ship) return;
+
+  if (scene.shipDamageClearEvent) {
+    scene.shipDamageClearEvent.remove(false);
+    scene.shipDamageClearEvent = null;
+  }
+  if (stopDamageTween && scene.shipDamageTween) {
+    scene.shipDamageTween.stop();
+  }
+  scene.shipDamageTween = null;
+  scene.ship.clearTint();
+  scene.ship.setAlpha(1);
+}
+
 function flashPlayerShip(scene, damaged = false) {
   if (!scene.ship) return;
 
@@ -4849,8 +4949,7 @@ function flashPlayerShip(scene, damaged = false) {
     scene.ship.setAlpha(1);
   }
   if (scene.shipDamageTween) {
-    scene.shipDamageTween.stop();
-    scene.shipDamageTween = null;
+    clearShipDamageFeedback(scene);
   }
   scene.tweens.add({
     targets: scene.ship,
@@ -4863,6 +4962,7 @@ function flashPlayerShip(scene, damaged = false) {
   });
   if (!damaged) return;
 
+  const damageFeedbackDuration = 85 * (4 + 1) * 2;
   scene.ship.setTint(0xff2b3f);
   scene.shipDamageTween = scene.tweens.add({
     targets: scene.ship,
@@ -4873,11 +4973,10 @@ function flashPlayerShip(scene, damaged = false) {
     ease: 'Sine.easeInOut',
     onRepeat: () => scene.ship.setTint(scene.ship.isTinted ? 0xffffff : 0xff2b3f),
     onYoyo: () => scene.ship.setTint(0xff2b3f),
-    onComplete: () => {
-      scene.shipDamageTween = null;
-      scene.ship.clearTint();
-      scene.ship.setAlpha(1);
-    },
+    onComplete: () => clearShipDamageFeedback(scene, false),
+  });
+  scene.shipDamageClearEvent = scene.time.delayedCall(damageFeedbackDuration + 40, () => {
+    clearShipDamageFeedback(scene);
   });
 }
 
@@ -6378,6 +6477,9 @@ function activateDroneWave(scene, bossConfig = createBossConfig('drones')) {
     isSpawningDrones: false,
     hasStarted: false,
     isDraining: false,
+    spawnKind: bossConfig.kind === 'girodrones' ? 'giroDrone' : 'spikeDrone',
+    spawnDelay: bossConfig.kind === 'girodrones' ? GIRODRONE_WAVE_SPAWN_DELAY : DRONE_WAVE_SPAWN_DELAY,
+    bossKind: bossConfig.kind || 'drones',
     bossName: bossConfig.name || 'Drones',
   };
 
@@ -6602,7 +6704,7 @@ function activateLevelBoss(scene, bossConfig) {
   if (!bossConfig) return;
   if (bossConfig.kind === 'red') {
     activateRedWave(scene, bossConfig);
-  } else if (bossConfig.kind === 'drones') {
+  } else if (bossConfig.kind === 'drones' || bossConfig.kind === 'girodrones') {
     activateDroneWave(scene, bossConfig);
   } else if (bossConfig.kind === 'asteroid') {
     activateAsteroidWave(scene, bossConfig);
@@ -7086,7 +7188,7 @@ function getNextBossLaserY(scene, bossWave) {
 
 function showBossLaserWarning(scene, laserX) {
   clearBossWarningParticles(scene);
-  const laserTop = getXyShipTopLimit(scene);
+  const laserTop = getBossVerticalLaserTop(scene);
   const laserLength = getGameHeight(scene) - laserTop;
   createBossLaserWarningEffect(
     scene,
@@ -7094,6 +7196,10 @@ function showBossLaserWarning(scene, laserX) {
     laserTop + laserLength / 2,
     laserLength
   );
+}
+
+function getBossVerticalLaserTop(scene) {
+  return Math.max(0, getXyShipTopLimit(scene) - BOSS_LASER_SENTINEL_OVERLAP);
 }
 
 function showBossHorizontalLaserWarning(scene, laserY) {
@@ -7326,7 +7432,7 @@ function fireBossLaser(scene, laserX, laserY) {
   bossWave.attacksDone += 1;
   bossWave.previousLaserX = laserX;
 
-  const laserTop = getXyShipTopLimit(scene);
+  const laserTop = getBossVerticalLaserTop(scene);
   const laserHeight = getGameHeight(scene) - laserTop;
   const laserCenterY = laserTop + laserHeight / 2;
   scene.bossLaser = scene.add.rectangle(laserX, laserCenterY, BOSS_LASER_WIDTH, laserHeight, 0xff001f, 0.2)
@@ -7458,6 +7564,16 @@ function startWaveCountdown(scene, waveKind) {
   if (waveKind === 'red' && scene.activeRedWave && !scene.activeRedWave.hasShownEchoWarning) {
     scene.activeRedWave.hasShownEchoWarning = true;
     startEchoDialog(scene, ECHO_SWARM_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (
+    waveKind === 'drones' &&
+    scene.activeDroneWave &&
+    scene.activeDroneWave.bossKind === 'girodrones' &&
+    !scene.activeDroneWave.hasShownEchoWarning
+  ) {
+    scene.activeDroneWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_GIRODRONE_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
     return;
   }
   if (
@@ -7728,7 +7844,11 @@ function endWaveAfterPause(scene, waveKind) {
     }
     scene.activeRedWave = null;
   } else if (waveKind === 'drones') {
-    scene.droneSpawnsUnlocked = true;
+    if (currentWave.bossKind === 'girodrones') {
+      scene.giroDroneSpawnsUnlocked = true;
+    } else {
+      scene.droneSpawnsUnlocked = true;
+    }
     scene.activeDroneWave = null;
   } else if (waveKind === 'asteroid') {
     scene.asteroidSpawnsUnlocked = true;
@@ -8675,6 +8795,7 @@ function isPreciseShipOverlap(scene, objectA, objectB) {
     if (spikeState === 'disabled' && !isShieldActive(scene)) return false;
     if (spikeState !== 'expanded' && !isSpikeDroneGreenState(spikeState) && !isShieldActive(scene)) return false;
   }
+  if (object.getData('kind') === 'giroDrone') return isGiroDroneOverlappingShip(scene, object);
   if (object.getData('kind') === 'redNeedle') return isRedNeedleOverlappingShip(scene, object);
   if (object.getData('kind') === 'redNeedleLaser') return isRedNeedleLaserOverlappingShip(scene, object);
   if (object.getData('kind') === 'damageBooster') return isDamageBoosterOverlappingShip(scene, object);
@@ -8705,6 +8826,39 @@ function isRedNeedleOverlappingShip(scene, needle, scale = needle.scaleX || 1) {
 
 function isDamageBoosterOverlappingShip(scene, enemy) {
   return isRectOverlappingShip(scene, enemy.x, enemy.y, RED_ENEMY_HITBOX_WIDTH, RED_ENEMY_HITBOX_HEIGHT);
+}
+
+function isGiroDroneOverlappingShip(scene, giroDrone) {
+  if (giroDrone.getData('spikeState') === 'disabled') return false;
+  const giroState = giroDrone.getData('spikeState');
+  if (
+    isGiroDroneCoreOverlappingShip(scene, giroDrone) &&
+    (isGiroDroneGreenState(giroState) || isGiroDroneOrangeState(giroState))
+  ) {
+    return true;
+  }
+  if (giroState === 'expanded' && isGiroDroneDamageHaloOverlappingShip(scene, giroDrone)) return true;
+
+  const satellite = giroDrone.getData('orbitSatellite');
+  if (!satellite || satellite.active === false) return false;
+  return isGiroDroneDamageHaloOverlappingShip(scene, satellite);
+}
+
+function isGiroDroneDamageHaloOverlappingShip(scene, object) {
+  if (isShieldActive(scene)) {
+    const distance = Phaser.Math.Distance.Between(scene.ship.x, scene.ship.y, object.x, object.y);
+    return distance <= SHIELD_BUBBLE_RADIUS + GIRODRONE_DAMAGE_HALO_RADIUS;
+  }
+
+  return getDistanceToShipHitbox(scene, object) <= GIRODRONE_DAMAGE_HALO_RADIUS;
+}
+
+function isGiroDroneCoreOverlappingShip(scene, giroDrone) {
+  if (isShieldActive(scene)) {
+    return getDistanceToShieldCenter(scene, giroDrone) <= SHIELD_BUBBLE_RADIUS + GIRODRONE_CORE_RADIUS;
+  }
+
+  return getDistanceToShipHitbox(scene, giroDrone) <= GIRODRONE_CORE_RADIUS;
 }
 
 function isRectOverlappingShip(scene, x, y, width, height) {
@@ -8759,6 +8913,7 @@ function getObjectCollisionRadius(object) {
   if (kind === 'damageBooster') return RED_ENEMY_SHIELD_RADIUS;
   if (kind === 'replicator') return REPLICATOR_HITBOX_WIDTH / 2;
   if (kind === 'spikeDrone') return object.getData('collisionRadius') || SPIKE_DRONE_FOLDED_RADIUS;
+  if (kind === 'giroDrone') return GIRODRONE_ORBIT_RADIUS + GIRODRONE_SATELLITE_RADIUS;
   if (kind === 'bigAsteroid') return 34;
   if (kind === 'asteroid') return 18;
   if (kind === 'crystallizedOrb') return CRYSTALLIZED_ORB_RADIUS;
@@ -8850,6 +9005,8 @@ function spawnFallingKind(scene, kind, forcedX = null) {
     ? findRedWaveEnemySpawnX(scene)
     : kind === 'replicator' && scene.activeRedWave && scene.activeRedWave.bossKind === 'replicators'
       ? findReplicatorWaveSpawnX(scene)
+    : kind === 'giroDrone'
+      ? findGiroDroneSpawnX(scene)
     : isBooster
       ? findBoosterSpawnX(scene)
       : findSpawnX(scene);
@@ -8885,6 +9042,8 @@ function spawnFallingKind(scene, kind, forcedX = null) {
     setupReplicator(scene, ball);
   } else if (kind === 'spikeDrone') {
     setupSpikeDrone(scene, ball);
+  } else if (kind === 'giroDrone') {
+    setupGiroDrone(scene, ball);
   }
 
   return ball;
@@ -9498,6 +9657,166 @@ function updateSpikeDrones(scene) {
   });
 }
 
+function setupGiroDrone(scene, giroDrone) {
+  const direction = Math.random() < 0.5 ? -1 : 1;
+  const phase = Phaser.Math.Between(0, SPIKE_DRONE_FOLDED_DURATION + SPIKE_DRONE_WARNING_DURATION + SPIKE_DRONE_EXPANDED_DURATION);
+  const stateConfig = getSpikeDroneStateFromPhase(phase);
+  const coreEnergy = trackGameplayVisual(scene, scene.add.graphics().setDepth(FALLING_OBJECT_DEPTH + 2));
+  const energy = trackGameplayVisual(scene, scene.add.graphics().setDepth(FALLING_OBJECT_DEPTH + 2));
+  const satellite = trackGameplayVisual(scene, scene.add.image(giroDrone.x, giroDrone.y, 'giroDroneSatelliteRed'))
+    .setOrigin(0.5)
+    .setDepth(FALLING_OBJECT_DEPTH + 1)
+    .setScale(GIRODRONE_SCALE);
+
+  giroDrone.setScale(GIRODRONE_SCALE);
+  giroDrone.setAngularVelocity(0);
+  giroDrone.setData('displayName', 'Girodron');
+  giroDrone.setData('collisionRadius', GIRODRONE_CORE_RADIUS);
+  giroDrone.setData('coreEnergy', coreEnergy);
+  giroDrone.setData('orbitSatellite', satellite);
+  giroDrone.setData('orbitEnergy', energy);
+  giroDrone.setData('orbitAngle', Phaser.Math.FloatBetween(0, Math.PI * 2));
+  giroDrone.setData('orbitDirection', direction);
+  giroDrone.setData('orbitRadius', GIRODRONE_ORBIT_RADIUS);
+  applyGiroDroneCoreState(giroDrone, stateConfig.state, scene);
+  giroDrone.setData('nextSpikeStateAt', scene.time.now + stateConfig.remaining);
+  setFallingObjectBody(giroDrone, 'giroDrone');
+  updateGiroDroneVisuals(giroDrone, scene.time.now);
+
+  giroDrone.once('destroy', () => {
+    if (satellite && satellite.active !== false) satellite.destroy();
+    if (energy && energy.active !== false) energy.destroy();
+    if (coreEnergy && coreEnergy.active !== false) coreEnergy.destroy();
+  });
+}
+
+function updateGiroDrones(scene, delta) {
+  scene.balls.getChildren().forEach((giroDrone) => {
+    if (!giroDrone.active || giroDrone.getData('kind') !== 'giroDrone') return;
+    if (!giroDrone.body) return;
+
+    giroDrone.body.setVelocityX(0);
+    giroDrone.body.setVelocityY(getFallingVelocity('giroDrone', scene, giroDrone));
+
+    const stateName = giroDrone.getData('spikeState') || 'folded';
+    if (stateName !== 'disabled') {
+      const angle = (giroDrone.getData('orbitAngle') || 0) +
+        (delta || 16) * GIRODRONE_ORBIT_SPEED * (giroDrone.getData('orbitDirection') || 1);
+      giroDrone.setData('orbitAngle', angle);
+    }
+
+    const nextStateAt = giroDrone.getData('nextSpikeStateAt') || 0;
+    if (stateName !== 'disabled' && scene.time.now >= nextStateAt) {
+      if (stateName === 'folded') {
+        applyGiroDroneCoreState(giroDrone, 'warningGreen', scene);
+        giroDrone.setData('nextSpikeStateAt', scene.time.now + SPIKE_DRONE_WARNING_GREEN_DURATION);
+      } else if (stateName === 'warningGreen') {
+        applyGiroDroneCoreState(giroDrone, 'warningRed', scene);
+        giroDrone.setData('nextSpikeStateAt', scene.time.now + SPIKE_DRONE_WARNING_RED_DURATION);
+      } else if (stateName === 'warningRed') {
+        applyGiroDroneCoreState(giroDrone, 'expanded', scene);
+        playSpikeDroneSound(scene);
+        giroDrone.setData('nextSpikeStateAt', scene.time.now + SPIKE_DRONE_EXPANDED_DURATION);
+      } else {
+        applyGiroDroneCoreState(giroDrone, 'folded', scene);
+        giroDrone.setData('nextSpikeStateAt', scene.time.now + SPIKE_DRONE_FOLDED_DURATION);
+      }
+    }
+
+    updateGiroDroneVisuals(giroDrone, scene.time.now);
+  });
+}
+
+function updateGiroDroneVisuals(giroDrone, time = 0) {
+  updateGiroDroneCoreEnergy(giroDrone, time);
+  updateGiroDroneSatellite(giroDrone, time);
+}
+
+function updateGiroDroneCoreEnergy(giroDrone, time = 0) {
+  const energy = giroDrone.getData('coreEnergy');
+  if (!energy || energy.active === false) return;
+  energy.clear();
+  if (giroDrone.getData('spikeState') !== 'expanded') return;
+  drawGiroDroneRedEnergy(energy, giroDrone.x, giroDrone.y, time, GIRODRONE_DAMAGE_HALO_RADIUS, GIRODRONE_CORE_ENERGY_PARTICLE_COUNT);
+}
+
+function updateGiroDroneSatellite(giroDrone, time = 0) {
+  const satellite = giroDrone.getData('orbitSatellite');
+  if (!satellite || satellite.active === false) return;
+
+  const energy = giroDrone.getData('orbitEnergy');
+  const disabled = giroDrone.getData('spikeState') === 'disabled';
+  const angle = giroDrone.getData('orbitAngle') || 0;
+  const radius = giroDrone.getData('orbitRadius') || GIRODRONE_ORBIT_RADIUS;
+  giroDrone.setAngle(0);
+  satellite
+    .setTexture(disabled ? 'giroDroneDisabled' : 'giroDroneSatelliteRed')
+    .setAlpha(1)
+    .setScale(GIRODRONE_SCALE)
+    .setAngle(0)
+    .setPosition(
+      giroDrone.x + Math.cos(angle) * radius,
+      giroDrone.y + Math.sin(angle) * radius
+    );
+
+  if (!energy || energy.active === false) return;
+  energy.clear();
+  if (disabled) return;
+  drawGiroDroneRedEnergy(energy, satellite.x, satellite.y, time, GIRODRONE_DAMAGE_HALO_RADIUS, GIRODRONE_ENERGY_PARTICLE_COUNT);
+}
+
+function drawGiroDroneRedEnergy(graphics, x, y, time = 0, haloRadius = GIRODRONE_DAMAGE_HALO_RADIUS, particleCount = GIRODRONE_ENERGY_PARTICLE_COUNT) {
+  const pulse = (Math.sin(time * 0.006) + 1) / 2;
+  graphics.fillStyle(0xff3045, 0.07 + pulse * 0.05);
+  graphics.fillCircle(x, y, haloRadius + pulse * 3);
+  graphics.lineStyle(1.5, 0xff3045, 0.18 + pulse * 0.16);
+  graphics.strokeCircle(x, y, haloRadius - 3 + pulse * 2);
+
+  for (let i = 0; i < particleCount; i += 1) {
+    const phase = time * 0.0026 + i * ((Math.PI * 2) / particleCount);
+    const orbit = haloRadius - 4 + ((i % 3) * 3) + Math.sin(time * 0.004 + i) * 2;
+    const particleX = x + Math.cos(phase) * orbit;
+    const particleY = y + Math.sin(phase * 1.17) * orbit;
+    const alpha = 0.42 + 0.26 * Math.sin(time * 0.005 + i);
+    graphics.fillStyle(i % 3 === 0 ? 0xffc1c8 : 0xff3045, Phaser.Math.Clamp(alpha, 0.18, 0.72));
+    graphics.fillCircle(particleX, particleY, i % 3 === 0 ? 2.2 : 1.5);
+  }
+}
+
+function applyGiroDroneCoreState(giroDrone, stateName, scene) {
+  giroDrone.setData('spikeState', stateName);
+  if (stateName === 'warningGreen') {
+    giroDrone.setTexture('giroDroneCoreOrange');
+  } else if (stateName === 'warningRed') {
+    giroDrone.setTexture('giroDroneCoreRedWarning');
+  } else if (stateName === 'expanded') {
+    giroDrone.setTexture('giroDroneCoreRed');
+  } else if (stateName === 'disabled') {
+    giroDrone.setTexture('giroDroneDisabled');
+  } else {
+    giroDrone.setTexture('giroDroneCoreGreen');
+  }
+  giroDrone.setScale(GIRODRONE_SCALE);
+  giroDrone.setData('collisionRadius', GIRODRONE_CORE_RADIUS);
+  setFallingObjectBody(giroDrone, 'giroDrone');
+  if (giroDrone.body && scene) {
+    giroDrone.body.setVelocityX(0);
+    giroDrone.body.setVelocityY(getFallingVelocity('giroDrone', scene, giroDrone));
+  }
+}
+
+function isGiroDroneGreenState(stateName) {
+  return stateName === 'folded';
+}
+
+function isGiroDroneOrangeState(stateName) {
+  return stateName === 'warningGreen';
+}
+
+function isGiroDroneRedState(stateName) {
+  return stateName === 'warningRed' || stateName === 'expanded';
+}
+
 function applySpikeDroneState(drone, stateName, scene) {
   drone.setData('spikeState', stateName);
   if (stateName === 'warningGreen') {
@@ -9536,6 +9855,21 @@ function disableSpikeDrone(scene, drone) {
   }
 }
 
+function disableGiroDrone(scene, giroDrone) {
+  const shouldReward = !giroDrone.getData('disableRewardGranted');
+  giroDrone.setData('disableRewardGranted', true);
+  applyGiroDroneCoreState(giroDrone, 'disabled', scene);
+  giroDrone.setData('collisionRadius', GIRODRONE_CORE_RADIUS);
+  giroDrone.setData('nextSpikeStateAt', undefined);
+  giroDrone.setData('pausedSpikeRemaining', undefined);
+  giroDrone.setAngularVelocity(0);
+  updateGiroDroneVisuals(giroDrone, scene.time.now);
+  playSpikeDroneDisableSound(scene);
+  if (shouldReward) {
+    awardEnemyDefeatScore(scene, GIRODRONE_DISABLE_SCORE, giroDrone.x, giroDrone.y, '#ffd84d');
+  }
+}
+
 function isSpikeDroneGreenState(stateName) {
   return stateName === 'folded';
 }
@@ -9543,7 +9877,7 @@ function isSpikeDroneGreenState(stateName) {
 function pauseSpikeDrones(scene) {
   if (!scene.balls) return;
   scene.balls.getChildren().forEach((drone) => {
-    if (!drone.active || drone.getData('kind') !== 'spikeDrone') return;
+    if (!drone.active || (drone.getData('kind') !== 'spikeDrone' && drone.getData('kind') !== 'giroDrone')) return;
     const nextStateAt = drone.getData('nextSpikeStateAt');
     if (nextStateAt === undefined) return;
     drone.setData('pausedSpikeRemaining', Math.max(0, nextStateAt - scene.time.now));
@@ -9553,7 +9887,7 @@ function pauseSpikeDrones(scene) {
 function resumeSpikeDrones(scene) {
   if (!scene.balls) return;
   scene.balls.getChildren().forEach((drone) => {
-    if (!drone.active || drone.getData('kind') !== 'spikeDrone') return;
+    if (!drone.active || (drone.getData('kind') !== 'spikeDrone' && drone.getData('kind') !== 'giroDrone')) return;
     const remaining = drone.getData('pausedSpikeRemaining');
     if (remaining === undefined) return;
     drone.setData('nextSpikeStateAt', scene.time.now + remaining);
@@ -9626,6 +9960,13 @@ function setFallingObjectBody(object, kind) {
     return;
   }
 
+  if (kind === 'giroDrone') {
+    const radius = GIRODRONE_ORBIT_RADIUS + GIRODRONE_SATELLITE_RADIUS;
+    const offset = SPIKE_DRONE_TEXTURE_SIZE / 2 - radius;
+    object.body.setCircle(radius, offset, offset);
+    return;
+  }
+
   if (kind === 'bigAsteroid') {
     object.body.setCircle(34, 14, 14);
     return;
@@ -9652,7 +9993,7 @@ function getNextSpawnKind(scene) {
   if (scene.activeRedWave && scene.activeRedWave.isSpawningDamageBoosters) {
     return scene.activeRedWave.spawnKind || 'damageBooster';
   }
-  if (scene.activeDroneWave && scene.activeDroneWave.isSpawningDrones) return 'spikeDrone';
+  if (scene.activeDroneWave && scene.activeDroneWave.isSpawningDrones) return scene.activeDroneWave.spawnKind || 'spikeDrone';
   if (scene.activeBossWave && scene.activeBossWave.isSpawningEnemies) return 'damageBooster';
   if (scene.activeCometWave && scene.activeCometWave.isSpawningComets) return 'comet';
   if (scene.activeAsteroidWave && scene.activeAsteroidWave.isSpawningAsteroids) {
@@ -9679,10 +10020,11 @@ function getNextSpawnKind(scene) {
 
 function getNextTravelThreatKind(scene) {
   const isLevelBossActive = scene.activeBossWave && !scene.activeBossWave.isTravelEncounter;
-  if ((!scene.obreraSpawnsUnlocked && !scene.droneSpawnsUnlocked && !scene.redNeedleSpawnsUnlocked && !scene.replicatorSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activeCometWave || scene.activePlasmaWave || isLevelBossActive) return null;
+  if ((!scene.obreraSpawnsUnlocked && !scene.droneSpawnsUnlocked && !scene.giroDroneSpawnsUnlocked && !scene.redNeedleSpawnsUnlocked && !scene.replicatorSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activeCometWave || scene.activePlasmaWave || isLevelBossActive) return null;
 
   if (!isSentinelActive(scene) && scene.replicatorSpawnsUnlocked && Math.random() < REPLICATOR_SPAWN_CHANCE) return 'replicator';
   if (scene.redNeedleSpawnsUnlocked && !hasActiveRedNeedle(scene) && Math.random() < RED_NEEDLE_SPAWN_CHANCE) return 'redNeedle';
+  if (scene.giroDroneSpawnsUnlocked && Math.random() < GIRODRONE_SPAWN_CHANCE) return 'giroDrone';
   if (scene.droneSpawnsUnlocked && Math.random() < SPIKE_DRONE_SPAWN_CHANCE) return 'spikeDrone';
   if (scene.obreraSpawnsUnlocked && Math.random() < OBRERA_SPAWN_CHANCE) return 'damageBooster';
   return null;
@@ -9783,6 +10125,7 @@ function getTextureForKind(kind) {
   if (isAsteroidKind(kind)) return 'asteroid';
   if (kind === 'damageBooster') return 'enemyShipSmall';
   if (kind === 'spikeDrone') return 'spikeDrone';
+  if (kind === 'giroDrone') return 'spikeDrone';
   if (kind === 'lifeBooster') return 'lifeBooster';
   if (kind === 'scoreBooster') return 'scoreBooster';
   if (kind === 'shieldBooster') return 'shieldBooster';
@@ -9816,7 +10159,7 @@ function isCometKind(kind) {
 }
 
 function isShieldBlockedKind(kind) {
-  return kind === 'damageBooster' || kind === 'replicator' || kind === 'spikeDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || kind === 'comet' || kind === 'crystallizedOrb' || isAsteroidKind(kind);
+  return kind === 'damageBooster' || kind === 'replicator' || kind === 'spikeDrone' || kind === 'giroDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || kind === 'comet' || kind === 'crystallizedOrb' || isAsteroidKind(kind);
 }
 
 function isHostileContactKind(kind) {
@@ -9837,6 +10180,13 @@ function findSpawnX(scene) {
 function findBoosterSpawnX(scene) {
   const min = 28;
   const max = Math.max(min, getGameWidth(scene) - 28);
+  return Phaser.Math.Between(min, max);
+}
+
+function findGiroDroneSpawnX(scene) {
+  const margin = Math.min(GIRODRONE_ORBIT_RADIUS + GIRODRONE_SATELLITE_RADIUS + 10, getGameWidth(scene) / 2 - 20);
+  const min = margin;
+  const max = Math.max(min, getGameWidth(scene) - margin);
   return Phaser.Math.Between(min, max);
 }
 
@@ -9999,7 +10349,7 @@ function getFallingVelocity(kind, scene, object = null) {
     return Math.round(currentGravity * TRAVEL_REPLICATOR_GRAVITY_RATIO);
   }
 
-  if (kind === 'spikeDrone') {
+  if (kind === 'spikeDrone' || kind === 'giroDrone') {
     return Math.round(BASE_GRAVITY * SPIKE_DRONE_GRAVITY_RATIO);
   }
 
@@ -10045,7 +10395,7 @@ function getHorizontalVelocity(kind, scene, object = null) {
 
 function getCurrentSpawnDelay(scene) {
   if (scene.activePlasmaWave) return PLASMA_WAVE_SPAWN_DELAY;
-  if (scene.activeDroneWave) return DRONE_WAVE_SPAWN_DELAY;
+  if (scene.activeDroneWave) return scene.activeDroneWave.spawnDelay || DRONE_WAVE_SPAWN_DELAY;
   if (scene.activeCometWave) return COMET_WAVE_SPAWN_DELAY;
   if (scene.activeAsteroidWave) return ASTEROID_WAVE_SPAWN_DELAY;
   if (scene.activeRedWave) {
@@ -10084,6 +10434,19 @@ function catchBall(ball, scene) {
       return;
     }
     if (spikeState !== 'expanded' && !isShieldActive(scene)) return;
+  }
+  if (kind === 'giroDrone') {
+    const giroState = ball.getData('spikeState');
+    if (giroState === 'disabled') return;
+    if (!isShieldActive(scene) && isGiroDroneCoreOverlappingShip(scene, ball)) {
+      if (isGiroDroneGreenState(giroState)) {
+        disableGiroDrone(scene, ball);
+        return;
+      }
+      if (isGiroDroneOrangeState(giroState)) {
+        return;
+      }
+    }
   }
 
   if (kind === 'crystallizedOrb') {
@@ -10758,6 +11121,7 @@ function getAbsorbParticleTint(kind, energyOrbColor = 'gold') {
   if (kind === 'contaminatedOrb') return 0x0f7f37;
   if (kind === 'damageBooster') return 0xff3b4f;
   if (kind === 'spikeDrone') return 0xff3045;
+  if (kind === 'giroDrone') return 0xff3045;
   if (kind === 'redNeedle') return 0xff263c;
   if (kind === 'redNeedleLaser') return 0xff263c;
   if (kind === 'lifeBooster') return 0x4dff88;
