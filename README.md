@@ -2,7 +2,7 @@
 
 Juego arcade vertical hecho con HTML, CSS, JavaScript y Phaser 3. Controlas una nave, recoges orbes de energia, encadenas rachas, eliges mejoras y sobrevives a oleadas de amenazas cada vez mas agresivas.
 
-Ultima revision del README: 2026-06-10.
+Ultima revision del README: 2026-06-16.
 
 ## Estado actual
 
@@ -33,7 +33,7 @@ Tambien puedes abrir `index.html` directamente en el navegador. Para jugar con r
 
 - Arrastra la nave para moverla libremente en X-Y dentro de la pantalla.
 - Recoge orbes amarillos para sumar puntos y llenar la barra de progreso.
-- Evita enemigos, asteroides, lasers, cometas, drones, girodrones, barras de plasma, orbes contaminados y la costra inferior de los orbes cristalizados.
+- Evita enemigos, asteroides, lasers, drones, girodrones, barras de plasma, orbes contaminados y la costra inferior de los orbes cristalizados.
 - Usa el boton de pausa del HUD para volver, rendirte o abrir opciones.
 - En opciones puedes activar/desactivar efectos y musica y ajustar sus volumenes por separado.
 - Las preferencias de audio se guardan en `localStorage`.
@@ -57,7 +57,7 @@ Claves usadas en `localStorage`:
 
 En modo infinito, el primer jefe es `Replicadores`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
 
-En Solo Jefes, `Girodrones` es el primer jefe. Despues continua la rotacion con `Centinela`, `Tormenta Cristalizada`, `Lluvia de estrellas` y el resto de jefes; tras `Aguja Roja`, la sucesion vuelve a empezar.
+En Solo Jefes, `Girodrones` es el primer jefe. Despues continua la rotacion con `Centinela`, `Tormenta Cristalizada` y el resto de jefes; tras `Aguja Roja`, la sucesion vuelve a empezar.
 La partida comienza pausada sobre el control azul; el primer dialogo de jefe solo se activa despues de pulsarlo.
 
 ## Progresion
@@ -92,8 +92,8 @@ Como funciona:
 - El intervalo de aparicion normal baja de `1500 ms` a `600 ms` usando una curva suavizada (`SPAWN_DELAY_EASING = 1.8`).
 - Los boosters que caen usan el `80%` de la velocidad principal (`BOOSTER_GRAVITY_RATIO = 0.8`), por eso el HUD muestra tambien `BOOST`.
 - Al cambiar la velocidad, los objetos que ya estan cayendo actualizan su velocidad para adaptarse al nuevo ritmo.
-- Las oleadas y jefes pueden usar sus propios intervalos fijos, por ejemplo Enjambre cada `400 ms`, Drones cada `680 ms`, Girodrones cada `920 ms`, Asteroides cada `760 ms`, parejas de Cometas cada `900 ms` y Plasma cada `2100 ms`.
-- Algunas amenazas no escalan con la velocidad principal y usan ratios o valores propios, como asteroides, drones, cometas, lasers y barras de plasma.
+- Las oleadas y jefes pueden usar sus propios intervalos fijos, por ejemplo Enjambre cada `400 ms`, Drones cada `680 ms`, Girodrones cada `920 ms`, Asteroides cada `760 ms` y Plasma cada `2100 ms`.
+- Algunas amenazas no escalan con la velocidad principal y usan ratios o valores propios, como asteroides, drones, lasers y barras de plasma.
 
 ## Orbes
 
@@ -129,7 +129,7 @@ Si queda un jefe pendiente mientras hay un booster temporal activo, los elemento
 Echo es el acompanante de la nave. Esta presente desde el inicio como apoyo visual y gana utilidad jugable con la mejora `Ayuda de Echo`.
 
 - Detecta amenazas a `128 px` de la nave.
-- Puede atacar obreras, drones de pinchos, cometas y asteroides.
+- Puede atacar obreras, drones de pinchos y asteroides.
 - Cada amenaza valida tira una vez una probabilidad del `30%`.
 - Al bloquear una amenaza concede `10` puntos, igual que la barrera protectora, mas el bono de derrotas desbloqueado por esta al nivel `5`.
 - Tambien celebra las recompensas de racha antes de abrir la pantalla de mejora si corresponde.
@@ -148,7 +148,7 @@ Si los tres boosters pueden aparecer, la probabilidad total por intento va de `6
 
 ## Jefes
 
-Hay un jefe cada 3 niveles en modo normal. Despues del nivel 30, la rotacion se repite cada 30 niveles.
+Hay un jefe cada 3 niveles en modo normal. Despues del nivel 27, la rotacion se repite cada 27 niveles.
 
 | Nivel | Jefe | Patron principal | Desbloquea despues |
 | ---: | --- | --- | --- |
@@ -160,10 +160,7 @@ Hay un jefe cada 3 niveles en modo normal. Despues del nivel 30, la rotacion se 
 | 18 | Drones | Drones de pinchos cada `680 ms`. | Drones en viaje normal. |
 | 21 | Girodrones | Girodrones cada `920 ms`: un nucleo con ciclo verde/naranja/rojo y un dron rojo orbitando con halo de energia. | Girodrones en viaje normal. |
 | 24 | Aguja Roja | `6` pasadas horizontales con disparos laser. | Aguja Roja en viaje normal. |
-| 27 | Lluvia de estrellas | Parejas simetricas cuyas entradas se abren desde el centro hasta los limites laterales antes de cruzarse cada `900 ms`. | Cometas en viaje normal. |
-| 30 | Tormenta Cristalizada | Sucesion de orbes cristalizados cada `850 ms`: se recogen por arriba y causan dano por la costra inferior. | Desbloquea los orbes cristalizados durante el viaje normal. |
-
-El patron de `Lluvia de estrellas` es identico en Normal, Infinito y Solo Jefes: mismas parejas, posiciones, velocidades e intervalo de aparicion.
+| 27 | Tormenta Cristalizada | Sucesion de orbes cristalizados cada `850 ms`: se recogen por arriba y causan dano por la costra inferior. | Desbloquea los orbes cristalizados durante el viaje normal. |
 
 Duraciones principales:
 
@@ -174,7 +171,6 @@ Duraciones principales:
 | Marea de Plasma | `15000 ms` |
 | Drones | `15000 ms` |
 | Girodrones | `15000 ms` |
-| Lluvia de estrellas | `15000 ms` |
 | Replicadores | `15000 ms` |
 | Tormenta Cristalizada | `15000 ms` |
 | Centinela / Aguja Roja | `30000 ms` |
@@ -189,7 +185,6 @@ Las probabilidades son por intento de aparicion. Algunas solo se desbloquean tra
 | Drone de pinchos | `10%` | Tras vencer a Drones. | Solo dana cuando esta expandido; si esta verde se puede desactivar al tocarlo. |
 | Girodron | `5%` | Tras vencer a Girodrones. | El nucleo verde desactiva ambos drones, el naranja no hace nada y el rojo expandido dana con su halo. El dron rojo exterior tambien dana con su halo. |
 | Aguja Roja | `5%` | Tras vencer a Aguja Roja. | Solo puede haber una activa. |
-| Cometa | `15%` | Tras vencer a Lluvia de estrellas. | Entra desde arriba con deriva diagonal y estela. |
 | Asteroide | `15%` | Tras vencer a Cinturon. | Puede aparecer como normal o grande. |
 | Asteroide grande | `24%` de los asteroides de viaje | Si aparece asteroide. | Aproximadamente `3.6%` por intento total. |
 | Barra de plasma | `5%` | Tras vencer a Marea de Plasma. | No aparece durante jefes de nivel. |
@@ -202,11 +197,10 @@ Orden de decision en viaje normal:
 1. Centinela viajero, si cumple condiciones.
 2. Amenaza viajera: Replicador, Aguja Roja, Girodron, drone de pinchos u obrera.
 3. Barra de plasma.
-4. Cometa.
-5. Asteroide.
-6. Booster.
-7. Orbe cristalizado con una probabilidad del `5%`.
-8. Orbe normal u orbe contaminado, si nada anterior aparece.
+4. Asteroide.
+5. Booster.
+6. Orbe cristalizado con una probabilidad del `5%`.
+7. Orbe normal u orbe contaminado, si nada anterior aparece.
 
 Esto hace que varias probabilidades sean condicionales: se comprueban solo si las decisiones anteriores no generaron nada.
 
@@ -307,7 +301,6 @@ Se cargan desde `index.html`:
 | `SPIKE_DRONE_SPAWN_CHANCE` | `0.07` |
 | `RED_NEEDLE_SPAWN_CHANCE` | `0.04` |
 | `TRAVEL_ASTEROID_CHANCE` | `0.10` |
-| `TRAVEL_COMET_CHANCE` | `0.10` |
 | `TRAVEL_PLASMA_CHANCE` | `0.04` |
 
 ## Notas de mantenimiento
