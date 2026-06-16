@@ -57,7 +57,7 @@ Claves usadas en `localStorage`:
 
 En modo infinito, el primer jefe es `Replicadores`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
 
-En Solo Jefes, `Tormenta Cristalizada` es el primer jefe. Despues continua la rotacion con `Lluvia de estrellas`, seguida de la historia desde `Enjambre`; tras `Agujas Rojas`, la sucesion vuelve a empezar.
+En Solo Jefes, `Centinela` es el primer jefe. Despues continua la rotacion con `Tormenta Cristalizada`, `Lluvia de estrellas` y el resto de jefes; tras `Agujas Rojas`, la sucesion vuelve a empezar.
 La partida comienza pausada sobre el control azul; el primer dialogo de jefe solo se activa despues de pulsarlo.
 
 ## Progresion

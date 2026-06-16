@@ -146,7 +146,7 @@ const BOSS_LASER_DURATION = 2000;
 const BOSS_ATTACK_GAP = 1500;
 const BOSS_WIDTH = 560;
 const BOSS_HEIGHT = 220;
-const SENTINEL_TARGET_Y = 86;
+const SENTINEL_TARGET_Y = 112;
 const BOSS_LASER_WIDTH = 32;
 const BOSS_HORIZONTAL_LASER_HEIGHT = 30;
 const WAVE_CLEAR_DELAY = 2200;
@@ -372,7 +372,7 @@ const ASTEROID_WAVE_HORIZONTAL_SPEED_RATIO = 0.58;
 const ASTEROID_WRAP_MARGIN = 28;
 const UPGRADE_POINTS_REQUIRED = 10;
 const STORY_BOSS_KINDS = ['red', 'boss', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss', 'comet', 'crystallized'];
-const BOSS_ONLY_BOSS_KINDS = ['crystallized', 'comet', 'red', 'boss', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss'];
+const BOSS_ONLY_BOSS_KINDS = ['boss', 'crystallized', 'comet', 'red', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss'];
 const SHIELD_BLOCK_SCORE = 10;
 const SPIKE_DRONE_DISABLE_SCORE = 5;
 const INITIAL_HEART_CAPACITY = 3;
@@ -1754,82 +1754,212 @@ function createSpikeDroneTexture(scene, key, mode) {
 function createBossShipTexture(scene) {
   const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
   const centerX = BOSS_WIDTH / 2;
+  const mirrorPoints = (points) => points.map((point) => ({
+    x: centerX * 2 - point.x,
+    y: point.y,
+  }));
+  const fillMirrored = (color, alpha, points) => {
+    graphics.fillStyle(color, alpha);
+    graphics.fillPoints(points, true);
+    graphics.fillPoints(mirrorPoints(points), true);
+  };
 
-  graphics.fillStyle(0x220814, 1);
+  // Dark silhouette: broad armored crown with long, blade-like lower fins.
+  graphics.fillStyle(0x17050d, 1);
   graphics.fillPoints([
-    { x: centerX, y: 8 },
-    { x: BOSS_WIDTH - 16, y: 58 },
-    { x: BOSS_WIDTH - 118, y: 112 },
-    { x: BOSS_WIDTH - 72, y: 176 },
-    { x: centerX + 74, y: 154 },
-    { x: centerX + 42, y: BOSS_HEIGHT - 10 },
-    { x: centerX, y: 184 },
-    { x: centerX - 42, y: BOSS_HEIGHT - 10 },
-    { x: centerX - 74, y: 154 },
-    { x: 72, y: 176 },
-    { x: 118, y: 112 },
-    { x: 16, y: 58 },
+    { x: centerX, y: 4 },
+    { x: 522, y: 32 },
+    { x: 548, y: 72 },
+    { x: 501, y: 88 },
+    { x: 535, y: 122 },
+    { x: 476, y: 113 },
+    { x: 504, y: 174 },
+    { x: 437, y: 137 },
+    { x: 420, y: 210 },
+    { x: 356, y: 158 },
+    { x: 324, y: 214 },
+    { x: centerX, y: 176 },
+    { x: 236, y: 214 },
+    { x: 204, y: 158 },
+    { x: 140, y: 210 },
+    { x: 123, y: 137 },
+    { x: 56, y: 174 },
+    { x: 84, y: 113 },
+    { x: 25, y: 122 },
+    { x: 59, y: 88 },
+    { x: 12, y: 72 },
+    { x: 38, y: 32 },
   ], true);
 
-  graphics.fillStyle(0x7a1426, 1);
+  fillMirrored(0x531020, 1, [
+    { x: 18, y: 64 },
+    { x: 92, y: 30 },
+    { x: 176, y: 45 },
+    { x: 215, y: 77 },
+    { x: 172, y: 103 },
+    { x: 111, y: 84 },
+    { x: 56, y: 101 },
+  ]);
+  fillMirrored(0xa71932, 1, [
+    { x: 50, y: 59 },
+    { x: 117, y: 37 },
+    { x: 181, y: 51 },
+    { x: 208, y: 74 },
+    { x: 166, y: 87 },
+    { x: 111, y: 69 },
+  ]);
+  fillMirrored(0xe52d49, 0.96, [
+    { x: 90, y: 51 },
+    { x: 151, y: 48 },
+    { x: 204, y: 71 },
+    { x: 169, y: 79 },
+    { x: 125, y: 66 },
+  ]);
+
+  fillMirrored(0x6f1328, 1, [
+    { x: 54, y: 104 },
+    { x: 112, y: 87 },
+    { x: 174, y: 108 },
+    { x: 211, y: 139 },
+    { x: 171, y: 160 },
+    { x: 130, y: 132 },
+    { x: 82, y: 139 },
+  ]);
+  fillMirrored(0xc9203d, 1, [
+    { x: 91, y: 105 },
+    { x: 132, y: 96 },
+    { x: 181, y: 117 },
+    { x: 205, y: 138 },
+    { x: 171, y: 145 },
+    { x: 135, y: 122 },
+  ]);
+  fillMirrored(0x2b0915, 1, [
+    { x: 126, y: 128 },
+    { x: 171, y: 151 },
+    { x: 144, y: 198 },
+    { x: 116, y: 151 },
+  ]);
+  fillMirrored(0xef304c, 0.94, [
+    { x: 154, y: 145 },
+    { x: 199, y: 157 },
+    { x: 224, y: 194 },
+    { x: 190, y: 177 },
+  ]);
+
+  // Central armored face and pointed keel.
+  graphics.fillStyle(0x3a0b19, 1);
   graphics.fillPoints([
-    { x: centerX, y: 30 },
-    { x: centerX + 174, y: 72 },
-    { x: centerX + 108, y: 142 },
-    { x: centerX + 32, y: 128 },
-    { x: centerX, y: 156 },
-    { x: centerX - 32, y: 128 },
-    { x: centerX - 108, y: 142 },
-    { x: centerX - 174, y: 72 },
+    { x: centerX, y: 18 },
+    { x: 363, y: 64 },
+    { x: 343, y: 132 },
+    { x: 319, y: 173 },
+    { x: centerX, y: 211 },
+    { x: 241, y: 173 },
+    { x: 217, y: 132 },
+    { x: 197, y: 64 },
+  ], true);
+  graphics.fillStyle(0x9b1931, 1);
+  graphics.fillPoints([
+    { x: centerX, y: 29 },
+    { x: 344, y: 67 },
+    { x: 324, y: 124 },
+    { x: centerX, y: 157 },
+    { x: 236, y: 124 },
+    { x: 216, y: 67 },
+  ], true);
+  graphics.fillStyle(0xe32c49, 1);
+  graphics.fillPoints([
+    { x: centerX, y: 45 },
+    { x: 324, y: 78 },
+    { x: 309, y: 119 },
+    { x: centerX, y: 143 },
+    { x: 251, y: 119 },
+    { x: 236, y: 78 },
+  ], true);
+  graphics.fillStyle(0xff5268, 0.72);
+  graphics.fillTriangle(centerX, 45, centerX + 42, 78, centerX, 68);
+  graphics.fillTriangle(centerX, 45, centerX - 42, 78, centerX, 68);
+
+  graphics.fillStyle(0x250811, 1);
+  graphics.fillPoints([
+    { x: centerX, y: 61 },
+    { x: 307, y: 82 },
+    { x: centerX, y: 108 },
+    { x: 253, y: 82 },
+  ], true);
+  graphics.fillStyle(0xf0445d, 1);
+  graphics.fillPoints([
+    { x: centerX, y: 68 },
+    { x: 297, y: 83 },
+    { x: centerX, y: 98 },
+    { x: 263, y: 83 },
+  ], true);
+  graphics.fillStyle(0x280914, 1);
+  graphics.fillPoints([
+    { x: centerX, y: 74 },
+    { x: 289, y: 83 },
+    { x: centerX, y: 92 },
+    { x: 271, y: 83 },
   ], true);
 
-  graphics.fillStyle(0xd82842, 0.92);
+  // Mining laser emitter.
+  graphics.fillStyle(0x2b0a17, 1);
+  graphics.fillCircle(centerX, 137, 31);
+  graphics.fillStyle(0x68162b, 1);
+  graphics.fillCircle(centerX, 137, 24);
+  graphics.fillStyle(0x120912, 1);
+  graphics.fillCircle(centerX, 137, 16);
+  graphics.lineStyle(2, 0xff7184, 0.62);
+  graphics.strokeCircle(centerX, 137, 27);
+
+  // A single restrained pair of auxiliary emitters.
+  [centerX - 151, centerX + 151].forEach((nodeX) => {
+    graphics.fillStyle(0x260812, 1);
+    graphics.fillCircle(nodeX, 127, 14);
+    graphics.fillStyle(0x8f172d, 1);
+    graphics.fillCircle(nodeX, 127, 9);
+    graphics.fillStyle(0xed4058, 0.86);
+    graphics.fillCircle(nodeX - 1, 126, 4);
+    graphics.lineStyle(2, 0xff8998, 0.38);
+    graphics.strokeCircle(nodeX, 127, 11);
+  });
+
+  graphics.fillStyle(0x1f0710, 1);
   graphics.fillPoints([
-    { x: centerX, y: 54 },
-    { x: centerX + 62, y: 100 },
-    { x: centerX + 30, y: 154 },
-    { x: centerX, y: 170 },
-    { x: centerX - 30, y: 154 },
-    { x: centerX - 62, y: 100 },
+    { x: centerX - 20, y: 159 },
+    { x: centerX, y: 178 },
+    { x: centerX + 20, y: 159 },
+    { x: centerX + 12, y: 207 },
+    { x: centerX, y: BOSS_HEIGHT - 2 },
+    { x: centerX - 12, y: 207 },
   ], true);
+  graphics.fillStyle(0xf21f3d, 1);
+  graphics.fillTriangle(centerX - 11, 174, centerX, BOSS_HEIGHT - 3, centerX + 11, 174);
 
-  graphics.fillStyle(0xff8090, 0.68);
-  graphics.fillEllipse(centerX, 108, 78, 58);
-  graphics.fillStyle(0x090d1b, 0.55);
-  graphics.fillEllipse(centerX, 112, 43, 32);
-  graphics.fillStyle(0xffd0d7, 0.92);
-  graphics.fillCircle(centerX, 108, 12);
-
-  graphics.fillStyle(0xff4058, 0.74);
-  graphics.fillCircle(centerX - 155, 96, 16);
-  graphics.fillCircle(centerX + 155, 96, 16);
-  graphics.fillStyle(0xffa0aa, 0.8);
-  graphics.fillRect(centerX - 185, 129, 74, 10);
-  graphics.fillRect(centerX + 111, 129, 74, 10);
-
-  graphics.fillStyle(0x0b1024, 0.86);
-  graphics.fillRect(centerX - 18, 150, 36, 50);
-  graphics.fillStyle(0xff263c, 0.96);
-  graphics.fillTriangle(centerX - 34, 178, centerX, BOSS_HEIGHT - 5, centerX + 34, 178);
-
-  graphics.fillStyle(0xffb347, 0.9);
-  graphics.fillTriangle(centerX - 96, 165, centerX - 70, BOSS_HEIGHT - 8, centerX - 118, 185);
-  graphics.fillTriangle(centerX + 96, 165, centerX + 70, BOSS_HEIGHT - 8, centerX + 118, 185);
-
-  graphics.lineStyle(3, 0xffa0aa, 0.42);
+  graphics.lineStyle(3, 0xff6d80, 0.38);
   graphics.strokePoints([
-    { x: centerX, y: 8 },
-    { x: BOSS_WIDTH - 16, y: 58 },
-    { x: BOSS_WIDTH - 118, y: 112 },
-    { x: BOSS_WIDTH - 72, y: 176 },
-    { x: centerX + 74, y: 154 },
-    { x: centerX + 42, y: BOSS_HEIGHT - 10 },
-    { x: centerX, y: 184 },
-    { x: centerX - 42, y: BOSS_HEIGHT - 10 },
-    { x: centerX - 74, y: 154 },
-    { x: 72, y: 176 },
-    { x: 118, y: 112 },
-    { x: 16, y: 58 },
+    { x: centerX, y: 4 },
+    { x: 522, y: 32 },
+    { x: 548, y: 72 },
+    { x: 501, y: 88 },
+    { x: 535, y: 122 },
+    { x: 476, y: 113 },
+    { x: 504, y: 174 },
+    { x: 437, y: 137 },
+    { x: 420, y: 210 },
+    { x: 356, y: 158 },
+    { x: 324, y: 214 },
+    { x: centerX, y: 176 },
+    { x: 236, y: 214 },
+    { x: 204, y: 158 },
+    { x: 140, y: 210 },
+    { x: 123, y: 137 },
+    { x: 56, y: 174 },
+    { x: 84, y: 113 },
+    { x: 25, y: 122 },
+    { x: 59, y: 88 },
+    { x: 12, y: 72 },
+    { x: 38, y: 32 },
   ], true);
 
   graphics.generateTexture('bossShip', BOSS_WIDTH, BOSS_HEIGHT);
@@ -5217,6 +5347,12 @@ function pauseTimedGameplay(scene) {
   [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossHorizontalLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.redNeedleBossPassEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
     if (event) event.paused = true;
   });
+  (scene.bossWarningAnimationEvents || []).forEach((event) => {
+    if (event) event.paused = true;
+  });
+  (scene.bossLaserEffects || []).forEach((effect) => {
+    if (effect && effect.redrawEvent) effect.redrawEvent.paused = true;
+  });
   if (scene.bossEnterTween) scene.bossEnterTween.pause();
   if (scene.bossExitTween) scene.bossExitTween.pause();
   if (scene.bossCueMoveTween) scene.bossCueMoveTween.pause();
@@ -5240,6 +5376,12 @@ function resumeTimedGameplay(scene) {
 
   [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossHorizontalLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.redNeedleBossPassEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
     if (event) event.paused = false;
+  });
+  (scene.bossWarningAnimationEvents || []).forEach((event) => {
+    if (event) event.paused = false;
+  });
+  (scene.bossLaserEffects || []).forEach((effect) => {
+    if (effect && effect.redrawEvent) effect.redrawEvent.paused = false;
   });
   if (scene.bossEnterTween) scene.bossEnterTween.resume();
   if (scene.bossExitTween) scene.bossExitTween.resume();
@@ -6488,6 +6630,8 @@ function updateBossWave(scene) {
     return;
   }
 
+  updateSentinelEyeTracking(scene);
+  updateBossElectricLaserEffects(scene);
   recoverStalledBossWave(scene, bossWave);
   if (scene.activeBossWave !== bossWave) return;
 
@@ -6600,12 +6744,45 @@ function createSentinelShip(scene) {
   arms.lineBetween(rightArmX + armWidth - 8, armTop + 18, rightArmX + armWidth - 8, armBottom - 12);
 
   const body = scene.add.image(0, 0, 'bossShip').setOrigin(0.5, 0.5);
+  const eyeGlow = scene.add.circle(0, 27, 11, 0xffa7b4, 0.92)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  const eyeCore = scene.add.circle(0, 27, 6, 0xffedf0, 0.98)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  const eyeHighlight = scene.add.circle(-2, 25, 2.5, 0xffffff, 0.98)
+    .setBlendMode(Phaser.BlendModes.ADD);
   container
-    .add([arms, body])
+    .add([arms, body, eyeGlow, eyeCore, eyeHighlight])
     .setDepth(FX_DEPTH + 1)
-    .setData('sentinelHiddenY', getSentinelHiddenY(scene));
+    .setData('sentinelHiddenY', getSentinelHiddenY(scene))
+    .setData('sentinelEyeGlow', eyeGlow)
+    .setData('sentinelEyeCore', eyeCore)
+    .setData('sentinelEyeHighlight', eyeHighlight);
 
   return container;
+}
+
+function updateSentinelEyeTracking(scene) {
+  const sentinel = scene.bossShip;
+  if (!sentinel || !sentinel.getData || !scene.ship) return;
+
+  const eyeGlow = sentinel.getData('sentinelEyeGlow');
+  const eyeCore = sentinel.getData('sentinelEyeCore');
+  const eyeHighlight = sentinel.getData('sentinelEyeHighlight');
+  if (!eyeGlow || !eyeCore || !eyeHighlight) return;
+
+  const eyeWorldX = sentinel.x;
+  const eyeWorldY = sentinel.y + 27;
+  const angle = Phaser.Math.Angle.Between(eyeWorldX, eyeWorldY, scene.ship.x, scene.ship.y);
+  const distance = Phaser.Math.Distance.Between(eyeWorldX, eyeWorldY, scene.ship.x, scene.ship.y);
+  const trackingStrength = Phaser.Math.Clamp(distance / 180, 0.35, 1);
+  const targetX = Math.cos(angle) * 7 * trackingStrength;
+  const targetY = Math.sin(angle) * 6 * trackingStrength;
+  const nextX = Phaser.Math.Linear(eyeCore.x, targetX, 0.16);
+  const nextY = Phaser.Math.Linear(eyeCore.y - 27, targetY, 0.16);
+
+  eyeGlow.setPosition(nextX * 0.42, 27 + nextY * 0.42);
+  eyeCore.setPosition(nextX, 27 + nextY);
+  eyeHighlight.setPosition(nextX - 2, 27 + nextY - 2);
 }
 
 function getSentinelHiddenY(scene) {
@@ -6909,65 +7086,229 @@ function getNextBossLaserY(scene, bossWave) {
 
 function showBossLaserWarning(scene, laserX) {
   clearBossWarningParticles(scene);
-  scene.bossWarningParticles = [];
-  const minY = 72;
-  const maxY = getGameHeight(scene) - 12;
+  const laserTop = getXyShipTopLimit(scene);
+  const laserLength = getGameHeight(scene) - laserTop;
+  createBossLaserWarningEffect(
+    scene,
+    laserX,
+    laserTop + laserLength / 2,
+    laserLength
+  );
+}
 
-  for (let i = 0; i < 42; i += 1) {
-    const particle = trackGameplayVisual(scene, scene.add.image(
-      laserX + Phaser.Math.Between(-15, 15),
-      Phaser.Math.Between(minY, maxY),
-      'goldTrailParticle'
-    ));
-    particle
+function showBossHorizontalLaserWarning(scene, laserY) {
+  createBossLaserWarningEffect(
+    scene,
+    getGameWidth(scene) / 2,
+    laserY,
+    getGameWidth(scene) - 32,
+    true
+  );
+}
+
+function createBossLaserWarningEffect(scene, centerX, centerY, length, horizontal = false) {
+  scene.bossWarningParticles = scene.bossWarningParticles || [];
+  scene.bossWarningAnimationEvents = scene.bossWarningAnimationEvents || [];
+  const halfLength = length / 2;
+  const startedAt = scene.time.now;
+  const seed = Phaser.Math.Between(0, 9999);
+  const graphics = scene.add.graphics()
+    .setDepth(FX_DEPTH - 1)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  const redrawWarning = () => {
+    const elapsed = scene.time.now - startedAt;
+    const progress = Phaser.Math.Clamp(elapsed / BOSS_LASER_WARN_DURATION, 0, 1);
+    const charge = Phaser.Math.Easing.Cubic.In(progress);
+    const pulse = 0.5 + Math.sin(elapsed * (0.012 + charge * 0.015)) * 0.5;
+    const railOffset = Phaser.Math.Linear(27, 6, charge);
+    const pointCount = Math.max(32, Math.floor(length / 11));
+    const strokePath = (points, width, color, alpha) => {
+      if (points.length < 2) return;
+      graphics.lineStyle(width, color, alpha);
+      graphics.beginPath();
+      graphics.moveTo(points[0].x, points[0].y);
+      points.slice(1).forEach((point) => graphics.lineTo(point.x, point.y));
+      graphics.strokePath();
+    };
+
+    graphics.clear();
+
+    graphics.lineStyle(24, 0xff0018, 0.025 + charge * 0.11);
+    if (horizontal) {
+      graphics.lineBetween(centerX - halfLength, centerY, centerX + halfLength, centerY);
+    } else {
+      graphics.lineBetween(centerX, centerY - halfLength, centerX, centerY + halfLength);
+    }
+    graphics.lineStyle(3 + charge * 3, 0xff1830, 0.18 + charge * 0.62);
+    if (horizontal) {
+      graphics.lineBetween(centerX - halfLength, centerY, centerX + halfLength, centerY);
+    } else {
+      graphics.lineBetween(centerX, centerY - halfLength, centerX, centerY + halfLength);
+    }
+
+    [-1, 1].forEach((side) => {
+      const points = [];
+      for (let point = 0; point <= pointCount; point += 1) {
+        const pathProgress = point / pointCount;
+        const distance = -halfLength + length * pathProgress;
+        const offset = side * (
+          railOffset +
+          Math.sin(elapsed * 0.007 + seed + pathProgress * Math.PI * 13) * (4.5 - charge * 2)
+        );
+        points.push(horizontal
+          ? { x: centerX + distance, y: centerY + offset }
+          : { x: centerX + offset, y: centerY + distance });
+      }
+      strokePath(points, 5, 0xff001f, 0.08 + charge * 0.24);
+      strokePath(points, 1.4, 0xff4a58, 0.34 + charge * 0.54);
+    });
+
+    graphics.lineStyle(1.5 + charge * 2.5, 0xffffff, charge * (0.16 + pulse * 0.34));
+    if (horizontal) {
+      graphics.lineBetween(centerX - halfLength, centerY, centerX + halfLength, centerY);
+    } else {
+      graphics.lineBetween(centerX, centerY - halfLength, centerX, centerY + halfLength);
+    }
+  };
+
+  redrawWarning();
+  const redrawEvent = scene.time.addEvent({
+    delay: 16,
+    loop: true,
+    callback: redrawWarning,
+  });
+  scene.bossWarningAnimationEvents.push(redrawEvent);
+  scene.bossWarningParticles.push(graphics);
+
+  for (let index = 0; index < 64; index += 1) {
+    const along = Phaser.Math.FloatBetween(-halfLength, halfLength);
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const startOffset = side * Phaser.Math.Between(16, 38);
+    const radius = Phaser.Math.FloatBetween(0.8, 2.1);
+    const particle = scene.add.circle(
+      horizontal ? centerX + along : centerX + startOffset,
+      horizontal ? centerY + startOffset : centerY + along,
+      radius,
+      index % 7 === 0 ? 0xffffff : 0xff1028,
+      Phaser.Math.FloatBetween(0.45, 0.9)
+    )
       .setDepth(FX_DEPTH)
-      .setTint(0xff263c)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(Phaser.Math.FloatBetween(0.75, 1.7))
-      .setAlpha(0.85);
+      .setBlendMode(Phaser.BlendModes.ADD);
 
     scene.tweens.add({
       targets: particle,
-      x: laserX + Phaser.Math.Between(-5, 5),
-      y: Phaser.Math.Between(minY, maxY),
-      scale: 0.2,
-      alpha: 0.15,
-      duration: BOSS_LASER_WARN_DURATION,
+      x: horizontal ? centerX + along : centerX + side * Phaser.Math.Between(2, 6),
+      y: horizontal ? centerY + side * Phaser.Math.Between(2, 6) : centerY + along,
+      alpha: index % 7 === 0 ? 0.9 : 0.22,
+      scale: Phaser.Math.FloatBetween(0.45, 0.8),
+      duration: Phaser.Math.Between(620, BOSS_LASER_WARN_DURATION),
+      delay: Phaser.Math.Between(0, 180),
       ease: 'Sine.easeIn',
-      onComplete: () => particle.destroy(),
     });
     scene.bossWarningParticles.push(particle);
   }
 }
 
-function showBossHorizontalLaserWarning(scene, laserY) {
-  scene.bossWarningParticles = scene.bossWarningParticles || [];
-  const width = getGameWidth(scene);
+function createBossElectricLaserEffect(scene, centerX, centerY, length, horizontal = false) {
+  const graphics = scene.add.graphics()
+    .setDepth(FX_DEPTH)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  scene.bossLaserEffects = scene.bossLaserEffects || [];
+  const effect = {
+    graphics,
+    centerX,
+    centerY,
+    length,
+    horizontal,
+    seed: Phaser.Math.Between(0, 9999),
+  };
+  scene.bossLaserEffects.push(effect);
+  drawBossElectricLaserEffect(effect, scene.time.now);
+  return graphics;
+}
 
-  for (let i = 0; i < 42; i += 1) {
-    const particle = trackGameplayVisual(scene, scene.add.image(
-      Phaser.Math.Between(22, width - 22),
-      laserY + Phaser.Math.Between(-15, 15),
-      'goldTrailParticle'
-    ));
-    particle
-      .setDepth(FX_DEPTH)
-      .setTint(0xff263c)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(Phaser.Math.FloatBetween(0.7, 1.55))
-      .setAlpha(0.82);
+function updateBossElectricLaserEffects(scene) {
+  if (!scene.bossLaserEffects) return;
+  scene.bossLaserEffects.forEach((effect) => {
+    if (effect && effect.graphics && effect.graphics.active) {
+      drawBossElectricLaserEffect(effect, scene.time.now);
+    }
+  });
+}
 
-    scene.tweens.add({
-      targets: particle,
-      x: Phaser.Math.Between(28, width - 28),
-      y: laserY + Phaser.Math.Between(-5, 5),
-      scale: 0.2,
-      alpha: 0.12,
-      duration: BOSS_LASER_WARN_DURATION,
-      ease: 'Sine.easeIn',
-      onComplete: () => particle.destroy(),
-    });
-    scene.bossWarningParticles.push(particle);
+function drawBossElectricLaserEffect(effect, time) {
+  const { graphics, centerX, centerY, length, horizontal, seed } = effect;
+  const halfLength = length / 2;
+  const pulse = 0.5 + Math.sin(time * 0.016 + seed) * 0.5;
+  const drawBeamRect = (thickness, color, alpha) => {
+    graphics.fillStyle(color, alpha);
+    if (horizontal) {
+      graphics.fillRect(centerX - halfLength, centerY - thickness / 2, length, thickness);
+    } else {
+      graphics.fillRect(centerX - thickness / 2, centerY - halfLength, thickness, length);
+    }
+  };
+  const strokePath = (points, width, color, alpha) => {
+    if (points.length < 2) return;
+    graphics.lineStyle(width, color, alpha);
+    graphics.beginPath();
+    graphics.moveTo(points[0].x, points[0].y);
+    points.slice(1).forEach((point) => graphics.lineTo(point.x, point.y));
+    graphics.strokePath();
+  };
+
+  graphics.clear();
+  drawBeamRect(58, 0xff0018, 0.07 + pulse * 0.05);
+  drawBeamRect(40, 0xff001f, 0.13 + pulse * 0.08);
+  drawBeamRect(25, 0xff0828, 0.32 + pulse * 0.11);
+  drawBeamRect(12, 0xff1830, 0.88 + pulse * 0.1);
+  drawBeamRect(4.5 + pulse * 1.5, 0xffffff, 0.98);
+
+  // Continuous edge arcs undulate smoothly instead of changing randomly.
+  [-1, 1].forEach((side) => {
+    const points = [];
+    const pointCount = Math.max(36, Math.floor(length / 10));
+    for (let point = 0; point <= pointCount; point += 1) {
+      const progress = point / pointCount;
+      const along = -halfLength + length * progress;
+      const offset = side * (
+        14 +
+        Math.sin(time * 0.007 + seed + progress * Math.PI * 15) * 5 +
+        Math.sin(time * 0.0035 + progress * Math.PI * 6) * 3
+      );
+      points.push(horizontal
+        ? { x: centerX + along, y: centerY + offset }
+        : { x: centerX + offset, y: centerY + along });
+    }
+    strokePath(points, 6, 0xff001f, 0.26);
+    strokePath(points, 1.6, 0xff5b68, 0.92);
+  });
+
+  const particleCount = horizontal ? 48 : 72;
+  for (let particle = 0; particle < particleCount; particle += 1) {
+    const direction = particle % 3 === 0 ? -1 : 1;
+    const travel = (
+      time * (0.00018 + (particle % 5) * 0.000012) * direction +
+      particle / particleCount +
+      seed * 0.001
+    ) % 1;
+    const wrappedTravel = travel < 0 ? travel + 1 : travel;
+    const along = -halfLength + length * wrappedTravel;
+    const side = particle % 2 === 0 ? -1 : 1;
+    const offset = side * (
+      5 +
+      (particle % 4) * 2.8 +
+      Math.sin(time * 0.006 + seed + particle * 1.7) * 3
+    );
+    const radius = 0.7 + (particle % 4) * 0.32 + pulse * 0.25;
+    const alpha = 0.28 + (particle % 5) * 0.09;
+    const x = horizontal ? centerX + along : centerX + offset;
+    const y = horizontal ? centerY + offset : centerY + along;
+
+    graphics.fillStyle(particle % 9 === 0 ? 0xffffff : 0xff1830, alpha);
+    graphics.fillCircle(x, y, radius);
+    graphics.fillStyle(0xff001f, alpha * 0.18);
+    graphics.fillCircle(x, y, radius * 2.4);
   }
 }
 
@@ -6985,14 +7326,16 @@ function fireBossLaser(scene, laserX, laserY) {
   bossWave.attacksDone += 1;
   bossWave.previousLaserX = laserX;
 
-  const laserHeight = getGameHeight(scene);
-  const laserCenterY = laserHeight / 2 + 78;
-  scene.bossLaser = scene.add.rectangle(laserX, laserCenterY, BOSS_LASER_WIDTH, laserHeight, 0xff263c, 0.72)
+  const laserTop = getXyShipTopLimit(scene);
+  const laserHeight = getGameHeight(scene) - laserTop;
+  const laserCenterY = laserTop + laserHeight / 2;
+  scene.bossLaser = scene.add.rectangle(laserX, laserCenterY, BOSS_LASER_WIDTH, laserHeight, 0xff001f, 0.2)
     .setOrigin(0.5, 0.5)
     .setDepth(FX_DEPTH - 2);
-  scene.bossLaserCore = scene.add.rectangle(laserX, laserCenterY, 9, laserHeight, 0xffedf0, 0.86)
+  scene.bossLaserCore = scene.add.rectangle(laserX, laserCenterY, 5, laserHeight, 0xffffff, 0.96)
     .setOrigin(0.5, 0.5)
     .setDepth(FX_DEPTH - 1);
+  createBossElectricLaserEffect(scene, laserX, laserCenterY, laserHeight);
   showBossHorizontalLaserWarning(scene, laserY);
   scene.bossHorizontalLaserEvent = scene.time.addEvent({
     delay: BOSS_LASER_WARN_DURATION,
@@ -7020,12 +7363,13 @@ function fireBossHorizontalLaser(scene, laserY) {
 
   const laserWidth = getGameWidth(scene);
   const laserCenterX = laserWidth / 2;
-  scene.bossHorizontalLaser = scene.add.rectangle(laserCenterX, laserY, laserWidth, BOSS_HORIZONTAL_LASER_HEIGHT, 0xff263c, 0.7)
+  scene.bossHorizontalLaser = scene.add.rectangle(laserCenterX, laserY, laserWidth, BOSS_HORIZONTAL_LASER_HEIGHT, 0xff001f, 0.2)
     .setOrigin(0.5, 0.5)
     .setDepth(FX_DEPTH - 2);
-  scene.bossHorizontalLaserCore = scene.add.rectangle(laserCenterX, laserY, laserWidth, 8, 0xffedf0, 0.84)
+  scene.bossHorizontalLaserCore = scene.add.rectangle(laserCenterX, laserY, laserWidth, 5, 0xffffff, 0.96)
     .setOrigin(0.5, 0.5)
     .setDepth(FX_DEPTH - 1);
+  createBossElectricLaserEffect(scene, laserCenterX, laserY, laserWidth, true);
   playBossLaserSound(scene);
 }
 
@@ -7655,15 +7999,33 @@ function destroyPlasmaBar(bar) {
 }
 
 function clearBossWarningParticles(scene) {
+  if (scene.bossWarningAnimationEvents) {
+    scene.bossWarningAnimationEvents.forEach((event) => {
+      if (event) event.remove(false);
+    });
+    scene.bossWarningAnimationEvents = [];
+  }
   if (!scene.bossWarningParticles) return;
   scene.bossWarningParticles.forEach((particle) => {
-    if (particle && particle.active) particle.destroy();
+    if (!particle) return;
+    scene.tweens.killTweensOf(particle);
+    if (particle.active) particle.destroy();
   });
   scene.bossWarningParticles = [];
 }
 
 function clearBossLaser(scene) {
   stopBossLaserSound(scene);
+  if (scene.bossLaserEffects) {
+    scene.bossLaserEffects.forEach((effect) => {
+      if (!effect) return;
+      if (effect.redrawEvent) effect.redrawEvent.remove(false);
+      const graphics = effect.graphics || effect;
+      scene.tweens.killTweensOf(graphics);
+      if (graphics.active) graphics.destroy();
+    });
+    scene.bossLaserEffects = [];
+  }
   if (scene.bossLaser) {
     scene.bossLaser.destroy();
     scene.bossLaser = null;
