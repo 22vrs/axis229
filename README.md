@@ -55,7 +55,7 @@ Claves usadas en `localStorage`:
 | Infinito | `MODO INFINITO` | Partida libre con amenazas desbloqueadas y jefes aleatorios. | No |
 | Solo Jefes | `SOLO JEFES` | Modo de prueba que encadena los jefes de historia sin viajes normales, niveles ni mejoras. | No |
 
-En modo infinito, el primer jefe es `Replicadores`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
+En modo infinito, el primer jefe es `Replicadores`; despues los jefes se eligen aleatoriamente entre la rotacion disponible, incluyendo `Enjambre de Escisoras`.
 
 En Solo Jefes, `Enjambre de Escisoras` es el primer jefe. Despues continua la rotacion con `Girodrones`, `Centinela`, `Tormenta Cristalizada` y el resto de jefes; tras `Aguja Roja`, la sucesion vuelve a empezar.
 La partida comienza pausada sobre el control azul; el primer dialogo de jefe solo se activa despues de pulsarlo.
@@ -148,23 +148,53 @@ Las probabilidades son por intento de aparicion. Solo puede haber un booster cay
 
 Cada booster tira su probabilidad individual dentro del pool de boosters. Si mas de uno supera la tirada en el mismo intento, se elige uno ponderando por su probabilidad.
 
+## Pools de aparicion
+
+Durante el viaje normal, cada intento periodico de spawn se divide en pools independientes. Esto evita que ampliar una familia de amenazas reduzca la frecuencia base de orbes.
+
+Orden general:
+
+1. Casos especiales. Las oleadas y jefes activos usan sus propios schedulers y pueden bloquear el spawn normal. Marea de Plasma no deja caer orbes ni boosters normales mientras esta activa.
+2. Centinela viajero. Si cumple condiciones y supera su tirada, inicia el encuentro y consume el intento.
+3. Pool suplementario. Amenazas viajeras, plasma, asteroides y boosters tiran por separado. Si varios pools generan candidato a la vez, se elige uno con pesos de tension.
+4. Pool de orbes. Siempre se resuelve un orbe en viaje normal, aunque tambien haya salido un elemento suplementario.
+
+Pesos del pool suplementario:
+
+| Pool | Peso | Que controla |
+| --- | ---: | --- |
+| Amenazas viajeras | `1.00` | Obreras, escisoras, drones, girodrones, Aguja Roja y Replicadores. |
+| Peligros de entorno | `0.90` | Plasma y asteroides; cada familia tira por separado pero comparte peso de tension. |
+| Boosters | `0.72` | Catalizador, barrera y kit de reparacion. |
+
+Estos pesos no son probabilidades directas. Primero cada pool tira sus propias probabilidades internas; el peso solo decide cual aparece cuando coinciden varios candidatos suplementarios en el mismo intento.
+
+Tiradas internas:
+
+- Pool de orbes: si los cristalizados estan desbloqueados, tienen una tirada del `5%`. Si no sale cristalizado, el Purificador fuerza orbe normal; sin Purificador, el contaminado tira al `20%` y si falla cae un orbe normal.
+- Pool de amenazas viajeras: cada amenaza desbloqueada tira su probabilidad individual. Si pasan varias amenazas a la vez, se elige una ponderando por su propia probabilidad.
+- Pool de asteroides: el asteroide tira al `10%`; si sale, tiene un `24%` de ser grande.
+- Pool de plasma: la barra de plasma tira al `4%`.
+- Pool de boosters: cada booster disponible tira su probabilidad individual. Si pasan varios boosters a la vez, se elige uno ponderando por su propia probabilidad. Solo puede haber un booster cayendo a la vez.
+
+Para ajustar balance, las constantes principales estan al inicio de `game.js`: `*_SPAWN_CHANCE`, `TRAVEL_ASTEROID_CHANCE`, `TRAVEL_PLASMA_CHANCE`, `CRYSTALLIZED_ORB_CHANCE`, `CONTAMINATED_ORB_CHANCE`, `BOOSTER_CHANCE_PER_LEVEL` y los pesos `TRAVEL_*_POOL_WEIGHT`.
+
 ## Jefes
 
-Hay un jefe cada 3 niveles en modo normal. Despues del nivel 27, la rotacion se repite cada 27 niveles.
+Hay un jefe cada 3 niveles en modo normal. Despues del nivel 30, la rotacion se repite cada 30 niveles.
 
 | Nivel | Jefe | Patron principal | Desbloquea despues |
 | ---: | --- | --- | --- |
 | 3 | Enjambre de Obreras | Enemigos rojos cada `400 ms`. | Obreras en viaje normal. |
-| 6 | Centinela | Laser vertical con aviso y laser horizontal encadenado. | Centinela viajero. |
-| 9 | Cinturon | Asteroides normales y grandes cada `760 ms`. | Asteroides en viaje normal. |
-| 12 | Marea de Plasma | Barras horizontales con hueco movil cada `2100 ms`. | Barras de plasma en viaje normal. |
-| 15 | Replicadores | Formación serpenteante cada `900 ms`: cada copia recorre la trayectoria anterior y vuelve a seguir horizontalmente a Axis si pierde su eslabón. | Replicadores en viaje normal. |
-| 18 | Drones | Drones de pinchos cada `680 ms`. | Drones en viaje normal. |
-| 21 | Girodrones | Girodrones cada `920 ms`: un nucleo con ciclo verde/naranja/rojo y un dron rojo orbitando con halo de energia. | Girodrones en viaje normal. |
-| 24 | Aguja Roja | `6` pasadas horizontales con disparos laser. | Aguja Roja en viaje normal. |
-| 27 | Tormenta Cristalizada | Sucesion de orbes cristalizados cada `850 ms`: se recogen por arriba y causan dano por la costra inferior. | Desbloquea los orbes cristalizados durante el viaje normal. |
-
-En Solo Jefes se anade como primer combate `Enjambre de Escisoras`: una sucesion de Escisoras que bajan a velocidad de obrera, se dividen a media pantalla y continuan como dos mitades en diagonal.
+| 6 | Enjambre de Escisoras | Escisoras cada `650 ms`: bajan a velocidad de obrera, se dividen a media pantalla y continuan como dos mitades en diagonal. | Escisoras en viaje normal. |
+| 9 | Centinela | Laser vertical con aviso y laser horizontal encadenado. | Centinela viajero. |
+| 12 | Cinturon | Asteroides normales y grandes cada `760 ms`. | Asteroides en viaje normal. |
+| 15 | Marea de Plasma | Barras horizontales con hueco movil cada `2100 ms`. | Barras de plasma en viaje normal. |
+| 18 | Replicadores | Formación serpenteante cada `900 ms`: cada copia recorre la trayectoria anterior y vuelve a seguir horizontalmente a Axis si pierde su eslabón. | Replicadores en viaje normal. |
+| 21 | Drones | Drones de pinchos cada `680 ms`. | Drones en viaje normal. |
+| 24 | Girodrones | Girodrones cada `920 ms`: un nucleo con ciclo verde/naranja/rojo y un dron rojo orbitando con halo de energia. | Girodrones en viaje normal. |
+| 27 | Aguja Roja | `6` pasadas horizontales con disparos laser. | Aguja Roja en viaje normal. |
+| 30 | Tormenta Cristalizada | Sucesion de orbes cristalizados cada `850 ms`: se recogen por arriba y causan dano por la costra inferior. | Desbloquea los orbes cristalizados durante el viaje normal. |
 
 Duraciones principales:
 
@@ -186,25 +216,17 @@ Las probabilidades son por intento de aparicion dentro de su pool. Algunas solo 
 
 | Amenaza | Probabilidad | Condicion | Notas |
 | --- | ---: | --- | --- |
-| Obrera / enemigo rojo | `20%` | Tras vencer a Enjambre de Obreras. | Puede aparecer durante el centinela viajero. |
+| Obrera / enemigo rojo | `14%` | Tras vencer a Enjambre de Obreras. | Puede aparecer durante el centinela viajero. |
 | Escisora | `5%` | Tras vencer a Enjambre de Escisoras. | Cae como una obrera, se divide arriba de la pantalla y sus mitades continuan en diagonal. |
-| Drone de pinchos | `10%` | Tras vencer a Drones. | Solo dana cuando esta expandido; si esta verde se puede desactivar al tocarlo. |
+| Drone de pinchos | `7%` | Tras vencer a Drones. | Solo dana cuando esta expandido; si esta verde se puede desactivar al tocarlo. |
 | Girodron | `5%` | Tras vencer a Girodrones. | El nucleo verde desactiva ambos drones, el naranja no hace nada y el rojo expandido dana con su halo. El dron rojo exterior tambien dana con su halo. |
-| Aguja Roja | `5%` | Tras vencer a Aguja Roja. | Solo puede haber una activa. |
-| Asteroide | `15%` | Tras vencer a Cinturon. | Puede aparecer como normal o grande. |
-| Asteroide grande | `24%` de los asteroides de viaje | Si aparece asteroide. | Aproximadamente `3.6%` por intento total. |
-| Barra de plasma | `5%` | Tras vencer a Marea de Plasma. | No aparece durante jefes de nivel. |
-| Centinela viajero | `2%` | Tras vencer a Centinela. | Cooldown de `26000 ms`; no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. Mientras ataca no aparecen Replicadores ni boosters morados. |
+| Aguja Roja | `4%` | Tras vencer a Aguja Roja. | Solo puede haber una activa. |
+| Asteroide | `10%` | Tras vencer a Cinturon. | Puede aparecer como normal o grande. |
+| Asteroide grande | `24%` de los asteroides de viaje | Si aparece asteroide. | Aproximadamente `2.4%` por intento total. |
+| Barra de plasma | `4%` | Tras vencer a Marea de Plasma. | No aparece durante jefes de nivel. |
+| Centinela viajero | `1.5%` | Tras vencer a Centinela. | Cooldown de `26000 ms`; no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. Mientras ataca no aparecen Replicadores ni boosters morados. |
 | Replicador | `2%` | Tras vencer a Replicadores. | Copia invertida de Axis con estela corta y glitch RGB; imita el eje horizontal con `70-120 ms` de retraso y cae al `56%` de la velocidad actual. No aparece mientras hay un Centinela activo. |
 | Orbe cristalizado | `5%` | Tras superar Tormenta Cristalizada. | La cara superior limpia se puede recoger. La costra inferior causa dano. Si se pierde, también se pierde una vida porque su energía sigue siendo válida. |
-
-Resolucion de pools en viaje normal:
-
-1. Centinela viajero, si cumple condiciones. Este encuentro mantiene sus restricciones especiales.
-2. Pool suplementario: amenazas viajeras, plasma, asteroides y boosters tiran por separado. Si coinciden varios pools, se elige un suplemento ponderado por pesos de tension.
-3. Pool de orbes: cristalizado, contaminado o energia normal se resuelve siempre que el estado permita spawns normales.
-
-Las oleadas y jefes conservan sus schedulers propios. Durante Marea de Plasma no caen orbes ni boosters normales.
 
 ## Ranking
 
