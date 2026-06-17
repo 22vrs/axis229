@@ -847,7 +847,11 @@ function startIntroEchoHops(scene, sequence) {
         clearIntroAxisEyeLight(scene);
         scene.introSequence = null;
         resetEchoPersonality(scene);
-        startEchoTutorial(scene);
+        if (sequence.onComplete) {
+          sequence.onComplete();
+        } else {
+          startEchoTutorial(scene);
+        }
       });
     },
   });

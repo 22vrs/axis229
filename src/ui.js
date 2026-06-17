@@ -94,6 +94,7 @@ function createGameOver(scene) {
   const scoreStatus = document.getElementById('score-status');
   const topRankingList = document.getElementById('gameover-ranking-list');
   const rankingBlock = topRankingList ? topRankingList.closest('.ranking-block') : null;
+  const reviveButton = document.getElementById('revive-button');
   const retryButton = document.getElementById('retry-button');
   const menuButton = document.getElementById('menu-button');
 
@@ -107,6 +108,13 @@ function createGameOver(scene) {
     retryButton.addEventListener('click', () => {
       playButtonSound(scene);
       startGame.call(scene, { mode: currentGameMode });
+    });
+  }
+  if (reviveButton) {
+    reviveButton.addEventListener('click', () => {
+      if (!canAffordBossRevive()) return;
+      playButtonSound(scene);
+      reviveFromBossCheckpoint.call(scene);
     });
   }
   if (menuButton) {
@@ -127,6 +135,8 @@ function createGameOver(scene) {
   overlay.scoreStatus = scoreStatus;
   overlay.topRankingList = topRankingList;
   overlay.rankingBlock = rankingBlock;
+  overlay.reviveButton = reviveButton;
+  overlay.retryButton = retryButton;
   return overlay;
 }
 

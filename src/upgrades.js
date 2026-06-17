@@ -731,8 +731,6 @@ function maybeOpenUpgradeChoice(scene) {
     scene.pendingLevelUpgradeChoice = true;
   }
 
-  pauseGameplayForPendingUpgradeChoice(scene);
-
   const echoLevelUpgradeDelay = getEchoLevelUpgradeDelay(scene);
   if (echoLevelUpgradeDelay > 0 && !scene.deferUpgradeChoiceUntil) {
     scene.deferUpgradeChoiceUntil = scene.time.now + echoLevelUpgradeDelay;
@@ -1031,6 +1029,7 @@ function consumePendingBossWave(scene) {
     ? scene.pendingBossWaves.shift()
     : null;
   releasePendingStreakRepairKit(scene);
+  saveBossReviveCheckpoint(scene, bossConfig);
   activateLevelBoss(scene, bossConfig);
   return true;
 }

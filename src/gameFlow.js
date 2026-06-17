@@ -127,8 +127,12 @@ function startGame(options = {}) {
 }
 
 function startGameIntro(scene) {
+  startAxisActivationIntro(scene, () => startEchoTutorial(scene));
+}
+
+function startAxisActivationIntro(scene, onComplete) {
   if (!scene || !scene.ship || !scene.echoCompanion) {
-    startEchoTutorial(scene);
+    if (onComplete) onComplete();
     return;
   }
 
@@ -144,6 +148,7 @@ function startGameIntro(scene) {
   const shipHomeY = getShipY(scene);
   const sequence = {
     orbit: { progress: 0 },
+    onComplete,
   };
   scene.introSequence = sequence;
 
@@ -275,6 +280,7 @@ function endGame() {
   playMenuMusic(this);
   setHudVisible(this, false);
   showOverlayScreen(this, 'gameover');
+  updateGameOverReviveButton(this);
   if (isBossOnlyGameMode()) {
     this.gameOverContainer.finalScore.setText('Solo Jefes - Jefes superados: ' + Math.max(0, this.bossOnlyBossNumber - 1));
     prepareUnrankedGameOver(this);
@@ -286,6 +292,213 @@ function endGame() {
     prepareGameOverScore(this);
     loadRankingInto(this.gameOverContainer.topRankingList, null, 3);
   }
+}
+
+function canReviveFromBossCheckpoint() {
+  return Boolean(bossReviveCheckpoint && bossReviveCheckpoint.bossConfig);
+}
+
+function getBossReviveCost() {
+  return (bossRevivesUsed + 1) * 50;
+}
+
+function canAffordBossRevive() {
+  return canReviveFromBossCheckpoint() && energyStreak >= getBossReviveCost();
+}
+
+function updateGameOverReviveButton(scene) {
+  const overlay = scene && scene.gameOverContainer;
+  if (!overlay) return;
+
+  const reviveButton = overlay.reviveButton;
+  const retryButton = overlay.retryButton;
+  const hasCheckpoint = canReviveFromBossCheckpoint();
+  const canAfford = canAffordBossRevive();
+
+  if (reviveButton) {
+    reviveButton.hidden = !hasCheckpoint || !canAfford;
+    reviveButton.textContent = 'Paga ' + getBossReviveCost() + ' puntos de racha para reaparecer en el último Jefe.';
+  }
+  if (retryButton) {
+    retryButton.textContent = hasCheckpoint && !canAfford
+      ? 'No tienes suficientes puntos de racha. Comienzas desde el principio.'
+      : 'REINTENTAR';
+  }
+}
+
+function saveBossReviveCheckpoint(scene, bossConfig) {
+  if (!scene || !bossConfig) return;
+
+  bossReviveCheckpoint = {
+    mode: currentGameMode,
+    bossConfig: cloneBossConfig(bossConfig),
+    score,
+    ballsCaught,
+    energyStreak,
+    maxEnergyStreak,
+    currentGravity,
+    currentBoosterGravity,
+    currentSpawnDelay,
+    maxLives,
+    levelProgressScore,
+    playerLevel,
+    nextUpgradeScore,
+    upgrades: {
+      lifeBoosterLevel,
+      shieldBoosterLevel,
+      scoreBoosterLevel,
+      energyRefinerLevel,
+      energyPurifierLevel,
+      echoHelpLevel,
+      vitalExpanderLevel,
+      energyResonanceLevel,
+      energyRefinerLevelBonus,
+      shieldDefeatLevelBonus,
+    },
+    unlocks: {
+      obreraSpawnsUnlocked: Boolean(scene.obreraSpawnsUnlocked),
+      scissorSpawnsUnlocked: Boolean(scene.scissorSpawnsUnlocked),
+      droneSpawnsUnlocked: Boolean(scene.droneSpawnsUnlocked),
+      giroDroneSpawnsUnlocked: Boolean(scene.giroDroneSpawnsUnlocked),
+      asteroidSpawnsUnlocked: Boolean(scene.asteroidSpawnsUnlocked),
+      plasmaSpawnsUnlocked: Boolean(scene.plasmaSpawnsUnlocked),
+      redNeedleSpawnsUnlocked: Boolean(scene.redNeedleSpawnsUnlocked),
+      replicatorSpawnsUnlocked: Boolean(scene.replicatorSpawnsUnlocked),
+      crystallizedOrbSpawnsUnlocked: Boolean(scene.crystallizedOrbSpawnsUnlocked),
+      travelSentinelUnlocked: Boolean(scene.travelSentinelUnlocked),
+      nextTravelSentinelEligibleAt: scene.nextTravelSentinelEligibleAt || 0,
+    },
+    infiniteBossBag: scene.infiniteBossBag ? scene.infiniteBossBag.slice() : [],
+    bossOnlyBossNumber: scene.bossOnlyBossNumber || 0,
+    bossOnlyTypeRevealed: Boolean(scene.bossOnlyTypeRevealed),
+  };
+}
+
+function cloneBossConfig(bossConfig) {
+  return Object.assign({}, bossConfig);
+}
+
+function reviveFromBossCheckpoint() {
+  if (!canAffordBossRevive()) return;
+  const checkpoint = bossReviveCheckpoint;
+  const reviveCost = getBossReviveCost();
+  const energyStreakAtDeath = energyStreak;
+
+  cancelIntroSequence(this);
+  clearEchoTutorialTimer(this);
+  currentGameMode = getValidGameMode(checkpoint.mode);
+  state = 'intro';
+  isDraggingShip = false;
+  this.xyPauseResumeArmed = false;
+  pendingScoreSave = null;
+  lastScoreSaved = false;
+  this.input.setDefaultCursor('default');
+  this.optionsReturnScreen = null;
+  setPauseOverlayMode(this, 'normal');
+  setPauseSettingsVisible(false);
+  setXyControlVisible(this, false);
+  this.tweens.resumeAll();
+
+  if (spawnEvent) {
+    spawnEvent.remove(false);
+    spawnEvent = null;
+  }
+  if (this.finalDamageGameOverEvent) {
+    this.finalDamageGameOverEvent.remove(false);
+    this.finalDamageGameOverEvent = null;
+  }
+
+  resetTimedBoosters(this);
+  resetRedWave(this);
+  resetDroneWave(this);
+  resetAsteroidWave(this);
+  resetPlasmaWave(this);
+  resetBossWave(this);
+  clearPendingStreakReward(this);
+  clearGameplayVisuals(this);
+  stopNonMusicAudio(this);
+  showOverlayScreen(this, null);
+  restoreBossReviveCheckpoint(this, checkpoint, reviveCost, energyStreakAtDeath);
+  bossRevivesUsed += 1;
+  hideEchoCompanion(this);
+  setHudVisible(this, false);
+  playBackgroundMusic(this);
+
+  startAxisActivationIntro(this, () => beginBossReviveEncounter(this, checkpoint));
+}
+
+function restoreBossReviveCheckpoint(scene, checkpoint, reviveCost = 0, paidEnergyStreak = checkpoint.energyStreak) {
+  score = checkpoint.score;
+  ballsCaught = checkpoint.ballsCaught;
+  energyStreak = Math.max(0, paidEnergyStreak - reviveCost);
+  maxEnergyStreak = Math.max(checkpoint.maxEnergyStreak, energyStreak);
+  currentGravity = checkpoint.currentGravity;
+  currentBoosterGravity = checkpoint.currentBoosterGravity;
+  currentSpawnDelay = checkpoint.currentSpawnDelay;
+  maxLives = checkpoint.maxLives;
+  lives = maxLives;
+  levelProgressScore = checkpoint.levelProgressScore;
+  playerLevel = checkpoint.playerLevel;
+  nextUpgradeScore = checkpoint.nextUpgradeScore;
+
+  lifeBoosterLevel = checkpoint.upgrades.lifeBoosterLevel;
+  shieldBoosterLevel = checkpoint.upgrades.shieldBoosterLevel;
+  scoreBoosterLevel = checkpoint.upgrades.scoreBoosterLevel;
+  energyRefinerLevel = checkpoint.upgrades.energyRefinerLevel;
+  energyPurifierLevel = checkpoint.upgrades.energyPurifierLevel;
+  echoHelpLevel = checkpoint.upgrades.echoHelpLevel;
+  vitalExpanderLevel = checkpoint.upgrades.vitalExpanderLevel;
+  energyResonanceLevel = checkpoint.upgrades.energyResonanceLevel;
+  energyRefinerLevelBonus = checkpoint.upgrades.energyRefinerLevelBonus;
+  shieldDefeatLevelBonus = checkpoint.upgrades.shieldDefeatLevelBonus;
+
+  Object.assign(scene, checkpoint.unlocks);
+  scene.pendingBossWave = null;
+  scene.pendingBossWaves = [];
+  scene.infiniteBossBag = checkpoint.infiniteBossBag.slice();
+  scene.bossOnlyBossNumber = checkpoint.bossOnlyBossNumber;
+  scene.bossOnlyTypeRevealed = checkpoint.bossOnlyTypeRevealed;
+  scene.resumeSpawnDelay = null;
+  scene.pendingEchoWaveWarningKind = null;
+  scene.levelUpgradeSequenceActive = false;
+
+  resetEchoPersonality(scene);
+  if (scene.echoCompanion) scene.echoCompanion.clearTint();
+  setEchoEyeAttacking(scene, false);
+  updateHud(scene);
+}
+
+function beginBossReviveEncounter(scene, checkpoint) {
+  if (!scene || !checkpoint) return;
+
+  state = 'playing';
+  showOverlayScreen(scene, null);
+  setHudVisible(scene, true);
+  setXyControlVisible(scene, true);
+  resetXyShipControl(scene);
+  lives = maxLives;
+  updateLivesText(scene);
+  setShipTextureForCurrentState(scene);
+  refreshShipSize(scene);
+  updateEchoCompanion(scene, 0);
+
+  const bossConfig = cloneBossConfig(checkpoint.bossConfig);
+  const waveKind = getWaveKindForBossConfig(bossConfig);
+  activateLevelBoss(scene, bossConfig);
+  if (scene.waveStartEvent) {
+    scene.waveStartEvent.remove(false);
+    scene.waveStartEvent = null;
+  }
+  startWaveCountdown(scene, waveKind);
+}
+
+function getWaveKindForBossConfig(bossConfig) {
+  if (!bossConfig) return 'boss';
+  if (bossConfig.kind === 'red' || bossConfig.kind === 'scissors' || bossConfig.kind === 'replicators' || bossConfig.kind === 'crystallized') return 'red';
+  if (bossConfig.kind === 'drones' || bossConfig.kind === 'girodrones') return 'drones';
+  if (bossConfig.kind === 'asteroid') return 'asteroid';
+  if (bossConfig.kind === 'plasma') return 'plasma';
+  return 'boss';
 }
 
 function enableInfiniteModeThreats(scene) {
@@ -316,6 +529,8 @@ function prepareUnrankedGameOver(scene, message = '') {
 }
 
 function resetCounters() {
+  bossReviveCheckpoint = null;
+  bossRevivesUsed = 0;
   score = 0;
   ballsCaught = 0;
   energyStreak = 0;
