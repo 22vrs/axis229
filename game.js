@@ -4,7 +4,7 @@
 const config = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  backgroundColor: BACKGROUND_SECOND_COLOR,
+  backgroundColor: BACKGROUND_FIRST_COLOR,
   resolution: Math.min(2, window.devicePixelRatio || 1),
   render: {
     antialias: true,

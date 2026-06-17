@@ -35,7 +35,7 @@ body {
   touch-action: none;
   user-select: none;
   background: #000;
-  opacity: 1;
+  opacity: 0;
   --ui-scale: 1;
   --ui-radius-panel: 8px;
   --ui-radius-control: 7px;
