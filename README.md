@@ -2,7 +2,7 @@
 
 Juego arcade vertical hecho con HTML, CSS, JavaScript y Phaser 3. Controlas una nave, recoges orbes de energia, encadenas rachas, eliges mejoras y sobrevives a oleadas de amenazas cada vez mas agresivas.
 
-Ultima revision del README: 2026-06-16.
+Ultima revision del README: 2026-06-17.
 
 ## Estado actual
 
@@ -102,8 +102,10 @@ Como funciona:
 | Energia | Aparicion normal. | Suma puntos segun el valor actual del Refinador y aumenta la racha. |
 | Energia morada | Durante el Catalizador de energia. | Usa el multiplicador de puntos activo. |
 | Energia rosa | Durante Sincronia, si tienes Resonancia energetica. | Usa el multiplicador mejorado de Sincronia. |
-| Contaminado | `20%` de los orbes normales si no tienes Purificador. | Hace dano y rompe la racha. |
-| Cristalizado | `5%` durante el viaje normal tras superar Tormenta Cristalizada. | Se recoge por la cara superior; la costra inferior hace dano. Si cae fuera de pantalla, se pierde una vida. |
+| Contaminado | `20%` del pool de orbes normales si no tienes Purificador. | Hace dano y rompe la racha. |
+| Cristalizado | `5%` del pool de orbes durante el viaje normal tras superar Tormenta Cristalizada. | Se recoge por la cara superior; la costra inferior hace dano. Si cae fuera de pantalla, se pierde una vida. |
+
+El pool de orbes se resuelve por separado de amenazas, asteroides, plasma y boosters. En viaje normal cada intento periodico conserva su orbe aunque aparezca tambien un elemento suplementario; asi anadir amenazas nuevas no reduce la frecuencia base de orbes.
 
 El Purificador de energia elimina los orbes contaminados de la rotacion normal, pero no afecta a los cristalizados.
 
@@ -144,7 +146,7 @@ Las probabilidades son por intento de aparicion. Solo puede haber un booster cay
 | Barrera protectora | `2%` por nivel, hasta `10%` | Mejora desbloqueada y sin otro booster temporal activo. | Activa un escudo durante `10 s`. |
 | Kit de reparacion | `2%` por nivel, hasta `10%` | Mejora desbloqueada y nave por debajo del maximo de vidas. | Cura `1` vida. |
 
-Si los tres boosters pueden aparecer, la probabilidad total por intento va de `6%` con los tres a nivel 1 hasta `30%` con los tres a nivel 5.
+Cada booster tira su probabilidad individual dentro del pool de boosters. Si mas de uno supera la tirada en el mismo intento, se elige uno ponderando por su probabilidad.
 
 ## Jefes
 
@@ -180,7 +182,7 @@ Duraciones principales:
 
 ## Amenazas de viaje
 
-Las probabilidades son por intento de aparicion. Algunas solo se desbloquean tras vencer a su jefe.
+Las probabilidades son por intento de aparicion dentro de su pool. Algunas solo se desbloquean tras vencer a su jefe.
 
 | Amenaza | Probabilidad | Condicion | Notas |
 | --- | ---: | --- | --- |
@@ -196,17 +198,13 @@ Las probabilidades son por intento de aparicion. Algunas solo se desbloquean tra
 | Replicador | `2%` | Tras vencer a Replicadores. | Copia invertida de Axis con estela corta y glitch RGB; imita el eje horizontal con `70-120 ms` de retraso y cae al `56%` de la velocidad actual. No aparece mientras hay un Centinela activo. |
 | Orbe cristalizado | `5%` | Tras superar Tormenta Cristalizada. | La cara superior limpia se puede recoger. La costra inferior causa dano. Si se pierde, también se pierde una vida porque su energía sigue siendo válida. |
 
-Orden de decision en viaje normal:
+Resolucion de pools en viaje normal:
 
-1. Centinela viajero, si cumple condiciones.
-2. Amenaza viajera: Replicador, Aguja Roja, Girodron, drone de pinchos, escisora u obrera.
-3. Barra de plasma.
-4. Asteroide.
-5. Booster.
-6. Orbe cristalizado con una probabilidad del `5%`.
-7. Orbe normal u orbe contaminado, si nada anterior aparece.
+1. Centinela viajero, si cumple condiciones. Este encuentro mantiene sus restricciones especiales.
+2. Pool suplementario: amenazas viajeras, plasma, asteroides y boosters tiran por separado. Si coinciden varios pools, se elige un suplemento ponderado por pesos de tension.
+3. Pool de orbes: cristalizado, contaminado o energia normal se resuelve siempre que el estado permita spawns normales.
 
-Esto hace que varias probabilidades sean condicionales: se comprueban solo si las decisiones anteriores no generaron nada.
+Las oleadas y jefes conservan sus schedulers propios. Durante Marea de Plasma no caen orbes ni boosters normales.
 
 ## Ranking
 

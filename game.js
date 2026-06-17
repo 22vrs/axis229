@@ -36,6 +36,7 @@ const DEFAULT_PLAYER_NAME = 'Anónimo';
 const INITIAL_SPAWN_DELAY = 1500;
 const MIN_SPAWN_DELAY = 600;
 const SPAWN_DELAY_EASING = 1.8;
+const PAIRED_SPAWN_MIN_SPACING = 96;
 const BASE_GRAVITY = 220;
 const MAX_SPEED_MULTIPLIER = 2;
 const MAX_BALL_GRAVITY = BASE_GRAVITY * MAX_SPEED_MULTIPLIER;
@@ -159,6 +160,9 @@ const RED_NEEDLE_BOSS_PASS_GAP = 620;
 const TRAVEL_SENTINEL_ATTACKS = 2;
 const TRAVEL_SENTINEL_CHANCE = 0.015;
 const TRAVEL_SENTINEL_COOLDOWN = 26000;
+const TRAVEL_THREAT_POOL_WEIGHT = 1;
+const TRAVEL_HAZARD_POOL_WEIGHT = 0.9;
+const TRAVEL_BOOSTER_POOL_WEIGHT = 0.72;
 const BOSS_LASER_WARN_DURATION = 1100;
 const BOSS_LASER_DURATION = 2000;
 const BOSS_ATTACK_GAP = 1500;
@@ -9079,17 +9083,27 @@ function spawnBall(scene) {
     return;
   }
 
-  const kind = getNextSpawnKind(scene);
-  if (!kind) return;
-  if (kind === 'plasmaBar') {
-    spawnPlasmaBar(scene);
-    return;
-  }
-  if (kind === 'redNeedle') {
-    spawnRedNeedle(scene);
-    return;
-  }
-  spawnFallingKind(scene, kind);
+  const kinds = getNextSpawnKinds(scene);
+  if (!kinds.length) return;
+
+  const spawnedObjects = [];
+  kinds.forEach((kind) => {
+    if (!kind) return;
+    if (kind === 'plasmaBar') {
+      spawnPlasmaBar(scene);
+      return;
+    }
+    if (kind === 'redNeedle') {
+      spawnRedNeedle(scene);
+      return;
+    }
+
+    const forcedX = spawnedObjects.length > 0 && isEnergyOrbSpeedKind(kind)
+      ? findSpawnXAwayFrom(scene, spawnedObjects, PAIRED_SPAWN_MIN_SPACING)
+      : null;
+    const object = spawnFallingKind(scene, kind, forcedX);
+    if (object) spawnedObjects.push(object);
+  });
 }
 
 function spawnForcedFallingKind(scene, kind, x = null) {
@@ -10021,29 +10035,33 @@ function setFallingObjectBody(object, kind) {
   object.body.setCircle(isEnergyOrbSpeedKind(kind) ? 16 : 15, isEnergyOrbSpeedKind(kind) ? 6 : 3, isEnergyOrbSpeedKind(kind) ? 6 : 3);
 }
 
-function getNextSpawnKind(scene) {
+function getNextSpawnKinds(scene) {
   // Durante Marea de Plasma no debe caer ningun orbe/booster.
   // Las barras de plasma se gestionan con su propio scheduler.
-  if (scene.activePlasmaWave && scene.activePlasmaWave.isSpawningPlasma) return null;
+  if (scene.activePlasmaWave && scene.activePlasmaWave.isSpawningPlasma) return [];
 
   if (scene.activeRedWave && scene.activeRedWave.isSpawningDamageBoosters) {
-    return scene.activeRedWave.spawnKind || 'damageBooster';
+    return [scene.activeRedWave.spawnKind || 'damageBooster'];
   }
-  if (scene.activeDroneWave && scene.activeDroneWave.isSpawningDrones) return scene.activeDroneWave.spawnKind || 'spikeDrone';
-  if (scene.activeBossWave && scene.activeBossWave.isSpawningEnemies) return 'damageBooster';
+  if (scene.activeDroneWave && scene.activeDroneWave.isSpawningDrones) return [scene.activeDroneWave.spawnKind || 'spikeDrone'];
+  if (scene.activeBossWave && scene.activeBossWave.isSpawningEnemies) return ['damageBooster'];
   if (scene.activeAsteroidWave && scene.activeAsteroidWave.isSpawningAsteroids) {
-    return Math.random() < ASTEROID_WAVE_BIG_ASTEROID_CHANCE ? 'bigAsteroid' : 'asteroid';
+    return [Math.random() < ASTEROID_WAVE_BIG_ASTEROID_CHANCE ? 'bigAsteroid' : 'asteroid'];
   }
 
-  const threatKind = getNextTravelThreatKind(scene);
-  if (threatKind) return threatKind;
-  const plasmaKind = getNextPlasmaKind(scene);
-  if (plasmaKind) return plasmaKind;
-  const asteroidKind = getNextAsteroidKind(scene);
-  if (asteroidKind) return asteroidKind;
-  const boosterKind = getNextBoosterKind(scene);
-  if (scene.activeBossWave && scene.activeBossWave.isTravelEncounter) return boosterKind;
-  if (boosterKind) return boosterKind;
+  if (scene.activeBossWave && scene.activeBossWave.isTravelEncounter) {
+    const boosterKind = getNextBoosterKind(scene);
+    return boosterKind ? [boosterKind] : [];
+  }
+
+  const kinds = [];
+  const supplementalKind = getNextSupplementalSpawnKind(scene);
+  if (supplementalKind) kinds.push(supplementalKind);
+  kinds.push(getNextEnergyOrbKind(scene));
+  return kinds;
+}
+
+function getNextEnergyOrbKind(scene) {
   if (scene.crystallizedOrbSpawnsUnlocked && Math.random() < CRYSTALLIZED_ORB_CHANCE) {
     return 'crystallizedOrb';
   }
@@ -10051,17 +10069,29 @@ function getNextSpawnKind(scene) {
   return Math.random() < CONTAMINATED_ORB_CHANCE ? 'contaminatedOrb' : 'ball';
 }
 
+function getNextSupplementalSpawnKind(scene) {
+  const candidates = [
+    { kind: getNextTravelThreatKind(scene), weight: TRAVEL_THREAT_POOL_WEIGHT },
+    { kind: getNextPlasmaKind(scene), weight: TRAVEL_HAZARD_POOL_WEIGHT },
+    { kind: getNextAsteroidKind(scene), weight: TRAVEL_HAZARD_POOL_WEIGHT },
+    { kind: getNextBoosterKind(scene), weight: TRAVEL_BOOSTER_POOL_WEIGHT },
+  ].filter((candidate) => candidate.kind);
+
+  return chooseWeightedSpawnCandidate(candidates);
+}
+
 function getNextTravelThreatKind(scene) {
   const isLevelBossActive = scene.activeBossWave && !scene.activeBossWave.isTravelEncounter;
   if ((!scene.obreraSpawnsUnlocked && !scene.scissorSpawnsUnlocked && !scene.droneSpawnsUnlocked && !scene.giroDroneSpawnsUnlocked && !scene.redNeedleSpawnsUnlocked && !scene.replicatorSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || isLevelBossActive) return null;
 
-  if (!isSentinelActive(scene) && scene.replicatorSpawnsUnlocked && Math.random() < REPLICATOR_SPAWN_CHANCE) return 'replicator';
-  if (scene.redNeedleSpawnsUnlocked && !hasActiveRedNeedle(scene) && Math.random() < RED_NEEDLE_SPAWN_CHANCE) return 'redNeedle';
-  if (scene.giroDroneSpawnsUnlocked && Math.random() < GIRODRONE_SPAWN_CHANCE) return 'giroDrone';
-  if (scene.droneSpawnsUnlocked && Math.random() < SPIKE_DRONE_SPAWN_CHANCE) return 'spikeDrone';
-  if (scene.scissorSpawnsUnlocked && Math.random() < SCISSOR_SPAWN_CHANCE) return 'scissor';
-  if (scene.obreraSpawnsUnlocked && Math.random() < OBRERA_SPAWN_CHANCE) return 'damageBooster';
-  return null;
+  return chooseRolledSpawnOption([
+    { kind: 'replicator', chance: !isSentinelActive(scene) && scene.replicatorSpawnsUnlocked ? REPLICATOR_SPAWN_CHANCE : 0 },
+    { kind: 'redNeedle', chance: scene.redNeedleSpawnsUnlocked && !hasActiveRedNeedle(scene) ? RED_NEEDLE_SPAWN_CHANCE : 0 },
+    { kind: 'giroDrone', chance: scene.giroDroneSpawnsUnlocked ? GIRODRONE_SPAWN_CHANCE : 0 },
+    { kind: 'spikeDrone', chance: scene.droneSpawnsUnlocked ? SPIKE_DRONE_SPAWN_CHANCE : 0 },
+    { kind: 'scissor', chance: scene.scissorSpawnsUnlocked ? SCISSOR_SPAWN_CHANCE : 0 },
+    { kind: 'damageBooster', chance: scene.obreraSpawnsUnlocked ? OBRERA_SPAWN_CHANCE : 0 },
+  ]);
 }
 
 function isSentinelActive(scene) {
@@ -10094,22 +10124,32 @@ function getNextBoosterKind(scene) {
   if (hasFallingBooster(scene)) return null;
 
   const timedBoosterActive = getActiveTimedBooster(scene);
-  const options = [
+  return chooseRolledSpawnOption([
     { kind: 'scoreBooster', chance: timedBoosterActive || isSentinelActive(scene) || scoreBoosterLevel <= 0 ? 0 : getBoosterChanceForLevel(scoreBoosterLevel) },
     { kind: 'shieldBooster', chance: timedBoosterActive || shieldBoosterLevel <= 0 ? 0 : getBoosterChanceForLevel(shieldBoosterLevel) },
     { kind: 'lifeBooster', chance: canDropLifeBooster() ? getLifeBoosterChance() : 0 },
-  ];
-  const totalChance = options.reduce((sum, option) => sum + option.chance, 0);
-  let roll = Math.random();
+  ]);
+}
 
-  if (roll >= totalChance) return null;
+function chooseRolledSpawnOption(options) {
+  const candidates = options
+    .filter((option) => option.chance > 0 && Math.random() < option.chance)
+    .map((option) => ({ kind: option.kind, weight: option.chance }));
 
-  for (const option of options) {
-    if (roll < option.chance) return option.kind;
-    roll -= option.chance;
+  return chooseWeightedSpawnCandidate(candidates);
+}
+
+function chooseWeightedSpawnCandidate(candidates) {
+  const totalWeight = candidates.reduce((sum, candidate) => sum + candidate.weight, 0);
+  if (totalWeight <= 0) return null;
+
+  let roll = Math.random() * totalWeight;
+  for (const candidate of candidates) {
+    if (roll < candidate.weight) return candidate.kind;
+    roll -= candidate.weight;
   }
 
-  return null;
+  return candidates[candidates.length - 1].kind;
 }
 
 function hasFallingBooster(scene) {
@@ -10203,6 +10243,28 @@ function findSpawnX(scene) {
   const min = 40;
   const max = Math.max(min, getGameWidth(scene) - 40);
   return Phaser.Math.Between(min, max);
+}
+
+function findSpawnXAwayFrom(scene, objects, minSpacing) {
+  const min = 40;
+  const max = Math.max(min, getGameWidth(scene) - 40);
+  const activeObjects = objects.filter((object) => object && object.active);
+
+  if (!activeObjects.length) return Phaser.Math.Between(min, max);
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const x = Phaser.Math.Between(min, max);
+    if (activeObjects.every((object) => Math.abs(object.x - x) >= minSpacing)) return x;
+  }
+
+  const candidates = [min, Math.round((min + max) / 2), max];
+  return candidates.reduce((bestX, x) => (
+    getClosestSpawnDistance(x, activeObjects) > getClosestSpawnDistance(bestX, activeObjects) ? x : bestX
+  ), candidates[0]);
+}
+
+function getClosestSpawnDistance(x, objects) {
+  return objects.reduce((closest, object) => Math.min(closest, Math.abs(object.x - x)), Infinity);
 }
 
 function findBoosterSpawnX(scene) {
