@@ -401,8 +401,8 @@ const ASTEROID_WAVE_GRAVITY_RATIO = 0.82;
 const ASTEROID_WAVE_HORIZONTAL_SPEED_RATIO = 0.58;
 const ASTEROID_WRAP_MARGIN = 28;
 const UPGRADE_POINTS_REQUIRED = 10;
-const STORY_BOSS_KINDS = ['red', 'boss', 'asteroid', 'plasma', 'replicators', 'drones', 'girodrones', 'redNeedleBoss', 'crystallized'];
-const BOSS_ONLY_BOSS_KINDS = ['scissors', 'girodrones', 'boss', 'crystallized', 'red', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss'];
+const STORY_BOSS_KINDS = ['red', 'asteroid', 'scissors', 'redNeedleBoss', 'boss', 'drones', 'plasma', 'girodrones', 'replicators', 'crystallized'];
+const BOSS_ONLY_BOSS_KINDS = STORY_BOSS_KINDS.slice();
 const SHIELD_BLOCK_SCORE = 10;
 const SPIKE_DRONE_DISABLE_SCORE = 5;
 const INITIAL_HEART_CAPACITY = 3;
@@ -647,14 +647,34 @@ function getLevelRequirement(level) {
   return 10 + progressionLevel * 8 + Math.floor(progressionLevel * progressionLevel * 1.15);
 }
 
-function getBossConfigForLevel(level) {
+function getBossConfigForLevel(level, scene = gameScene) {
   const bossIndex = getBossIndexForLevel(level);
   if (bossIndex === -1) return null;
 
   const bossKind = isInfiniteGameMode()
-    ? (bossIndex === 0 ? 'replicators' : STORY_BOSS_KINDS[Math.floor(Math.random() * STORY_BOSS_KINDS.length)])
-    : STORY_BOSS_KINDS[bossIndex % STORY_BOSS_KINDS.length];
+    ? getNextInfiniteBossKind(scene)
+    : STORY_BOSS_KINDS[bossIndex];
+  if (!bossKind) return null;
   return createBossConfig(bossKind);
+}
+
+function getNextInfiniteBossKind(scene) {
+  if (!scene) return getShuffledBossKinds()[0];
+  if (!scene.infiniteBossBag || !scene.infiniteBossBag.length) {
+    scene.infiniteBossBag = getShuffledBossKinds();
+  }
+  return scene.infiniteBossBag.shift();
+}
+
+function getShuffledBossKinds() {
+  const bossKinds = STORY_BOSS_KINDS.slice();
+  for (let index = bossKinds.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    const currentBossKind = bossKinds[index];
+    bossKinds[index] = bossKinds[swapIndex];
+    bossKinds[swapIndex] = currentBossKind;
+  }
+  return bossKinds;
 }
 
 function createBossConfig(kind) {
@@ -4972,6 +4992,7 @@ function resetCounters() {
   this.nextTravelSentinelEligibleAt = 0;
   this.pendingBossWave = null;
   this.pendingBossWaves = [];
+  this.infiniteBossBag = [];
   this.bossOnlyBossNumber = 0;
   this.bossOnlyTypeRevealed = false;
   this.levelUpgradeSequenceActive = false;
@@ -6508,7 +6529,7 @@ function updateShieldBooster(scene) {
   updateBoosterBar(scene, 0);
 }
 
-function activateRedWave(scene, bossConfig = getBossConfigForLevel(3)) {
+function activateRedWave(scene, bossConfig = createBossConfig('red')) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
   const isScissorSwarm = bossConfig.kind === 'scissors';
@@ -6660,7 +6681,7 @@ function updateDroneWave(scene) {
   finishWaveSpawning(scene, droneWave, 'drones');
 }
 
-function activateAsteroidWave(scene, bossConfig = getBossConfigForLevel(6)) {
+function activateAsteroidWave(scene, bossConfig = createBossConfig('asteroid')) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
   scene.activeAsteroidWave = {
@@ -6687,7 +6708,7 @@ function activateAsteroidWave(scene, bossConfig = getBossConfigForLevel(6)) {
   scheduleWaveStart(scene, 'asteroid');
 }
 
-function activatePlasmaWave(scene, bossConfig = getBossConfigForLevel(12)) {
+function activatePlasmaWave(scene, bossConfig = createBossConfig('plasma')) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
   scene.activePlasmaWave = {
@@ -6742,7 +6763,7 @@ function updatePlasmaWave(scene) {
   finishWaveSpawning(scene, plasmaWave, 'plasma');
 }
 
-function activateBossWave(scene, bossConfig = getBossConfigForLevel(9)) {
+function activateBossWave(scene, bossConfig = createBossConfig('boss')) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
   scene.activeBossWave = {
@@ -8409,7 +8430,7 @@ function advancePlayerLevel(scene) {
     shieldDefeatLevelBonus += 1;
   }
   nextUpgradeScore = getLevelRequirement(playerLevel);
-  queuePendingBossWave(scene, getBossConfigForLevel(completedLevel));
+  queuePendingBossWave(scene, getBossConfigForLevel(completedLevel, scene));
   increaseDifficulty(scene);
   updatePlayerLevelText(scene);
 }

@@ -55,9 +55,9 @@ Claves usadas en `localStorage`:
 | Infinito | `MODO INFINITO` | Partida libre con amenazas desbloqueadas y jefes aleatorios. | No |
 | Solo Jefes | `SOLO JEFES` | Modo de prueba que encadena los jefes de historia sin viajes normales, niveles ni mejoras. | No |
 
-En modo infinito, el primer jefe es `Replicadores`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
+En modo infinito, los jefes se reparten en ciclos aleatorios con toda la rotacion disponible: dentro de cada bloque de `10` jefes no se repite ninguno.
 
-En Solo Jefes, `Enjambre de Escisoras` es el primer jefe. Despues continua la rotacion con `Girodrones`, `Centinela`, `Tormenta Cristalizada` y el resto de jefes; tras `Aguja Roja`, la sucesion vuelve a empezar.
+En Solo Jefes, la sucesion sigue el mismo orden fijo del modo normal y vuelve a empezar tras `Tormenta Cristalizada`.
 La partida comienza pausada sobre el control azul; el primer dialogo de jefe solo se activa despues de pulsarlo.
 
 ## Progresion
@@ -150,21 +150,22 @@ Cada booster tira su probabilidad individual dentro del pool de boosters. Si mas
 
 ## Jefes
 
-Hay un jefe cada 3 niveles en modo normal. Despues del nivel 27, la rotacion se repite cada 27 niveles.
+Hay un jefe cada 3 niveles en modo normal hasta completar la rotacion. Despues de `Tormenta Cristalizada`, no aparecen mas jefes en modo normal.
 
 | Nivel | Jefe | Patron principal | Desbloquea despues |
 | ---: | --- | --- | --- |
 | 3 | Enjambre de Obreras | Enemigos rojos cada `400 ms`. | Obreras en viaje normal. |
-| 6 | Centinela | Laser vertical con aviso y laser horizontal encadenado. | Centinela viajero. |
-| 9 | Cinturon | Asteroides normales y grandes cada `760 ms`. | Asteroides en viaje normal. |
-| 12 | Marea de Plasma | Barras horizontales con hueco movil cada `2100 ms`. | Barras de plasma en viaje normal. |
-| 15 | Replicadores | Formación serpenteante cada `900 ms`: cada copia recorre la trayectoria anterior y vuelve a seguir horizontalmente a Axis si pierde su eslabón. | Replicadores en viaje normal. |
+| 6 | Cinturon | Asteroides normales y grandes cada `760 ms`. | Asteroides en viaje normal. |
+| 9 | Enjambre de Escisoras | Escisoras que bajan, se dividen a media pantalla y continuan como dos mitades en diagonal. | Escisoras en viaje normal. |
+| 12 | Aguja Roja | `6` pasadas horizontales con disparos laser. | Aguja Roja en viaje normal. |
+| 15 | Centinela | Laser vertical con aviso y laser horizontal encadenado. | Centinela viajero. |
 | 18 | Drones | Drones de pinchos cada `680 ms`. | Drones en viaje normal. |
-| 21 | Girodrones | Girodrones cada `920 ms`: un nucleo con ciclo verde/naranja/rojo y un dron rojo orbitando con halo de energia. | Girodrones en viaje normal. |
-| 24 | Aguja Roja | `6` pasadas horizontales con disparos laser. | Aguja Roja en viaje normal. |
-| 27 | Tormenta Cristalizada | Sucesion de orbes cristalizados cada `850 ms`: se recogen por arriba y causan dano por la costra inferior. | Desbloquea los orbes cristalizados durante el viaje normal. |
+| 21 | Marea de Plasma | Barras horizontales con hueco movil cada `2100 ms`. | Barras de plasma en viaje normal. |
+| 24 | Girodrones | Girodrones cada `920 ms`: un nucleo con ciclo verde/naranja/rojo y un dron rojo orbitando con halo de energia. | Girodrones en viaje normal. |
+| 27 | Replicadores | Formacion serpenteante cada `900 ms`: cada copia recorre la trayectoria anterior y vuelve a seguir horizontalmente a Axis si pierde su eslabon. | Replicadores en viaje normal. |
+| 30 | Tormenta Cristalizada | Sucesion de orbes cristalizados cada `850 ms`: se recogen por arriba y causan dano por la costra inferior. | Desbloquea los orbes cristalizados durante el viaje normal. |
 
-En Solo Jefes se anade como primer combate `Enjambre de Escisoras`: una sucesion de Escisoras que bajan a velocidad de obrera, se dividen a media pantalla y continuan como dos mitades en diagonal.
+En Solo Jefes se encadenan estos mismos jefes sin viajes normales, niveles ni mejoras.
 
 Duraciones principales:
 
