@@ -915,6 +915,15 @@ a:focus-visible {
   opacity: 0.65;
 }
 
+#gameover-overlay #revive-button,
+#gameover-overlay #retry-button {
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 16px;
+  line-height: 1.22;
+  white-space: normal;
+}
+
 .ui-button-secondary {
   width: 220px;
   min-height: 50px;
@@ -967,6 +976,9 @@ a:focus-visible {
 
 .ui-panel-danger {
   padding-block: 24px;
+  max-height: calc(100% - 40px);
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .ui-panel-danger .ui-button-primary {
