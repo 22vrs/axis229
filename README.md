@@ -105,9 +105,40 @@ Como funciona:
 | Contaminado | `20%` del pool de orbes normales si no tienes Purificador. | Hace dano y rompe la racha. |
 | Cristalizado | `5%` del pool de orbes durante el viaje normal tras superar Tormenta Cristalizada. | Se recoge por la cara superior; la costra inferior hace dano. Si cae fuera de pantalla, se pierde una vida. |
 
-El pool de orbes se resuelve por separado de amenazas, asteroides, plasma y boosters. En viaje normal cada intento periodico conserva su orbe aunque aparezca tambien un elemento suplementario; asi anadir amenazas nuevas no reduce la frecuencia base de orbes.
-
 El Purificador de energia elimina los orbes contaminados de la rotacion normal, pero no afecta a los cristalizados.
+
+## Pools de aparicion
+
+En viaje normal, cada intento de aparicion se resuelve en capas. La idea importante es que el orbe base no compite contra las amenazas: puede aparecer un suplemento y, ademas, un orbe en el mismo intento.
+
+| Capa | Que decide | Resultado posible | Notas |
+| --- | --- | --- | --- |
+| Centinela viajero | Si empieza el encuentro especial del Centinela. | Inicia un combate corto. | Tiene prioridad sobre el resto del intento y cancela esa aparicion normal. |
+| Pool suplementario | Si cae una amenaza viajera, una barra de plasma, un asteroide o un booster. | Como maximo `1` suplemento. | Cada subpool tira por separado; si varios aciertan, se elige uno por peso. |
+| Pool de orbes | Que tipo de orbe cae. | Energia, contaminado o cristalizado. | Se resuelve siempre que el estado permita apariciones normales. |
+
+Pesos del pool suplementario cuando coinciden varios candidatos:
+
+| Subpool | Peso | Incluye |
+| --- | ---: | --- |
+| Amenazas viajeras | `1.00` | Obreras, Escisoras, Aguja Roja, Drones, Girodrones y Replicadores. |
+| Peligros | `0.90` | Asteroides y barras de plasma. |
+| Boosters | `0.72` | Catalizador, barrera y kit de reparacion. |
+
+Funcionamiento de cada subpool:
+
+1. **Centinela viajero**: tira `1.5%` por intento cuando esta desbloqueado y fuera de cooldown. No puede aparecer si hay jefe activo, jefe pendiente, booster temporal activo, Catalizador cayendo, barras de plasma activas u otra oleada.
+2. **Amenazas viajeras**: cada amenaza desbloqueada tira su probabilidad propia. Si acierta mas de una, se elige una ponderando por esas probabilidades. Replicadores no tiran mientras hay Centinela activo, y Aguja Roja no tira si ya hay otra Aguja Roja en pantalla.
+3. **Peligros**: asteroides y plasma tiran por separado. Si ambos aciertan, compiten dentro del pool suplementario con el mismo peso de peligro.
+4. **Boosters**: cada booster disponible tira su probabilidad individual. Solo puede haber un booster util cayendo a la vez. Catalizador y barrera no tiran si ya hay un booster temporal activo; el kit solo tira si falta vida.
+5. **Orbes**: primero se comprueba el cristalizado (`5%`) si esta desbloqueado. Si no sale cristalizado, el Purificador fuerza energia normal; sin Purificador, el contaminado tira `20%`.
+
+Casos especiales:
+
+- Durante Marea de Plasma no caen orbes ni boosters normales; las barras se gestionan con su propio intervalo.
+- Durante las oleadas de jefe, el scheduler normal se sustituye por el de la oleada: Obreras/Escisoras, Drones/Girodrones, Asteroides, Replicadores, Plasma o Tormenta Cristalizada.
+- Durante el Centinela viajero solo pueden caer boosters utiles, no orbes ni amenazas normales.
+- Si hay un jefe pendiente y no hay booster temporal activo, se detienen las apariciones normales hasta iniciar el jefe.
 
 ## Mejoras
 
@@ -187,25 +218,17 @@ Las probabilidades son por intento de aparicion dentro de su pool. Algunas solo 
 
 | Amenaza | Probabilidad | Condicion | Notas |
 | --- | ---: | --- | --- |
-| Obrera / enemigo rojo | `20%` | Tras vencer a Enjambre de Obreras. | Puede aparecer durante el centinela viajero. |
+| Obrera / enemigo rojo | `14%` | Tras vencer a Enjambre de Obreras. | Puede aparecer durante el centinela viajero. |
 | Escisora | `5%` | Tras vencer a Enjambre de Escisoras. | Cae como una obrera, se divide arriba de la pantalla y sus mitades continuan en diagonal. |
-| Drone de pinchos | `10%` | Tras vencer a Drones. | Solo dana cuando esta expandido; si esta verde se puede desactivar al tocarlo. |
+| Drone de pinchos | `7%` | Tras vencer a Drones. | Solo dana cuando esta expandido; si esta verde se puede desactivar al tocarlo. |
 | Girodron | `5%` | Tras vencer a Girodrones. | El nucleo verde desactiva ambos drones, el naranja no hace nada y el rojo expandido dana con su halo. El dron rojo exterior tambien dana con su halo. |
-| Aguja Roja | `5%` | Tras vencer a Aguja Roja. | Solo puede haber una activa. |
-| Asteroide | `15%` | Tras vencer a Cinturon. | Puede aparecer como normal o grande. |
-| Asteroide grande | `24%` de los asteroides de viaje | Si aparece asteroide. | Aproximadamente `3.6%` por intento total. |
-| Barra de plasma | `5%` | Tras vencer a Marea de Plasma. | No aparece durante jefes de nivel. |
-| Centinela viajero | `2%` | Tras vencer a Centinela. | Cooldown de `26000 ms`; no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. Mientras ataca no aparecen Replicadores ni boosters morados. |
+| Aguja Roja | `4%` | Tras vencer a Aguja Roja. | Solo puede haber una activa. |
+| Asteroide | `10%` | Tras vencer a Cinturon. | Puede aparecer como normal o grande. |
+| Asteroide grande | `24%` de los asteroides de viaje | Si aparece asteroide. | Aproximadamente `2.4%` por intento total. |
+| Barra de plasma | `4%` | Tras vencer a Marea de Plasma. | No aparece durante jefes de nivel. |
+| Centinela viajero | `1.5%` | Tras vencer a Centinela. | Cooldown de `26000 ms`; no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. Mientras ataca no aparecen Replicadores ni boosters morados. |
 | Replicador | `2%` | Tras vencer a Replicadores. | Copia invertida de Axis con estela corta y glitch RGB; imita el eje horizontal con `70-120 ms` de retraso y cae al `56%` de la velocidad actual. No aparece mientras hay un Centinela activo. |
 | Orbe cristalizado | `5%` | Tras superar Tormenta Cristalizada. | La cara superior limpia se puede recoger. La costra inferior causa dano. Si se pierde, también se pierde una vida porque su energía sigue siendo válida. |
-
-Resolucion de pools en viaje normal:
-
-1. Centinela viajero, si cumple condiciones. Este encuentro mantiene sus restricciones especiales.
-2. Pool suplementario: amenazas viajeras, plasma, asteroides y boosters tiran por separado. Si coinciden varios pools, se elige un suplemento ponderado por pesos de tension.
-3. Pool de orbes: cristalizado, contaminado o energia normal se resuelve siempre que el estado permita spawns normales.
-
-Las oleadas y jefes conservan sus schedulers propios. Durante Marea de Plasma no caen orbes ni boosters normales.
 
 ## Ranking
 
