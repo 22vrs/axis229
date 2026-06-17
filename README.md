@@ -69,7 +69,7 @@ La partida comienza pausada sobre el control azul; el primer dialogo de jefe sol
 - Algunas mejoras avanzadas tienen un solo nivel y se desbloquean al maximizar su mejora base.
 - Hay un jefe cada `3` niveles.
 - La gravedad base de los orbes es `220`.
-- La velocidad escala hasta `2.00x`.
+- La velocidad empieza en `1.00x`, llega a `2.00x` en nivel `4` y queda capada ahi.
 - El intervalo de aparicion empieza en `1500 ms` y baja hasta `600 ms`.
 - Al encadenar `50` orbes de energia sin recibir dano se concede una recompensa de racha.
 - La recompensa base de racha es de `50` puntos y crece con cada bloque de `50`.
@@ -79,21 +79,24 @@ La partida comienza pausada sobre el control azul; el primer dialogo de jefe sol
 
 La velocidad principal depende del nivel del jugador y se recalcula al subir de nivel:
 
-| Nivel | Multiplicador | Gravedad de orbes | Intervalo normal |
-| ---: | ---: | ---: | ---: |
-| 1 | `1.00x` | `220` | `1500 ms` |
-| 2 | `1.50x` | `330` | `~829 ms` |
-| 3+ | `2.00x` | `440` | `600 ms` |
+| Nivel | Multiplicador | Gravedad de orbes | BOOST | Intervalo normal |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | `1.00x` | `220` | `0.80x` | `1500 ms` |
+| 2 | `1.33x` | `293` | `1.06x` | `~995 ms` |
+| 3 | `1.67x` | `367` | `1.34x` | `~711 ms` |
+| 4+ | `2.00x` | `440` | `1.60x` | `600 ms` |
 
 Como funciona:
 
 - La gravedad base es `220` y solo los orbes normales usan directamente la velocidad principal.
-- El multiplicador sube de `1.00x` a `2.00x` entre los niveles `1` y `3`; desde el nivel `3` queda en el maximo.
+- El multiplicador sube linealmente de `1.00x` a `2.00x` entre los niveles `1` y `4`; desde el nivel `4` queda en el maximo.
 - El intervalo de aparicion normal baja de `1500 ms` a `600 ms` usando una curva suavizada (`SPAWN_DELAY_EASING = 1.8`).
-- Los boosters que caen usan el `80%` de la velocidad principal (`BOOSTER_GRAVITY_RATIO = 0.8`), por eso el HUD muestra tambien `BOOST`.
+- Los boosters y la mayoria de amenazas que caen usan el `80%` de la velocidad principal, con un cap tecnico de `1.80x`.
+- La fisica arcade usa el delta real de cada frame (`fixedStep: false`) para suavizar el movimiento de amenazas y objetos.
 - Al cambiar la velocidad, los objetos que ya estan cayendo actualizan su velocidad para adaptarse al nuevo ritmo.
-- Las oleadas y jefes pueden usar sus propios intervalos fijos, por ejemplo Enjambre de Obreras cada `400 ms`, Enjambre de Escisoras cada `650 ms`, Drones cada `680 ms`, Girodrones cada `920 ms`, Asteroides cada `760 ms` y Plasma cada `2100 ms`.
-- Algunas amenazas no escalan con la velocidad principal y usan ratios o valores propios, como asteroides, drones, lasers y barras de plasma.
+- Las oleadas y jefes usan intervalos base, por ejemplo Enjambre de Obreras cada `400 ms`, Enjambre de Escisoras cada `650 ms`, Drones cada `680 ms`, Girodrones cada `920 ms`, Asteroides cada `760 ms` y Plasma cada `2100 ms`.
+- Las oleadas de amenazas ajustan su intervalo si hace falta para mantener al menos `120 px` de separacion vertical aproximada, y no generan mas objetos si ya hay `6` amenazas activas o `2` amenazas acumuladas en la zona superior.
+- Drones, girodrones, asteroides y amenazas normales escalan con esa velocidad secundaria; lasers, barras de plasma y movimientos laterales especiales conservan valores propios.
 
 ## Orbes
 
@@ -308,6 +311,13 @@ Se cargan desde `index.html`:
 | `INITIAL_SPAWN_DELAY` | `1500 ms` |
 | `MIN_SPAWN_DELAY` | `600 ms` |
 | `MAX_SPEED_MULTIPLIER` | `2` |
+| `SPEED_TARGET_LEVEL` | `4` |
+| `BOOSTER_GRAVITY_RATIO` | `0.8` |
+| `MAX_BOOSTER_SPEED_MULTIPLIER` | `1.8` |
+| `WAVE_MIN_VERTICAL_SPAWN_SPACING` | `120` |
+| `MAX_ACTIVE_HOSTILE_SPAWNS` | `6` |
+| `MAX_ACTIVE_TOP_HOSTILE_SPAWNS` | `2` |
+| `TOP_HOSTILE_SPAWN_ZONE_HEIGHT` | `170` |
 | `UPGRADE_POINTS_REQUIRED` | `10` |
 | `MAX_UPGRADE_LEVEL` | `5` |
 | `ENERGY_STREAK_REWARD_TARGET` | `50` |

@@ -40,10 +40,12 @@ const PAIRED_SPAWN_MIN_SPACING = 96;
 const BASE_GRAVITY = 220;
 const MAX_SPEED_MULTIPLIER = 2;
 const MAX_BALL_GRAVITY = BASE_GRAVITY * MAX_SPEED_MULTIPLIER;
-const SPEED_TARGET_LEVEL = 3;
+const SPEED_TARGET_LEVEL = 4;
 const STARFIELD_SPEED_RATIO = 0.32;
 const MAX_STARFIELD_SPEED_MULTIPLIER = 2.6;
 const BOOSTER_GRAVITY_RATIO = 0.8;
+const MAX_BOOSTER_SPEED_MULTIPLIER = 1.8;
+const MAX_BOOSTER_GRAVITY = Math.round(BASE_GRAVITY * MAX_BOOSTER_SPEED_MULTIPLIER);
 const SHIP_SIDE_HIDE_RATIO = 1 / 3;
 const SHIP_TEXTURE_WIDTH = 156;
 const SHIP_TEXTURE_HEIGHT = 46;
@@ -59,6 +61,10 @@ const RED_WAVE_SPAWN_DELAY = 400;
 const RED_WAVE_ENEMY_GRAVITY_RATIO = 0.72;
 const RED_WAVE_MIN_ENEMY_SPACING = SHIP_WIDTH + 56;
 const RED_WAVE_RECENT_ENEMY_HEIGHT = 230;
+const WAVE_MIN_VERTICAL_SPAWN_SPACING = 120;
+const MAX_ACTIVE_HOSTILE_SPAWNS = 6;
+const MAX_ACTIVE_TOP_HOSTILE_SPAWNS = 2;
+const TOP_HOSTILE_SPAWN_ZONE_HEIGHT = 170;
 const OBRERA_SPAWN_CHANCE = 0.14;
 const SCISSOR_SPAWN_CHANCE = 0.05;
 const SCISSOR_SWARM_DURATION = 15000;
@@ -454,6 +460,7 @@ const config = {
     arcade: {
       gravity: { y: 0 }, // CORRECCION: gravedad global a 0, cada bola tiene la suya propia
       debug: false,
+      fixedStep: false,
     },
   },
   scene: {
@@ -469,7 +476,7 @@ let ballsCaught = 0;
 let energyStreak = 0;
 let maxEnergyStreak = 0;
 let currentGravity = BASE_GRAVITY;
-let currentBoosterGravity = Math.round(BASE_GRAVITY * BOOSTER_GRAVITY_RATIO);
+let currentBoosterGravity = getBoosterGravityForCurrentSpeed();
 let currentSpawnDelay = INITIAL_SPAWN_DELAY;
 let maxLives = INITIAL_HEART_CAPACITY;
 let lives = INITIAL_HEART_CAPACITY;
@@ -4951,7 +4958,7 @@ function resetCounters() {
   energyStreak = 0;
   maxEnergyStreak = 0;
   currentGravity = isBossOnlyGameMode() ? MAX_BALL_GRAVITY : BASE_GRAVITY;
-  currentBoosterGravity = Math.round(currentGravity * BOOSTER_GRAVITY_RATIO);
+  currentBoosterGravity = getBoosterGravityForCurrentSpeed();
   currentSpawnDelay = isBossOnlyGameMode() ? MIN_SPAWN_DELAY : INITIAL_SPAWN_DELAY;
   maxLives = INITIAL_HEART_CAPACITY;
   lives = maxLives;
@@ -7991,7 +7998,9 @@ function endWaveAfterPause(scene, waveKind) {
     if (currentWave.kind === 'redNeedleBoss') {
       scene.redNeedleSpawnsUnlocked = true;
     }
-    scene.travelSentinelUnlocked = true;
+    if (currentWave.kind === 'boss') {
+      scene.travelSentinelUnlocked = true;
+    }
     resetBossWave(scene);
   }
 
@@ -8370,12 +8379,11 @@ function maybeOpenUpgradeChoice(scene) {
     scene.pendingLevelUpgradeChoice = true;
   }
 
+  pauseGameplayForPendingUpgradeChoice(scene);
+
   const echoLevelUpgradeDelay = getEchoLevelUpgradeDelay(scene);
-  if (echoLevelUpgradeDelay > 0) {
-    scene.deferUpgradeChoiceUntil = Math.max(
-      scene.deferUpgradeChoiceUntil || 0,
-      scene.time.now + echoLevelUpgradeDelay
-    );
+  if (echoLevelUpgradeDelay > 0 && !scene.deferUpgradeChoiceUntil) {
+    scene.deferUpgradeChoiceUntil = scene.time.now + echoLevelUpgradeDelay;
   }
   if (scene.deferUpgradeChoiceUntil && scene.time.now < scene.deferUpgradeChoiceUntil) {
     scheduleDeferredUpgradeChoice(scene);
@@ -8408,6 +8416,23 @@ function maybeOpenUpgradeChoice(scene) {
     updateUpgradeButtons(scene);
     showOverlayScreen(scene, 'upgrade');
   });
+}
+
+function pauseGameplayForPendingUpgradeChoice(scene) {
+  if (!scene || state !== 'playing') return;
+  state = 'leveling';
+  isDraggingShip = false;
+  if (scene.input) scene.input.setDefaultCursor('default');
+  setXyControlActive(scene, false);
+  if (isXyGameMode()) updateXyControlFromShip(scene);
+
+  if (spawnEvent) {
+    spawnEvent.remove(false);
+    spawnEvent = null;
+  }
+
+  pauseFallingObjects(scene);
+  pauseTimedGameplay(scene);
 }
 
 function scheduleDeferredUpgradeChoice(scene) {
@@ -9118,6 +9143,7 @@ function spawnBall(scene) {
       spawnRedNeedle(scene);
       return;
     }
+    if (!canSpawnFallingKindNow(scene, kind)) return;
 
     const forcedX = spawnedObjects.length > 0 && isEnergyOrbSpeedKind(kind)
       ? findSpawnXAwayFrom(scene, spawnedObjects, PAIRED_SPAWN_MIN_SPACING)
@@ -9130,7 +9156,35 @@ function spawnBall(scene) {
 function spawnForcedFallingKind(scene, kind, x = null) {
   if (!scene || !scene.balls) return null;
   if (kind === 'lifeBooster' && !canDropLifeBooster()) return null;
+  if (!canSpawnFallingKindNow(scene, kind)) return null;
   return spawnFallingKind(scene, kind, x);
+}
+
+function canSpawnFallingKindNow(scene, kind) {
+  if (!isSpawnLimitedHostileKind(kind)) return true;
+  const hostileObjects = getActiveSpawnLimitedHostiles(scene);
+  if (hostileObjects.length >= MAX_ACTIVE_HOSTILE_SPAWNS) return false;
+  const topHostiles = hostileObjects.filter((object) => object.y < TOP_HOSTILE_SPAWN_ZONE_HEIGHT);
+  return topHostiles.length < MAX_ACTIVE_TOP_HOSTILE_SPAWNS;
+}
+
+function getActiveSpawnLimitedHostiles(scene) {
+  if (!scene || !scene.balls) return [];
+  return scene.balls.getChildren().filter((object) => (
+    object.active &&
+    object.getData &&
+    isSpawnLimitedHostileKind(object.getData('kind'))
+  ));
+}
+
+function isSpawnLimitedHostileKind(kind) {
+  return kind === 'damageBooster' ||
+    isScissorKind(kind) ||
+    kind === 'replicator' ||
+    kind === 'spikeDrone' ||
+    kind === 'giroDrone' ||
+    kind === 'crystallizedOrb' ||
+    isAsteroidKind(kind);
 }
 
 function spawnFallingKind(scene, kind, forcedX = null) {
@@ -10380,7 +10434,7 @@ function getCaughtObject(scene, objectA, objectB) {
 function increaseDifficulty(scene) {
   const previousGravity = currentGravity;
   currentGravity = Math.min(MAX_BALL_GRAVITY, Math.round(BASE_GRAVITY * getSpeedMultiplierForLevel(playerLevel)));
-  currentBoosterGravity = Math.round(currentGravity * BOOSTER_GRAVITY_RATIO);
+  currentBoosterGravity = getBoosterGravityForCurrentSpeed();
 
   if (currentGravity > previousGravity) {
     currentSpawnDelay = getSpawnDelayForGravity(currentGravity);
@@ -10397,9 +10451,13 @@ function getSpeedMultiplierForLevel(level) {
   return 1 + progress * (MAX_SPEED_MULTIPLIER - 1);
 }
 
+function getBoosterGravityForCurrentSpeed() {
+  return Math.min(MAX_BOOSTER_GRAVITY, Math.round(currentGravity * BOOSTER_GRAVITY_RATIO));
+}
+
 function resetGameSpeed(scene) {
   currentGravity = BASE_GRAVITY;
-  currentBoosterGravity = Math.round(BASE_GRAVITY * BOOSTER_GRAVITY_RATIO);
+  currentBoosterGravity = getBoosterGravityForCurrentSpeed();
   currentSpawnDelay = INITIAL_SPAWN_DELAY;
   updateSpeedTexts(scene);
   updateFallingObjectSpeeds(scene);
@@ -10460,7 +10518,7 @@ function getFallingVelocity(kind, scene, object = null) {
   }
 
   if (kind === 'spikeDrone' || kind === 'giroDrone') {
-    return Math.round(BASE_GRAVITY * SPIKE_DRONE_GRAVITY_RATIO);
+    return Math.round(currentBoosterGravity * SPIKE_DRONE_GRAVITY_RATIO);
   }
 
   if ((kind === 'damageBooster' || isScissorKind(kind)) && scene.activeRedWave) {
@@ -10470,7 +10528,7 @@ function getFallingVelocity(kind, scene, object = null) {
   if (isAsteroidKind(kind)) {
     const normalRatio = scene.activeAsteroidWave ? ASTEROID_WAVE_GRAVITY_RATIO : ASTEROID_GRAVITY_RATIO;
     const ratio = kind === 'bigAsteroid' ? BIG_ASTEROID_GRAVITY_RATIO : normalRatio;
-    return Math.round(BASE_GRAVITY * ratio);
+    return Math.round(currentBoosterGravity * ratio);
   }
 
   return isEnergyOrbSpeedKind(kind) ? currentGravity : currentBoosterGravity;
@@ -10489,29 +10547,37 @@ function getHorizontalVelocity(kind, scene, object = null) {
 
   if (!isAsteroidKind(kind)) return 0;
 
-  if (object && object.getData('horizontalVelocity')) {
-    return object.getData('horizontalVelocity');
-  }
-
-  const direction = Math.random() < 0.5 ? -1 : 1;
+  const storedDirection = object && object.getData('horizontalDirection');
+  const storedVelocity = object && object.getData('horizontalVelocity');
+  const direction = storedDirection || (storedVelocity ? Math.sign(storedVelocity) : (Math.random() < 0.5 ? -1 : 1));
   const normalRatio = scene.activeAsteroidWave ? ASTEROID_WAVE_HORIZONTAL_SPEED_RATIO : ASTEROID_HORIZONTAL_SPEED_RATIO;
   const ratio = kind === 'bigAsteroid' ? BIG_ASTEROID_HORIZONTAL_SPEED_RATIO : normalRatio;
-  const velocity = Math.round(BASE_GRAVITY * ratio) * direction;
-  if (object) object.setData('horizontalVelocity', velocity);
+  const velocity = Math.round(currentBoosterGravity * ratio) * direction;
+  if (object) {
+    object.setData('horizontalDirection', direction);
+    object.setData('horizontalVelocity', velocity);
+  }
   return velocity;
 }
 
 function getCurrentSpawnDelay(scene) {
   if (scene.activePlasmaWave) return PLASMA_WAVE_SPAWN_DELAY;
-  if (scene.activeDroneWave) return scene.activeDroneWave.spawnDelay || DRONE_WAVE_SPAWN_DELAY;
-  if (scene.activeAsteroidWave) return ASTEROID_WAVE_SPAWN_DELAY;
+  if (scene.activeDroneWave) return getWaveSpawnDelay(scene, scene.activeDroneWave.spawnDelay || DRONE_WAVE_SPAWN_DELAY, scene.activeDroneWave.spawnKind || 'spikeDrone');
+  if (scene.activeAsteroidWave) return getWaveSpawnDelay(scene, ASTEROID_WAVE_SPAWN_DELAY, 'asteroid');
   if (scene.activeRedWave) {
-    if (scene.activeRedWave.bossKind === 'replicators') return REPLICATOR_WAVE_SPAWN_DELAY;
-    if (scene.activeRedWave.bossKind === 'crystallized') return CRYSTALLIZED_WAVE_SPAWN_DELAY;
-    if (scene.activeRedWave.bossKind === 'scissors') return SCISSOR_WAVE_SPAWN_DELAY;
-    return RED_WAVE_SPAWN_DELAY;
+    const spawnKind = scene.activeRedWave.spawnKind || 'damageBooster';
+    if (scene.activeRedWave.bossKind === 'replicators') return getWaveSpawnDelay(scene, REPLICATOR_WAVE_SPAWN_DELAY, spawnKind);
+    if (scene.activeRedWave.bossKind === 'crystallized') return getWaveSpawnDelay(scene, CRYSTALLIZED_WAVE_SPAWN_DELAY, spawnKind);
+    if (scene.activeRedWave.bossKind === 'scissors') return getWaveSpawnDelay(scene, SCISSOR_WAVE_SPAWN_DELAY, spawnKind);
+    return getWaveSpawnDelay(scene, RED_WAVE_SPAWN_DELAY, spawnKind);
   }
   return currentSpawnDelay;
+}
+
+function getWaveSpawnDelay(scene, baseDelay, kind) {
+  const velocity = Math.max(1, Math.abs(getFallingVelocity(kind, scene)));
+  const spacingDelay = Math.ceil((WAVE_MIN_VERTICAL_SPAWN_SPACING / velocity) * 1000);
+  return Math.max(baseDelay, spacingDelay);
 }
 
 function getSpawnDelayForGravity(gravity) {
