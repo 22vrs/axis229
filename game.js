@@ -16,6 +16,17 @@ const MENU_MUSIC_PATH = 'assets/menu-music.mp3';
 const GAMEPLAY_MUSIC_PATH = 'assets/game-music.mp3';
 const PURPLE_BOOSTER_MUSIC_PATH = null;
 const PLAYER_SHIP_IMAGE_PATH = 'assets/images/player-ship.svg';
+const ECHO_DIALOG_CHARACTER_DELAY = 32;
+const ECHO_DIALOG_BEEP_DURATION = 0.018;
+const INTRO_EMPTY_SPACE_DURATION = 550;
+const INTRO_AXIS_ARRIVAL_DURATION = 1450;
+const INTRO_ECHO_ARRIVAL_DURATION = 650;
+const INTRO_ECHO_ORBIT_DURATION = 1900;
+const INTRO_ECHO_ORBIT_TURNS = 1;
+const INTRO_ENERGY_LINK_FADE_DURATION = 260;
+const INTRO_ECHO_HOP_HEIGHT = 13;
+const INTRO_ECHO_HOP_DURATION = 190;
+const INTRO_DIALOG_DELAY = 420;
 const SUPABASE_URL = 'https://fqkpwigonxgnsynfdzyw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Up1cBihd6uOftnMkhj3A3w_ZH1q7YOR';
 const SUPABASE_RANKING_TABLE = 'ranking';
@@ -25,6 +36,7 @@ const DEFAULT_PLAYER_NAME = 'Anónimo';
 const INITIAL_SPAWN_DELAY = 1500;
 const MIN_SPAWN_DELAY = 600;
 const SPAWN_DELAY_EASING = 1.8;
+const PAIRED_SPAWN_MIN_SPACING = 96;
 const BASE_GRAVITY = 220;
 const MAX_SPEED_MULTIPLIER = 2;
 const MAX_BALL_GRAVITY = BASE_GRAVITY * MAX_SPEED_MULTIPLIER;
@@ -47,28 +59,62 @@ const RED_WAVE_SPAWN_DELAY = 400;
 const RED_WAVE_ENEMY_GRAVITY_RATIO = 0.72;
 const RED_WAVE_MIN_ENEMY_SPACING = SHIP_WIDTH + 56;
 const RED_WAVE_RECENT_ENEMY_HEIGHT = 230;
-const OBRERA_SPAWN_CHANCE = 0.2;
+const OBRERA_SPAWN_CHANCE = 0.14;
+const SCISSOR_SPAWN_CHANCE = 0.05;
+const SCISSOR_SWARM_DURATION = 15000;
+const SCISSOR_WAVE_SPAWN_DELAY = 650;
+const SCISSOR_SPLIT_Y_RATIO = 0.32;
+const SCISSOR_HALF_HORIZONTAL_SPEED = 94;
+const SCISSOR_TEXTURE_WIDTH = 48;
+const SCISSOR_TEXTURE_HEIGHT = 48;
+const SCISSOR_HALF_TEXTURE_WIDTH = SCISSOR_TEXTURE_WIDTH / 2;
+const SCISSOR_HITBOX_WIDTH = 30;
+const SCISSOR_HITBOX_HEIGHT = 36;
+const SCISSOR_HALF_HITBOX_WIDTH = SCISSOR_HITBOX_WIDTH / 2;
+const SCISSOR_HALF_HITBOX_HEIGHT = 36;
+const SCISSOR_CUT_SPARK_POINTS = [
+  { x: 30.4, y: 13, radius: 1.7, alpha: 0.92 },
+  { x: 33.6, y: 18, radius: 1.2, alpha: 0.78 },
+  { x: 30.8, y: 24, radius: 1.4, alpha: 0.86 },
+  { x: 33.1, y: 31, radius: 1.8, alpha: 0.9 },
+  { x: 31.2, y: 39, radius: 1.1, alpha: 0.76 },
+  { x: 33.4, y: 47, radius: 1.3, alpha: 0.82 },
+];
+const REPLICATOR_WAVE_DURATION = 15000;
+const REPLICATOR_WAVE_SPAWN_DELAY = 900;
+const REPLICATOR_SPAWN_CHANCE = 0.02;
+const TRAVEL_REPLICATOR_GRAVITY_RATIO = 0.56;
+const REPLICATOR_SCALE = SHIP_SCALE * 0.72;
+const REPLICATOR_FOLLOW_DELAY_MIN = 70;
+const REPLICATOR_FOLLOW_DELAY_MAX = 120;
+const REPLICATOR_CHAIN_FOLLOW_DELAY = 90;
+const REPLICATOR_FOLLOW_SPEED = 200;
+const REPLICATOR_GLITCH_INTERVAL = 90;
+const REPLICATOR_GLITCH_SLICE_COUNT = 6;
+const REPLICATOR_GLITCH_PIXEL_COUNT = 9;
+const REPLICATOR_HITBOX_WIDTH = 96;
+const REPLICATOR_HITBOX_HEIGHT = 28;
 const DRONE_WAVE_DURATION = 15000;
 const DRONE_WAVE_SPAWN_DELAY = 680;
+const GIRODRONE_WAVE_DURATION = 15000;
+const GIRODRONE_WAVE_SPAWN_DELAY = 920;
+const CRYSTALLIZED_WAVE_DURATION = 15000;
+const CRYSTALLIZED_WAVE_SPAWN_DELAY = 850;
+const CRYSTALLIZED_ORB_CHANCE = 0.05;
+const CRYSTALLIZED_ORB_RADIUS = 20;
+const CRYSTALLIZED_ORB_CRYSTAL_SHAPE = [
+  [-18, 9], [-13, 7], [-9, 8], [-5, 5],
+  [0, 8], [5, 5], [9, 8], [14, 7],
+  [18, 9], [17, 13], [13, 17], [7, 20],
+  [0, 20], [-7, 19], [-13, 16], [-17, 13],
+];
+const CRYSTALLIZED_ORB_SAFE_APPROACH_MEMORY = 100;
 const ASTEROID_WAVE_DURATION = 15000;
 const ASTEROID_WAVE_SPAWN_DELAY = 760;
-const TRAVEL_ASTEROID_CHANCE = 0.15;
-const COMET_WAVE_DURATION = 15000;
-const COMET_WAVE_SPAWN_DELAY = 520;
-const TRAVEL_COMET_CHANCE = 0.15;
-const COMET_GRAVITY_RATIO = 1.02;
-const COMET_HORIZONTAL_SPEED_RATIO = 0.96;
-const COMET_WAVE_GRAVITY_RATIO = 0.96;
-const COMET_WAVE_HORIZONTAL_SPEED_RATIO = 0.92;
-const COMET_TRAIL_LIFETIME = 560;
-const COMET_TRAIL_HITBOX = 12;
-const COMET_TRAIL_MAX_POINTS = 28;
-const COMET_TRAIL_MIN_POINT_DISTANCE = 4;
-const COMET_TRAIL_WIDTH = 18;
-const COMET_WAVE_MIN_SPAWN_SPACING = SHIP_WIDTH + 44;
-const COMET_OFFSCREEN_MARGIN = 62;
-const TRAVEL_PLASMA_CHANCE = 0.05;
-const SPIKE_DRONE_SPAWN_CHANCE = 0.1;
+const TRAVEL_ASTEROID_CHANCE = 0.10;
+const TRAVEL_PLASMA_CHANCE = 0.04;
+const SPIKE_DRONE_SPAWN_CHANCE = 0.07;
+const GIRODRONE_SPAWN_CHANCE = 0.05;
 const SPIKE_DRONE_FOLDED_RADIUS = 18;
 const SPIKE_DRONE_EXPANDED_RADIUS = SPIKE_DRONE_FOLDED_RADIUS * 3;
 const SPIKE_DRONE_FOLDED_DURATION = 1100;
@@ -78,7 +124,16 @@ const SPIKE_DRONE_WARNING_DURATION = SPIKE_DRONE_WARNING_GREEN_DURATION + SPIKE_
 const SPIKE_DRONE_EXPANDED_DURATION = 1000;
 const SPIKE_DRONE_GRAVITY_RATIO = 0.68;
 const SPIKE_DRONE_TEXTURE_SIZE = 120;
-const RED_NEEDLE_SPAWN_CHANCE = 0.05;
+const GIRODRONE_SCALE = 0.72;
+const GIRODRONE_CORE_RADIUS = Math.round(SPIKE_DRONE_FOLDED_RADIUS * GIRODRONE_SCALE);
+const GIRODRONE_SATELLITE_RADIUS = GIRODRONE_CORE_RADIUS;
+const GIRODRONE_DAMAGE_HALO_RADIUS = 30;
+const GIRODRONE_ORBIT_RADIUS = 46;
+const GIRODRONE_ORBIT_SPEED = 0.0018;
+const GIRODRONE_ENERGY_PARTICLE_COUNT = 9;
+const GIRODRONE_CORE_ENERGY_PARTICLE_COUNT = 7;
+const GIRODRONE_DISABLE_SCORE = 8;
+const RED_NEEDLE_SPAWN_CHANCE = 0.04;
 const RED_NEEDLE_WIDTH = 76;
 const RED_NEEDLE_HEIGHT = 28;
 const RED_NEEDLE_SPEED = 118;
@@ -103,17 +158,22 @@ const RED_NEEDLE_BOSS_ATTACKS = 6;
 const RED_NEEDLE_BOSS_PASS_DURATION = 3400;
 const RED_NEEDLE_BOSS_PASS_GAP = 620;
 const TRAVEL_SENTINEL_ATTACKS = 2;
-const TRAVEL_SENTINEL_CHANCE = 0.02;
+const TRAVEL_SENTINEL_CHANCE = 0.015;
 const TRAVEL_SENTINEL_COOLDOWN = 26000;
+const TRAVEL_THREAT_POOL_WEIGHT = 1;
+const TRAVEL_HAZARD_POOL_WEIGHT = 0.9;
+const TRAVEL_BOOSTER_POOL_WEIGHT = 0.72;
 const BOSS_LASER_WARN_DURATION = 1100;
 const BOSS_LASER_DURATION = 2000;
 const BOSS_ATTACK_GAP = 1500;
 const BOSS_WIDTH = 560;
 const BOSS_HEIGHT = 220;
-const SENTINEL_TARGET_Y = 86;
+const SENTINEL_TARGET_Y = 112;
 const BOSS_LASER_WIDTH = 32;
+const BOSS_LASER_SENTINEL_OVERLAP = 96;
 const BOSS_HORIZONTAL_LASER_HEIGHT = 30;
 const WAVE_CLEAR_DELAY = 2200;
+const ECHO_WAVE_WARNING_RESUME_DELAY = 2000;
 const WAVE_POST_DELAY = 900;
 const BOSS_CUE_BAND_HEIGHT = 76;
 const BOSS_CUE_HOLD_DURATION = 900;
@@ -155,6 +215,8 @@ const SHIP_TRAIL_CORE_ALPHA_RATIO = 0.52;
 const SHIP_TRAIL_IDLE_INTERVAL = 55;
 const SHIP_TRAIL_IDLE_SPEED = 0.08;
 const SHIP_TRAIL_IDLE_MAX_DELTA = 34;
+const REPLICATOR_TRAIL_DURATION = Math.round(SHIP_TRAIL_DURATION * 0.5);
+const REPLICATOR_TRAIL_MAX_POINTS = Math.round(SHIP_TRAIL_MAX_POINTS * 0.5);
 const SHIP_EYE_LOCAL_X = 0;
 const SHIP_EYE_LOCAL_Y = -1;
 const SHIP_EYE_GLOW_RADIUS = 18;
@@ -220,11 +282,114 @@ const ECHO_IDLE_SPIN_MIN_DELAY = 2800;
 const ECHO_IDLE_SPIN_MAX_DELAY = 6800;
 const ECHO_IDLE_SPIN_MIN_DURATION = 720;
 const ECHO_IDLE_SPIN_MAX_DURATION = 980;
-const ECHO_STREAK_ORBIT_DURATION = 1450;
-const ECHO_STREAK_ORBIT_TURNS = 2;
-const ECHO_STREAK_ORBIT_RADIUS_X = 66;
-const ECHO_STREAK_ORBIT_RADIUS_Y = 48;
-const ECHO_STREAK_UPGRADE_SETTLE_DELAY = 90;
+const ECHO_LEVEL_ORBIT_DURATION = 1450;
+const ECHO_LEVEL_ORBIT_TURNS = 2;
+const ECHO_LEVEL_ORBIT_RADIUS_X = 66;
+const ECHO_LEVEL_ORBIT_RADIUS_Y = 48;
+const ECHO_LEVEL_ORBIT_TRANSITION_RATIO = 0.18;
+const ECHO_LEVEL_UPGRADE_SETTLE_DELAY = 90;
+const ECHO_TUTORIAL_LINES = [
+  "Iniciando sistema...",
+  "Despierta, Axis.\n\nSoy Echo, tu unidad de apoyo.",
+  "Nuestra misión es simple: explorar más allá de los límites conocidos del espacio.",
+  "Sin embargo, existe una amenaza.\n\nUna anomalía conocida como 'La Corrupción' se ha extendido por el universo durante décadas, contaminando todo lo que encuentra.",
+  "Las naves afectadas por ella se vuelven inestables y hostiles.\n\nMantén la distancia.",
+  "Para avanzar necesitarás recolectar Orbes de Energía.\n\nSon esenciales para mantener tu integridad operativa.",
+  "Atención: algunos orbes están contaminados. Podrás reconocerlos por su núcleo oscuro y las emisiones verdes que los rodean.\n\nNo los recojas.",
+  "Hay algo más que debes saber.",
+  "Eres la nave número 229 enviada en esta misión.",
+  "Las 228 anteriores no regresaron.",
+  "Mi base de datos contiene los registros de cada fracaso.",
+  "...Las probabilidades de éxito son bajas.",
+  "Pero cada expedición ha llegado un poco más lejos que la anterior.",
+  "Quizá tú también puedas hacerlo.",
+  "Adelante, Axis.\n\n (Mantén pulsado el botón azul para mover la nave)",
+];
+const ECHO_SWARM_WARNING_LINES = [
+  "Atención, Axis. Amenaza detectada.",
+  "Se aproxima un Enjambre de Obreras.",
+  "Las unidades obreras son antiguas naves mineras corrompidas. Individualmente representan un riesgo bajo.",
+  "En grupo son extremadamente peligrosas.",
+  "Recomendación: evita cualquier contacto.",
+];
+const ECHO_SCISSOR_SWARM_WARNING_LINES = [
+  "Atención, Axis. Unidades de clase Escisora identificadas.",
+  "Estas variantes fueron diseñadas para atravesar fisuras y túneles inaccesibles para una Obrera convencional.",
+  "Durante la aproximación se dividirán en dos unidades independientes.",
+  "Las trayectorias resultantes pueden dificultar las maniobras evasivas.",
+  "Mantente alerta.",
+];
+const ECHO_REPLICATOR_WARNING_LINES = [
+  "Atención, Axis. Formación de Replicadores identificada.",
+  "Estas unidades fueron diseñadas para combatir amenazas no catalogadas.",
+  "Su protocolo principal consiste en copiar la configuración y el comportamiento del objetivo.",
+  "Posteriormente utilizan esa información para anticipar sus movimientos.",
+  "La Corrupción ha eliminado los criterios de activación del sistema.",
+  "Ahora cualquier nave es considerada hostil.",
+  "Cada Replicador intentará seguir tu trayectoria con un breve retraso.",
+  "Ten presente que aprenderán de cada maniobra.",
+];
+const ECHO_DRONE_WARNING_LINES = [
+  "Atención, Axis. Identificando unidades de combate autónomas.",
+  "Los registros las identifican como Drones.",
+  "Originalmente protegían infraestructuras críticas de ataques y sabotajes.",
+  "La Corrupción ha alterado sus protocolos de identificación.",
+  "Ahora consideran cualquier nave una amenaza.",
+  "Mientras su núcleo permanezca en verde, sus defensas estarán inactivas.",
+  "Ese es el momento de neutralizarlos.",
+  "Cuando cambien a rojo, desplegarán cuchillas energéticas de medio alcance.",
+  "Evita el contacto hasta que vuelvan a estabilizarse.",
+];
+const ECHO_GIRODRONE_WARNING_LINES = [
+  "Atención, Axis. Girodrones identificados.",
+  "Los registros indican que estas unidades protegían infraestructuras críticas.",
+  "El módulo central presenta ciclos periódicos de vulnerabilidad.",
+  "El módulo orbital, no.",
+  "Cuando el núcleo emita una señal verde, podrás neutralizarlo.",
+  "Cuando emita una señal roja, mantén la distancia.",
+  "Evita cualquier contacto con los campos energéticos de ambas unidades.",
+];
+const ECHO_CRYSTALLIZED_WAVE_WARNING_LINES = [
+  "Atención, Axis. Detecto una Tormenta Cristalizada.",
+  "Los orbes conservan su energía, pero han acumulado hielo y residuos minerales en su cara inferior.",
+  "La parte superior permanece estable y puede recogerse con seguridad.",
+  "No permitas que la costra inferior impacte contra la nave.",
+  "Y no dejes escapar los orbes. Su energía sigue siendo esencial.",
+];
+const ECHO_SENTINEL_WARNING_LINES = [
+  "Atención, Axis. Detecto una unidad de clase Centinela.",
+  "Antes de la Corrupción, estas naves servían como plataformas móviles de minería a gran escala.",
+  "Las obreras operaban a su alrededor, extrayendo recursos y regresando periódicamente para descargar material y realizar reparaciones.",
+  "Sus emisores láser estaban diseñados para fracturar asteroides enteros.",
+  "Ahora esos mismos sistemas apuntan a cualquier objetivo cercano.",
+  "Mantente alejado de sus haces. No sobrevivirás a un impacto directo.",
+];
+const ECHO_RED_NEEDLE_WARNING_LINES = [
+  "Atención, Axis. Unidad de clase Aguja Roja identificada.",
+  "Estas naves fueron desplegadas durante las primeras fases de la expansión de la Corrupción.",
+  "Su función consistía en localizar focos de infección y neutralizarlos a larga distancia.",
+  "La estrategia resultó ineficaz.",
+  "Muchas unidades acabaron siendo corrompidas.",
+  "Los protocolos de combate permanecen activos.",
+  "Los protocolos de identificación, no.",
+  "Evita sus disparos.",
+];
+const ECHO_ASTEROID_BELT_WARNING_LINES = [
+  "Atención, Axis. Entramos en un Cinturón de Asteroides.",
+  "Esta región contiene una concentración inusual de fragmentos rocosos.",
+  "Antes de la Corrupción, las flotas mineras operaban en zonas como esta.",
+  "Ahora solo quedan restos a la deriva.",
+  "Evita las colisiones.",
+  "Sería una forma particularmente decepcionante de terminar la misión.",
+];
+const ECHO_PLASMA_WAVE_WARNING_LINES = [
+  "Atención, Axis. Detecto una Marea de Plasma.",
+  "Las expediciones anteriores registraron este fenómeno únicamente en regiones afectadas por la Corrupción.",
+  "Su origen sigue siendo desconocido.",
+  "Las corrientes energéticas presentan una única brecha estable, pero esta se desplaza constantemente.",
+  "Cruza únicamente a través de ella.",
+  "El contacto directo con el plasma provocará daños graves.",
+];
 let streakGradientTextureId = 0;
 let pointPopupTextureId = 0;
 const ASTEROID_WAVE_BIG_ASTEROID_CHANCE = 0.16;
@@ -236,6 +401,8 @@ const ASTEROID_WAVE_GRAVITY_RATIO = 0.82;
 const ASTEROID_WAVE_HORIZONTAL_SPEED_RATIO = 0.58;
 const ASTEROID_WRAP_MARGIN = 28;
 const UPGRADE_POINTS_REQUIRED = 10;
+const STORY_BOSS_KINDS = ['red', 'boss', 'asteroid', 'plasma', 'replicators', 'drones', 'girodrones', 'redNeedleBoss', 'crystallized'];
+const BOSS_ONLY_BOSS_KINDS = ['scissors', 'girodrones', 'boss', 'crystallized', 'red', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss'];
 const SHIELD_BLOCK_SCORE = 10;
 const SPIKE_DRONE_DISABLE_SCORE = 5;
 const INITIAL_HEART_CAPACITY = 3;
@@ -331,6 +498,7 @@ let pendingScoreSave = null;
 let lastScoreSaved = false;
 let currentGameMode = 'xy';
 let soundEffectsEnabled = true;
+let shieldDefeatLevelBonus = 0;
 let musicEnabled = true;
 let soundEffectsVolume = 1;
 let musicVolume = 1;
@@ -340,6 +508,8 @@ let musicPlaybackBlocked = false;
 let pageAudioListenersBound = false;
 let pageAudioSuspended = false;
 let pageAudioWasPlaying = false;
+let echoDialogAudioContext = null;
+let uiScaleResizeBound = false;
 
 loadAudioSettings();
 
@@ -365,20 +535,48 @@ function initHud() {
   };
 
   updateUiScale();
-  window.addEventListener('resize', updateUiScale);
+  bindUiScaleResize();
   return hud;
+}
+
+function bindUiScaleResize() {
+  if (uiScaleResizeBound) return;
+  uiScaleResizeBound = true;
+  window.addEventListener('resize', updateUiScale);
 }
 
 function updateUiScale() {
   const container = document.getElementById('game-container');
   if (!container) return;
-  container.style.setProperty('--ui-scale', container.clientWidth / GAME_WIDTH);
+  const nextScale = container.clientWidth / GAME_WIDTH;
+  if (!Number.isFinite(nextScale) || nextScale <= 0) return;
+  container.style.setProperty('--ui-scale', nextScale);
+}
+
+function revealGameContainer() {
+  const container = document.getElementById('game-container');
+  if (!container) return;
+  updateUiScale();
+  container.classList.add('is-ready');
+}
+
+function hideGameContainerUntilReady() {
+  const container = document.getElementById('game-container');
+  if (!container) return;
+  container.classList.remove('is-ready');
 }
 
 function setHudVisible(scene, visible) {
   const currentHud = initHud();
   if (!currentHud.root) return;
   currentHud.root.classList.toggle('is-visible', visible);
+  currentHud.root.classList.toggle('is-boss-only', isBossOnlyGameMode());
+  const levelContainer = currentHud.level && currentHud.level.closest('.hud-level');
+  const scoreContainer = currentHud.score && currentHud.score.closest('.hud-score');
+  const levelLabel = levelContainer && levelContainer.querySelector('.hud-label');
+  const scoreLabel = scoreContainer && scoreContainer.querySelector('.hud-label');
+  if (levelLabel) levelLabel.textContent = isBossOnlyGameMode() ? 'JEFE' : 'NIVEL';
+  if (scoreLabel) scoreLabel.textContent = isBossOnlyGameMode() ? 'TIPO' : 'PUNTOS';
   if (!visible) setPauseSettingsVisible(false);
   updateHud(scene);
 }
@@ -387,22 +585,51 @@ function setPauseSettingsVisible(visible) {
   const currentHud = initHud();
   if (!currentHud.root) return;
   currentHud.root.classList.toggle('is-pause-settings-visible', Boolean(visible));
+  setHudUpgradeChipsReadable(currentHud, visible);
   if (currentHud.pauseSettingsButton) {
     currentHud.pauseSettingsButton.setAttribute('aria-hidden', visible ? 'false' : 'true');
   }
+}
+
+function setHudUpgradeChipsReadable(currentHud, readable) {
+  if (!currentHud || !currentHud.root) return;
+  currentHud.root.classList.toggle('is-paused-upgrades-readable', Boolean(readable));
+  if (!currentHud.upgrades) return;
+  currentHud.upgrades.querySelectorAll('.hud-upgrade-chip').forEach((chip) => {
+    chip.setAttribute('tabindex', readable ? '0' : '-1');
+  });
 }
 
 function updateHud(scene = gameScene) {
   const currentHud = initHud();
   if (!currentHud.root) return;
 
-  currentHud.level.textContent = playerLevel;
-  currentHud.score.textContent = score;
+  updatePlayerLevelText(scene);
+  currentHud.score.textContent = isBossOnlyGameMode() ? getBossOnlyHudName(scene) : score;
   updateStreakText();
   updateSpeedTexts(scene);
   updateUpgradeBar(scene);
   updateLivesText(scene);
   updateUpgradeStatusIcons(scene);
+}
+
+function getBossOnlyHudName(scene) {
+  if (!scene) return createBossConfig(BOSS_ONLY_BOSS_KINDS[0]).name;
+  if (!scene.bossOnlyTypeRevealed) return '???';
+
+  const activeWave = scene.activeRedWave ||
+    scene.activeDroneWave ||
+    scene.activeAsteroidWave ||
+    scene.activePlasmaWave ||
+    (scene.activeBossWave && !scene.activeBossWave.isTravelEncounter ? scene.activeBossWave : null);
+  if (activeWave && activeWave.bossName) return activeWave.bossName;
+
+  const pendingBoss = scene.pendingBossWave ||
+    (scene.pendingBossWaves && scene.pendingBossWaves.length ? scene.pendingBossWaves[0] : null);
+  if (pendingBoss && pendingBoss.name) return pendingBoss.name;
+
+  const bossNumber = Math.max(0, (scene.bossOnlyBossNumber || 1) - 1);
+  return createBossConfig(BOSS_ONLY_BOSS_KINDS[bossNumber % BOSS_ONLY_BOSS_KINDS.length]).name;
 }
 
 function setHudBoosterVisible(visible, color = '#76ffe8', label = null) {
@@ -424,10 +651,9 @@ function getBossConfigForLevel(level) {
   const bossIndex = getBossIndexForLevel(level);
   if (bossIndex === -1) return null;
 
-  const bossKinds = ['red', 'boss', 'asteroid', 'plasma', 'drones', 'redNeedleBoss', 'comet'];
   const bossKind = isInfiniteGameMode()
-    ? (bossIndex === 0 ? 'boss' : bossKinds[Math.floor(Math.random() * bossKinds.length)])
-    : bossKinds[bossIndex % bossKinds.length];
+    ? (bossIndex === 0 ? 'replicators' : STORY_BOSS_KINDS[Math.floor(Math.random() * STORY_BOSS_KINDS.length)])
+    : STORY_BOSS_KINDS[bossIndex % STORY_BOSS_KINDS.length];
   return createBossConfig(bossKind);
 }
 
@@ -435,8 +661,15 @@ function createBossConfig(kind) {
   if (kind === 'red') {
     return {
       kind: 'red',
-      name: 'Enjambre',
+      name: 'Enjambre de Obreras',
       duration: RED_WAVE_DURATION,
+    };
+  }
+  if (kind === 'scissors') {
+    return {
+      kind: 'scissors',
+      name: 'Enjambre de Escisoras',
+      duration: SCISSOR_SWARM_DURATION,
     };
   }
   if (kind === 'asteroid') {
@@ -446,18 +679,32 @@ function createBossConfig(kind) {
       duration: ASTEROID_WAVE_DURATION,
     };
   }
-  if (kind === 'comet') {
-    return {
-      kind: 'comet',
-      name: 'Lluvia de estrellas',
-      duration: COMET_WAVE_DURATION,
-    };
-  }
   if (kind === 'drones') {
     return {
       kind: 'drones',
       name: 'Drones',
       duration: DRONE_WAVE_DURATION,
+    };
+  }
+  if (kind === 'girodrones') {
+    return {
+      kind: 'girodrones',
+      name: 'Girodrones',
+      duration: GIRODRONE_WAVE_DURATION,
+    };
+  }
+  if (kind === 'replicators') {
+    return {
+      kind: 'replicators',
+      name: 'Replicadores',
+      duration: REPLICATOR_WAVE_DURATION,
+    };
+  }
+  if (kind === 'crystallized') {
+    return {
+      kind: 'crystallized',
+      name: 'Tormenta Cristalizada',
+      duration: CRYSTALLIZED_WAVE_DURATION,
     };
   }
   if (kind === 'boss') {
@@ -489,21 +736,28 @@ function getBossIndexForLevel(level) {
 }
 
 function getValidGameMode(mode) {
-  return ['xy', 'xyInfinite'].includes(mode) ? mode : 'xy';
+  return ['xy', 'xyInfinite', 'xyBossOnly'].includes(mode) ? mode : 'xy';
 }
 
 function isInfiniteGameMode() {
   return currentGameMode === 'xyInfinite';
 }
 
+function isBossOnlyGameMode() {
+  return currentGameMode === 'xyBossOnly';
+}
+
 function isXyGameMode() {
-  return currentGameMode === 'xy' || currentGameMode === 'xyInfinite';
+  return currentGameMode === 'xy' || currentGameMode === 'xyInfinite' || currentGameMode === 'xyBossOnly';
 }
 
 function isXyInfiniteGameMode() {
   return currentGameMode === 'xyInfinite';
 }
 
+updateUiScale();
+bindUiScaleResize();
+hideGameContainerUntilReady();
 bootGame();
 
 function bootGame() {
@@ -552,6 +806,7 @@ function create() {
     core: 0x063719,
     ring: 0xfff0a8,
   });
+  createCrystallizedOrbTexture(this);
   createEnergyBallTexture(this, 'purpleBall', {
     outer: 0x6f38ff,
     mid: 0x9b5cff,
@@ -587,13 +842,13 @@ function create() {
   damageGraphics.generateTexture('damageBooster', 36, 36);
   damageGraphics.destroy();
   createEnemyShipTexture(this);
+  createScissorTextures(this);
   createRedNeedleTextures(this);
   createSpikeDroneTextures(this);
+  createGiroDroneTextures(this);
   createBossShipTexture(this);
   createAsteroidTexture(this);
   createBigAsteroidTexture(this);
-  createCometTexture(this);
-  createCometTrailTexture(this);
   createEchoTexture(this);
 
   if (!this.textures.exists('ship')) {
@@ -717,8 +972,6 @@ function create() {
 
   setUiDepth(this);
 
-  this.cometTrailGraphics = this.add.graphics().setDepth(FALLING_OBJECT_DEPTH);
-
   // Grupo de bolas
   this.balls = this.physics.add.group();
   this.events.on(Phaser.Scenes.Events.POST_UPDATE, (time) => {
@@ -737,6 +990,7 @@ function create() {
   this.pauseOverlay = createPauseOverlay(this);
   this.upgradeOverlay = createUpgradeOverlay(this);
   this.optionsOverlay = createOptionsOverlay(this);
+  this.echoTutorialOverlay = createEchoTutorialOverlay(this);
 
   // Menus
   this.menuContainer = createMenu(this);
@@ -749,6 +1003,7 @@ function create() {
   layoutScene(this);
 
   showMenu.call(this);
+  revealGameContainer();
 
   this.scale.on('resize', () => {
     updateUiScale();
@@ -835,6 +1090,76 @@ function createEnergyBallTexture(scene, ballKey, colors) {
   ballGraphics.strokeCircle(22, 22, 7);
   ballGraphics.generateTexture(ballKey, 44, 44);
   ballGraphics.destroy();
+}
+
+function createCrystallizedOrbTexture(scene) {
+  createEnergyBallTexture(scene, 'crystallizedBall', {
+    outer: 0xff9f2a,
+    mid: 0xffd76a,
+    core: 0xffffd2,
+    ring: 0xfff0a8,
+  });
+
+  const source = scene.textures.get('crystallizedBall').getSourceImage();
+  const canvasTexture = scene.textures.createCanvas('crystallizedOrb', 44, 44);
+  const context = canvasTexture.getContext();
+  context.drawImage(source, 0, 0);
+
+  const crystalFacets = [
+    { color: '#07539e', points: [[4, 31], [9, 29], [12, 34], [9, 38], [5, 35]] },
+    { color: '#0b72c3', points: [[9, 29], [13, 30], [16, 34], [12, 34]] },
+    { color: '#179de0', points: [[13, 30], [17, 27], [20, 33], [16, 34]] },
+    { color: '#0962b1', points: [[17, 27], [22, 30], [23, 35], [20, 33]] },
+    { color: '#1ca9e8', points: [[22, 30], [27, 27], [28, 33], [23, 35]] },
+    { color: '#0870bf', points: [[27, 27], [31, 30], [33, 34], [28, 33]] },
+    { color: '#20b5ee', points: [[31, 30], [36, 29], [37, 34], [33, 34]] },
+    { color: '#075095', points: [[36, 29], [40, 31], [39, 35], [35, 39], [37, 34]] },
+    { color: '#0a65b2', points: [[5, 35], [12, 34], [14, 40], [9, 38]] },
+    { color: '#0d82ce', points: [[12, 34], [16, 34], [20, 41], [14, 40]] },
+    { color: '#06498e', points: [[16, 34], [23, 35], [22, 42], [20, 41]] },
+    { color: '#0b70bd', points: [[23, 35], [28, 33], [29, 42], [22, 42]] },
+    { color: '#09549d', points: [[28, 33], [33, 34], [35, 39], [29, 42]] },
+    { color: '#0d7ac5', points: [[33, 34], [37, 34], [35, 39]] },
+  ];
+
+  context.save();
+  context.lineJoin = 'round';
+  context.fillStyle = '#064383';
+  context.beginPath();
+  CRYSTALLIZED_ORB_CRYSTAL_SHAPE.forEach(([offsetX, offsetY], index) => {
+    const x = offsetX + 22;
+    const y = offsetY + 22;
+    if (index === 0) context.moveTo(x, y);
+    else context.lineTo(x, y);
+  });
+  context.closePath();
+  context.fill();
+
+  crystalFacets.forEach((facet) => {
+    context.fillStyle = facet.color;
+    context.strokeStyle = '#52bff0';
+    context.lineWidth = 0.7;
+    context.beginPath();
+    facet.points.forEach(([x, y], index) => {
+      if (index === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
+    });
+    context.closePath();
+    context.fill();
+    context.stroke();
+  });
+
+  context.strokeStyle = '#c2f2ff';
+  context.lineWidth = 1;
+  [[13, 30, 17, 27], [22, 30, 27, 27], [31, 30, 36, 29]].forEach(([x1, y1, x2, y2]) => {
+    context.beginPath();
+    context.moveTo(x1, y1);
+    context.lineTo(x2, y2);
+    context.stroke();
+  });
+  context.restore();
+  canvasTexture.refresh();
+  scene.textures.remove('crystallizedBall');
 }
 
 function attachEnergyOrbOverlay(scene, orb, palette) {
@@ -1318,6 +1643,195 @@ function createEnemyShipTexture(scene) {
   graphics.destroy();
 }
 
+function createScissorTextures(scene) {
+  createScissorTexture(scene);
+  createScissorHalfTexture(scene, 'scissorShipLeft', 0);
+  createScissorHalfTexture(scene, 'scissorShipRight', SCISSOR_TEXTURE_WIDTH - SCISSOR_HALF_TEXTURE_WIDTH);
+}
+
+function createScissorTexture(scene) {
+  const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+  const sx = SCISSOR_TEXTURE_WIDTH / 64;
+  const sy = SCISSOR_TEXTURE_HEIGHT / 72;
+  const point = ({ x, y }) => ({ x: x * sx, y: y * sy });
+  const points = (items) => items.map(point);
+  const tx = (x) => x * sx;
+  const ty = (y) => y * sy;
+
+  graphics.fillStyle(0x2a030d, 1);
+  graphics.fillPoints(points([
+    { x: 31, y: 4 },
+    { x: 24, y: 14 },
+    { x: 13, y: 16 },
+    { x: 1, y: 64 },
+    { x: 26, y: 54 },
+    { x: 32, y: 70 },
+    { x: 32, y: 4 },
+  ]), true);
+  graphics.fillPoints(points([
+    { x: 33, y: 4 },
+    { x: 40, y: 14 },
+    { x: 51, y: 16 },
+    { x: 63, y: 64 },
+    { x: 38, y: 54 },
+    { x: 32, y: 70 },
+    { x: 32, y: 4 },
+  ]), true);
+
+  graphics.fillStyle(0x8d1725, 1);
+  graphics.fillPoints(points([
+    { x: 31, y: 7 },
+    { x: 23, y: 19 },
+    { x: 13, y: 22 },
+    { x: 5, y: 60 },
+    { x: 28, y: 50 },
+    { x: 32, y: 66 },
+    { x: 32, y: 7 },
+  ]), true);
+  graphics.fillPoints(points([
+    { x: 33, y: 7 },
+    { x: 41, y: 19 },
+    { x: 51, y: 22 },
+    { x: 59, y: 60 },
+    { x: 36, y: 50 },
+    { x: 32, y: 66 },
+    { x: 32, y: 7 },
+  ]), true);
+
+  graphics.fillStyle(0xd73346, 1);
+  graphics.fillTriangle(tx(31), ty(11), tx(24), ty(24), tx(31), ty(60));
+  graphics.fillTriangle(tx(17), ty(25), tx(8), ty(58), tx(27), ty(49));
+  graphics.fillTriangle(tx(33), ty(11), tx(40), ty(24), tx(33), ty(60));
+  graphics.fillTriangle(tx(47), ty(25), tx(56), ty(58), tx(37), ty(49));
+
+  graphics.fillStyle(0xffc05a, 0.95);
+  graphics.fillTriangle(tx(18), ty(7), tx(25), ty(0), tx(24), ty(16));
+  graphics.fillTriangle(tx(46), ty(7), tx(39), ty(0), tx(40), ty(16));
+
+  graphics.fillStyle(0x151b2a, 0.92);
+  graphics.fillRoundedRect(tx(25), ty(8), tx(14), ty(50), 4);
+  graphics.fillStyle(0xb9e8ff, 0.9);
+  graphics.fillEllipse(tx(32), ty(32), tx(18), ty(18));
+  graphics.fillStyle(0x1d2834, 0.94);
+  graphics.fillEllipse(tx(32), ty(33), tx(12), ty(12));
+  graphics.fillStyle(0x6ee9ff, 0.52);
+  graphics.fillEllipse(tx(30), ty(31), tx(7), ty(5));
+  graphics.fillStyle(0x0b0d14, 0.88);
+  graphics.fillCircle(tx(32), ty(33), tx(4.5));
+  graphics.lineStyle(1, 0xf3fbff, 0.55);
+  graphics.strokeEllipse(tx(32), ty(32), tx(18), ty(18));
+
+  graphics.fillStyle(0x0d121f, 0.86);
+  graphics.fillRoundedRect(tx(13), ty(30), tx(9), ty(4), 1);
+  graphics.fillRoundedRect(tx(42), ty(30), tx(9), ty(4), 1);
+  graphics.fillStyle(0xff6d3f, 0.92);
+  graphics.fillRoundedRect(tx(15), ty(31), tx(5), ty(2), 1);
+  graphics.fillRoundedRect(tx(44), ty(31), tx(5), ty(2), 1);
+  graphics.fillStyle(0xff8f2a, 0.96);
+  graphics.fillRoundedRect(tx(27), ty(56), tx(5), ty(9), 2);
+  graphics.fillRoundedRect(tx(32), ty(56), tx(5), ty(9), 2);
+
+  graphics.lineStyle(1, 0xffa2ad, 0.44);
+  graphics.strokePoints(points([
+    { x: 31, y: 4 },
+    { x: 24, y: 14 },
+    { x: 13, y: 16 },
+    { x: 1, y: 64 },
+    { x: 26, y: 54 },
+    { x: 32, y: 70 },
+    { x: 32, y: 4 },
+  ]), true);
+  graphics.strokePoints(points([
+    { x: 33, y: 4 },
+    { x: 40, y: 14 },
+    { x: 51, y: 16 },
+    { x: 63, y: 64 },
+    { x: 38, y: 54 },
+    { x: 32, y: 70 },
+    { x: 32, y: 4 },
+  ]), true);
+
+  graphics.lineStyle(5, 0xff1d32, 0.18);
+  graphics.lineBetween(tx(32), ty(7), tx(32), ty(68));
+  graphics.lineStyle(3, 0xff3045, 0.36);
+  graphics.lineBetween(tx(32), ty(7), tx(32), ty(68));
+  graphics.lineStyle(1, 0xff9aaa, 0.82);
+  graphics.lineBetween(tx(32), ty(8), tx(32), ty(67));
+  SCISSOR_CUT_SPARK_POINTS.forEach((spark, index) => {
+    graphics.fillStyle(index % 2 === 0 ? 0xff3045 : 0xffb1bd, spark.alpha);
+    graphics.fillCircle(tx(spark.x), ty(spark.y), Math.max(0.7, tx(spark.radius)));
+  });
+  graphics.lineStyle(1, 0xff3045, 0.72);
+  graphics.lineBetween(tx(30.6), ty(20), tx(33.4), ty(23));
+  graphics.lineBetween(tx(33.2), ty(35), tx(30.7), ty(38));
+  graphics.lineStyle(1, 0x101827, 0.56);
+  graphics.lineBetween(tx(32), ty(6), tx(32), ty(69));
+
+  graphics.generateTexture('scissorShip', SCISSOR_TEXTURE_WIDTH, SCISSOR_TEXTURE_HEIGHT);
+  graphics.destroy();
+}
+
+function createScissorHalfTexture(scene, key, sourceX) {
+  const source = scene.textures.get('scissorShip').getSourceImage();
+  const texture = scene.textures.createCanvas(key, SCISSOR_HALF_TEXTURE_WIDTH, SCISSOR_TEXTURE_HEIGHT);
+  const context = texture.getContext();
+  context.drawImage(
+    source,
+    sourceX,
+    0,
+    SCISSOR_HALF_TEXTURE_WIDTH,
+    SCISSOR_TEXTURE_HEIGHT,
+    0,
+    0,
+    SCISSOR_HALF_TEXTURE_WIDTH,
+    SCISSOR_TEXTURE_HEIGHT
+  );
+  const cutX = key === 'scissorShipLeft' ? SCISSOR_HALF_TEXTURE_WIDTH - 1 : 0;
+  const glow = context.createLinearGradient(
+    key === 'scissorShipLeft' ? SCISSOR_HALF_TEXTURE_WIDTH - 7 : 0,
+    0,
+    key === 'scissorShipLeft' ? SCISSOR_HALF_TEXTURE_WIDTH : 7,
+    0
+  );
+  if (key === 'scissorShipLeft') {
+    glow.addColorStop(0, 'rgba(255, 29, 50, 0)');
+    glow.addColorStop(1, 'rgba(255, 48, 69, 0.55)');
+  } else {
+    glow.addColorStop(0, 'rgba(255, 48, 69, 0.55)');
+    glow.addColorStop(1, 'rgba(255, 29, 50, 0)');
+  }
+  context.fillStyle = glow;
+  context.fillRect(key === 'scissorShipLeft' ? SCISSOR_HALF_TEXTURE_WIDTH - 7 : 0, 4, 7, SCISSOR_TEXTURE_HEIGHT - 8);
+  context.strokeStyle = 'rgba(255, 154, 170, 0.92)';
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(cutX + (key === 'scissorShipLeft' ? -0.5 : 0.5), 5);
+  context.lineTo(cutX + (key === 'scissorShipLeft' ? -0.5 : 0.5), SCISSOR_TEXTURE_HEIGHT - 5);
+  context.stroke();
+  const sparks = key === 'scissorShipLeft'
+    ? [
+      [SCISSOR_HALF_TEXTURE_WIDTH - 4.2, 9, 1.15, 0.85],
+      [SCISSOR_HALF_TEXTURE_WIDTH - 1.9, 17, 0.8, 0.7],
+      [SCISSOR_HALF_TEXTURE_WIDTH - 3.4, 28, 1.05, 0.82],
+      [SCISSOR_HALF_TEXTURE_WIDTH - 1.7, 37, 0.9, 0.72],
+    ]
+    : [
+      [4.2, 12, 1.1, 0.84],
+      [1.8, 21, 0.82, 0.7],
+      [3.6, 32, 1.15, 0.86],
+      [2.1, 42, 0.9, 0.74],
+    ];
+  sparks.forEach(([x, y, radius, alpha], index) => {
+    context.fillStyle = index % 2 === 0
+      ? `rgba(255, 48, 69, ${alpha})`
+      : `rgba(255, 177, 189, ${alpha})`;
+    context.beginPath();
+    context.arc(x, y, radius, 0, Math.PI * 2);
+    context.fill();
+  });
+  texture.refresh();
+}
+
 function createRedNeedleTextures(scene) {
   const shipGraphics = scene.make.graphics({ x: 0, y: 0, add: false });
   const centerY = RED_NEEDLE_HEIGHT / 2;
@@ -1390,6 +1904,61 @@ function createSpikeDroneTextures(scene) {
   createSpikeDroneTexture(scene, 'spikeDroneWarningRed', 'warningRed');
   createSpikeDroneTexture(scene, 'spikeDroneExpanded', 'expanded');
   createSpikeDroneTexture(scene, 'spikeDroneDisabled', 'disabled');
+}
+
+function createGiroDroneTextures(scene) {
+  createGiroDroneTexture(scene, 'giroDroneCoreGreen', 'green');
+  createGiroDroneTexture(scene, 'giroDroneCoreOrange', 'orange');
+  createGiroDroneTexture(scene, 'giroDroneCoreRedWarning', 'redWarning');
+  createGiroDroneTexture(scene, 'giroDroneCoreRed', 'red');
+  createGiroDroneTexture(scene, 'giroDroneSatelliteRed', 'red');
+  createGiroDroneTexture(scene, 'giroDroneDisabled', 'disabled');
+}
+
+function createGiroDroneTexture(scene, key, mode) {
+  const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+  const center = SPIKE_DRONE_TEXTURE_SIZE / 2;
+  const disabled = mode === 'disabled';
+  const red = mode === 'red';
+  const redWarning = mode === 'redWarning';
+  const redLight = red || redWarning;
+  const orange = mode === 'orange';
+  const lightColor = disabled ? 0x9aa3af : redLight ? 0xff1f32 : orange ? 0xff8f2a : 0x4dff88;
+
+  graphics.fillStyle(disabled ? 0x2d323a : 0x141b2a, 1);
+  graphics.fillCircle(center, center, 20);
+  graphics.fillStyle(disabled ? 0x767d88 : 0x596272, 1);
+  graphics.fillCircle(center, center, 17);
+  graphics.fillStyle(disabled ? 0x3f4650 : 0x252d3d, 1);
+  graphics.fillCircle(center, center, 13);
+  graphics.lineStyle(2, disabled ? 0xc3c8d0 : redLight ? 0xff9aaa : 0xaeb8c9, disabled ? 0.42 : 0.62);
+  graphics.strokeCircle(center, center, 18);
+
+  graphics.lineStyle(1, disabled ? 0x1f242b : 0x111827, disabled ? 0.75 : 0.55);
+  graphics.beginPath();
+  graphics.moveTo(center - 14, center);
+  graphics.lineTo(center + 14, center);
+  graphics.moveTo(center, center - 14);
+  graphics.lineTo(center, center + 14);
+  graphics.strokePath();
+
+  if (orange) {
+    graphics.fillStyle(0x263142, 0.82);
+    graphics.fillCircle(center, center, 7);
+  }
+  const green = mode === 'green';
+  const lightGlowRadius = green || red ? 14 : 10;
+  const lightCoreRadius = green || red ? 7 : 5;
+  graphics.fillStyle(lightColor, disabled ? 0.16 : green ? 0.16 : redLight ? 0.18 : 0.16);
+  graphics.fillCircle(center, center, lightGlowRadius);
+  graphics.fillStyle(lightColor, disabled ? 0.7 : 1);
+  graphics.fillCircle(center, center, lightCoreRadius);
+  graphics.fillStyle(0xffffff, disabled ? 0.28 : 0.78);
+  graphics.fillCircle(center - 2, center - 2, 1.5);
+
+  if (scene.textures.exists(key)) scene.textures.remove(key);
+  graphics.generateTexture(key, SPIKE_DRONE_TEXTURE_SIZE, SPIKE_DRONE_TEXTURE_SIZE);
+  graphics.destroy();
 }
 
 function createSpikeDroneTexture(scene, key, mode) {
@@ -1489,82 +2058,212 @@ function createSpikeDroneTexture(scene, key, mode) {
 function createBossShipTexture(scene) {
   const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
   const centerX = BOSS_WIDTH / 2;
+  const mirrorPoints = (points) => points.map((point) => ({
+    x: centerX * 2 - point.x,
+    y: point.y,
+  }));
+  const fillMirrored = (color, alpha, points) => {
+    graphics.fillStyle(color, alpha);
+    graphics.fillPoints(points, true);
+    graphics.fillPoints(mirrorPoints(points), true);
+  };
 
-  graphics.fillStyle(0x220814, 1);
+  // Dark silhouette: broad armored crown with long, blade-like lower fins.
+  graphics.fillStyle(0x17050d, 1);
   graphics.fillPoints([
-    { x: centerX, y: 8 },
-    { x: BOSS_WIDTH - 16, y: 58 },
-    { x: BOSS_WIDTH - 118, y: 112 },
-    { x: BOSS_WIDTH - 72, y: 176 },
-    { x: centerX + 74, y: 154 },
-    { x: centerX + 42, y: BOSS_HEIGHT - 10 },
-    { x: centerX, y: 184 },
-    { x: centerX - 42, y: BOSS_HEIGHT - 10 },
-    { x: centerX - 74, y: 154 },
-    { x: 72, y: 176 },
-    { x: 118, y: 112 },
-    { x: 16, y: 58 },
+    { x: centerX, y: 4 },
+    { x: 522, y: 32 },
+    { x: 548, y: 72 },
+    { x: 501, y: 88 },
+    { x: 535, y: 122 },
+    { x: 476, y: 113 },
+    { x: 504, y: 174 },
+    { x: 437, y: 137 },
+    { x: 420, y: 210 },
+    { x: 356, y: 158 },
+    { x: 324, y: 214 },
+    { x: centerX, y: 176 },
+    { x: 236, y: 214 },
+    { x: 204, y: 158 },
+    { x: 140, y: 210 },
+    { x: 123, y: 137 },
+    { x: 56, y: 174 },
+    { x: 84, y: 113 },
+    { x: 25, y: 122 },
+    { x: 59, y: 88 },
+    { x: 12, y: 72 },
+    { x: 38, y: 32 },
   ], true);
 
-  graphics.fillStyle(0x7a1426, 1);
+  fillMirrored(0x531020, 1, [
+    { x: 18, y: 64 },
+    { x: 92, y: 30 },
+    { x: 176, y: 45 },
+    { x: 215, y: 77 },
+    { x: 172, y: 103 },
+    { x: 111, y: 84 },
+    { x: 56, y: 101 },
+  ]);
+  fillMirrored(0xa71932, 1, [
+    { x: 50, y: 59 },
+    { x: 117, y: 37 },
+    { x: 181, y: 51 },
+    { x: 208, y: 74 },
+    { x: 166, y: 87 },
+    { x: 111, y: 69 },
+  ]);
+  fillMirrored(0xe52d49, 0.96, [
+    { x: 90, y: 51 },
+    { x: 151, y: 48 },
+    { x: 204, y: 71 },
+    { x: 169, y: 79 },
+    { x: 125, y: 66 },
+  ]);
+
+  fillMirrored(0x6f1328, 1, [
+    { x: 54, y: 104 },
+    { x: 112, y: 87 },
+    { x: 174, y: 108 },
+    { x: 211, y: 139 },
+    { x: 171, y: 160 },
+    { x: 130, y: 132 },
+    { x: 82, y: 139 },
+  ]);
+  fillMirrored(0xc9203d, 1, [
+    { x: 91, y: 105 },
+    { x: 132, y: 96 },
+    { x: 181, y: 117 },
+    { x: 205, y: 138 },
+    { x: 171, y: 145 },
+    { x: 135, y: 122 },
+  ]);
+  fillMirrored(0x2b0915, 1, [
+    { x: 126, y: 128 },
+    { x: 171, y: 151 },
+    { x: 144, y: 198 },
+    { x: 116, y: 151 },
+  ]);
+  fillMirrored(0xef304c, 0.94, [
+    { x: 154, y: 145 },
+    { x: 199, y: 157 },
+    { x: 224, y: 194 },
+    { x: 190, y: 177 },
+  ]);
+
+  // Central armored face and pointed keel.
+  graphics.fillStyle(0x3a0b19, 1);
   graphics.fillPoints([
-    { x: centerX, y: 30 },
-    { x: centerX + 174, y: 72 },
-    { x: centerX + 108, y: 142 },
-    { x: centerX + 32, y: 128 },
-    { x: centerX, y: 156 },
-    { x: centerX - 32, y: 128 },
-    { x: centerX - 108, y: 142 },
-    { x: centerX - 174, y: 72 },
+    { x: centerX, y: 18 },
+    { x: 363, y: 64 },
+    { x: 343, y: 132 },
+    { x: 319, y: 173 },
+    { x: centerX, y: 211 },
+    { x: 241, y: 173 },
+    { x: 217, y: 132 },
+    { x: 197, y: 64 },
+  ], true);
+  graphics.fillStyle(0x9b1931, 1);
+  graphics.fillPoints([
+    { x: centerX, y: 29 },
+    { x: 344, y: 67 },
+    { x: 324, y: 124 },
+    { x: centerX, y: 157 },
+    { x: 236, y: 124 },
+    { x: 216, y: 67 },
+  ], true);
+  graphics.fillStyle(0xe32c49, 1);
+  graphics.fillPoints([
+    { x: centerX, y: 45 },
+    { x: 324, y: 78 },
+    { x: 309, y: 119 },
+    { x: centerX, y: 143 },
+    { x: 251, y: 119 },
+    { x: 236, y: 78 },
+  ], true);
+  graphics.fillStyle(0xff5268, 0.72);
+  graphics.fillTriangle(centerX, 45, centerX + 42, 78, centerX, 68);
+  graphics.fillTriangle(centerX, 45, centerX - 42, 78, centerX, 68);
+
+  graphics.fillStyle(0x250811, 1);
+  graphics.fillPoints([
+    { x: centerX, y: 61 },
+    { x: 307, y: 82 },
+    { x: centerX, y: 108 },
+    { x: 253, y: 82 },
+  ], true);
+  graphics.fillStyle(0xf0445d, 1);
+  graphics.fillPoints([
+    { x: centerX, y: 68 },
+    { x: 297, y: 83 },
+    { x: centerX, y: 98 },
+    { x: 263, y: 83 },
+  ], true);
+  graphics.fillStyle(0x280914, 1);
+  graphics.fillPoints([
+    { x: centerX, y: 74 },
+    { x: 289, y: 83 },
+    { x: centerX, y: 92 },
+    { x: 271, y: 83 },
   ], true);
 
-  graphics.fillStyle(0xd82842, 0.92);
+  // Mining laser emitter.
+  graphics.fillStyle(0x2b0a17, 1);
+  graphics.fillCircle(centerX, 137, 31);
+  graphics.fillStyle(0x68162b, 1);
+  graphics.fillCircle(centerX, 137, 24);
+  graphics.fillStyle(0x120912, 1);
+  graphics.fillCircle(centerX, 137, 16);
+  graphics.lineStyle(2, 0xff7184, 0.62);
+  graphics.strokeCircle(centerX, 137, 27);
+
+  // A single restrained pair of auxiliary emitters.
+  [centerX - 151, centerX + 151].forEach((nodeX) => {
+    graphics.fillStyle(0x260812, 1);
+    graphics.fillCircle(nodeX, 127, 14);
+    graphics.fillStyle(0x8f172d, 1);
+    graphics.fillCircle(nodeX, 127, 9);
+    graphics.fillStyle(0xed4058, 0.86);
+    graphics.fillCircle(nodeX - 1, 126, 4);
+    graphics.lineStyle(2, 0xff8998, 0.38);
+    graphics.strokeCircle(nodeX, 127, 11);
+  });
+
+  graphics.fillStyle(0x1f0710, 1);
   graphics.fillPoints([
-    { x: centerX, y: 54 },
-    { x: centerX + 62, y: 100 },
-    { x: centerX + 30, y: 154 },
-    { x: centerX, y: 170 },
-    { x: centerX - 30, y: 154 },
-    { x: centerX - 62, y: 100 },
+    { x: centerX - 20, y: 159 },
+    { x: centerX, y: 178 },
+    { x: centerX + 20, y: 159 },
+    { x: centerX + 12, y: 207 },
+    { x: centerX, y: BOSS_HEIGHT - 2 },
+    { x: centerX - 12, y: 207 },
   ], true);
+  graphics.fillStyle(0xf21f3d, 1);
+  graphics.fillTriangle(centerX - 11, 174, centerX, BOSS_HEIGHT - 3, centerX + 11, 174);
 
-  graphics.fillStyle(0xff8090, 0.68);
-  graphics.fillEllipse(centerX, 108, 78, 58);
-  graphics.fillStyle(0x090d1b, 0.55);
-  graphics.fillEllipse(centerX, 112, 43, 32);
-  graphics.fillStyle(0xffd0d7, 0.92);
-  graphics.fillCircle(centerX, 108, 12);
-
-  graphics.fillStyle(0xff4058, 0.74);
-  graphics.fillCircle(centerX - 155, 96, 16);
-  graphics.fillCircle(centerX + 155, 96, 16);
-  graphics.fillStyle(0xffa0aa, 0.8);
-  graphics.fillRect(centerX - 185, 129, 74, 10);
-  graphics.fillRect(centerX + 111, 129, 74, 10);
-
-  graphics.fillStyle(0x0b1024, 0.86);
-  graphics.fillRect(centerX - 18, 150, 36, 50);
-  graphics.fillStyle(0xff263c, 0.96);
-  graphics.fillTriangle(centerX - 34, 178, centerX, BOSS_HEIGHT - 5, centerX + 34, 178);
-
-  graphics.fillStyle(0xffb347, 0.9);
-  graphics.fillTriangle(centerX - 96, 165, centerX - 70, BOSS_HEIGHT - 8, centerX - 118, 185);
-  graphics.fillTriangle(centerX + 96, 165, centerX + 70, BOSS_HEIGHT - 8, centerX + 118, 185);
-
-  graphics.lineStyle(3, 0xffa0aa, 0.42);
+  graphics.lineStyle(3, 0xff6d80, 0.38);
   graphics.strokePoints([
-    { x: centerX, y: 8 },
-    { x: BOSS_WIDTH - 16, y: 58 },
-    { x: BOSS_WIDTH - 118, y: 112 },
-    { x: BOSS_WIDTH - 72, y: 176 },
-    { x: centerX + 74, y: 154 },
-    { x: centerX + 42, y: BOSS_HEIGHT - 10 },
-    { x: centerX, y: 184 },
-    { x: centerX - 42, y: BOSS_HEIGHT - 10 },
-    { x: centerX - 74, y: 154 },
-    { x: 72, y: 176 },
-    { x: 118, y: 112 },
-    { x: 16, y: 58 },
+    { x: centerX, y: 4 },
+    { x: 522, y: 32 },
+    { x: 548, y: 72 },
+    { x: 501, y: 88 },
+    { x: 535, y: 122 },
+    { x: 476, y: 113 },
+    { x: 504, y: 174 },
+    { x: 437, y: 137 },
+    { x: 420, y: 210 },
+    { x: 356, y: 158 },
+    { x: 324, y: 214 },
+    { x: centerX, y: 176 },
+    { x: 236, y: 214 },
+    { x: 204, y: 158 },
+    { x: 140, y: 210 },
+    { x: 123, y: 137 },
+    { x: 56, y: 174 },
+    { x: 84, y: 113 },
+    { x: 25, y: 122 },
+    { x: 59, y: 88 },
+    { x: 12, y: 72 },
+    { x: 38, y: 32 },
   ], true);
 
   graphics.generateTexture('bossShip', BOSS_WIDTH, BOSS_HEIGHT);
@@ -1673,42 +2372,6 @@ function createBigAsteroidTexture(scene) {
   graphics.strokeCircle(61, 54, 12);
 
   graphics.generateTexture('bigAsteroid', 96, 96);
-  graphics.destroy();
-}
-
-function createCometTexture(scene) {
-  const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
-
-  graphics.fillStyle(0xff3f2c, 0.14);
-  graphics.fillCircle(20, 20, 19);
-  graphics.fillStyle(0xff6a32, 0.3);
-  graphics.fillCircle(20, 20, 14);
-  graphics.fillStyle(0xff4a36, 0.88);
-  graphics.fillCircle(20, 20, 9);
-  graphics.fillStyle(0xfff1ce, 0.94);
-  graphics.fillCircle(18, 18, 4);
-  graphics.lineStyle(1, 0xffb46a, 0.5);
-  graphics.strokeCircle(20, 20, 10);
-
-  graphics.generateTexture('comet', 40, 40);
-  graphics.destroy();
-}
-
-function createCometTrailTexture(scene) {
-  const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
-
-  graphics.fillStyle(0x5fbfff, 0.08);
-  graphics.fillEllipse(60, 13, 118, 24);
-  graphics.fillStyle(0x73deff, 0.17);
-  graphics.fillEllipse(48, 13, 84, 15);
-  graphics.fillStyle(0xaaffff, 0.34);
-  graphics.fillEllipse(68, 13, 56, 7);
-  graphics.fillStyle(0xff6a38, 0.28);
-  graphics.fillEllipse(94, 13, 34, 10);
-  graphics.fillStyle(0xff372f, 0.55);
-  graphics.fillEllipse(108, 13, 16, 5);
-
-  graphics.generateTexture('cometTrail', 120, 26);
   graphics.destroy();
 }
 
@@ -1861,6 +2524,29 @@ function getGamePointFromClient(scene, clientX, clientY) {
 }
 
 function update(time, delta) {
+  if (state === 'intro') {
+    updateSpaceBackground(this, delta, time);
+    if (this.ship && this.ship.visible) {
+      updateShipPropulsion(this, delta);
+      updateShipEyeGlow(this);
+    }
+    updateEchoEyePosition(this);
+    return;
+  }
+  if (state === 'tutorial') {
+    updateSpaceBackground(this, delta, time);
+    updateShipPropulsion(this, delta);
+    updateShipEyeGlow(this);
+    updateEchoCompanion(this, delta);
+    return;
+  }
+  if (state === 'leveling') {
+    updateSpaceBackground(this, delta, time);
+    updateShipPropulsion(this, delta);
+    updateShipEyeGlow(this);
+    updateEchoCompanion(this, delta);
+    return;
+  }
   if (state !== 'playing') return;
 
   updateSpaceBackground(this, delta, time);
@@ -1872,18 +2558,18 @@ function update(time, delta) {
   updateEchoAttacks(this);
   updateEnemyPropulsion(this, delta);
   updateRedNeedles(this);
+  updateScissors(this);
   updateRedEnemySway(this, time);
+  updateReplicators(this, time, delta);
   updateSpikeDrones(this);
+  updateGiroDrones(this, delta);
   updateScoreBooster(this);
   updateShieldBooster(this);
   updateRedWave(this);
   updateDroneWave(this);
   updateAsteroidWave(this);
-  updateCometWave(this);
   updatePlasmaWave(this);
   updatePlasmaBars(this, delta);
-  updateComets(this, delta);
-  updateCometTrails(this);
   updateBossWave(this);
   recoverGameplaySpawning(this);
 
@@ -1898,8 +2584,6 @@ function update(time, delta) {
       } else {
         ball.destroy();
       }
-    } else if (ball.active && isCometKind(ball.getData('kind')) && isCometOutOfBounds(this, ball)) {
-      ball.destroy();
     } else if (ball.active && isAsteroidKind(ball.getData('kind'))) {
       wrapAsteroidHorizontally(this, ball);
     }
@@ -1913,6 +2597,7 @@ function moveShipTo(scene, x, y = scene.ship ? scene.ship.y : getShipY(scene)) {
   const deltaY = y - previousY;
   const now = scene.time ? scene.time.now : 0;
   const elapsedSinceLastMove = scene.lastShipMoveAt ? Math.max(16, now - scene.lastShipMoveAt) : 16;
+  scene.previousShipPosition = { x: previousX, y: previousY, at: now };
   scene.ship.setPosition(x, y);
   scene.ship.body.reset(x, y);
   if ((Math.abs(deltaX) > 0.4 || Math.abs(deltaY) > 0.4) && state === 'playing') {
@@ -2119,10 +2804,10 @@ function updateEchoCompanion(scene, delta = 0) {
     return;
   }
 
-  if (scene.pendingEchoStreakCelebration) {
-    startEchoStreakCelebration(scene);
+  if (scene.pendingEchoLevelCelebration) {
+    startEchoLevelCelebration(scene);
   }
-  if (updateEchoStreakCelebration(scene, now)) {
+  if (updateEchoLevelCelebration(scene, now)) {
     setEchoEyeAttacking(scene, false);
     updateEchoEyePosition(scene);
     return;
@@ -2170,17 +2855,18 @@ function updateEchoIdleSpin(scene, now) {
   return spin.direction * Math.PI * 2 * easedProgress;
 }
 
-function triggerEchoStreakCelebration(scene) {
+function triggerEchoLevelCelebration(scene) {
   if (!scene || !scene.echoCompanion || !scene.ship) return;
   if (scene.echoAttackTarget || scene.echoReturningHome) {
-    scene.pendingEchoStreakCelebration = true;
+    scene.pendingEchoLevelCelebration = true;
     return;
   }
-  startEchoStreakCelebration(scene);
+  startEchoLevelCelebration(scene);
 }
 
-function startEchoStreakCelebration(scene) {
+function startEchoLevelCelebration(scene) {
   if (!scene || !scene.echoCompanion || !scene.ship) return;
+  clearEchoLevelEnergyEffect(scene);
   const now = scene.time ? scene.time.now : 0;
   const angleFromShip = Phaser.Math.Angle.Between(
     scene.ship.x,
@@ -2189,59 +2875,109 @@ function startEchoStreakCelebration(scene) {
     scene.echoCompanion.y
   );
 
-  scene.pendingEchoStreakCelebration = false;
+  scene.pendingEchoLevelCelebration = false;
   scene.echoIdleSpin = null;
-  scene.echoStreakCelebration = {
+  scene.echoLevelCelebration = {
     start: now,
     startAngle: angleFromShip,
+    startOffsetX: scene.echoCompanion.x - scene.ship.x,
+    startOffsetY: scene.echoCompanion.y - scene.ship.y,
     direction: Math.random() < 0.5 ? -1 : 1,
+    energyLink: scene.add.graphics()
+      .setDepth(SHIP_DEPTH + 1)
+      .setBlendMode(Phaser.BlendModes.ADD),
+    activationTriggered: false,
   };
 }
 
-function updateEchoStreakCelebration(scene, now) {
-  if (!scene.echoStreakCelebration || !scene.ship) return false;
+function updateEchoLevelCelebration(scene, now) {
+  if (!scene.echoLevelCelebration || !scene.ship) return false;
 
-  const celebration = scene.echoStreakCelebration;
-  const progress = Phaser.Math.Clamp((now - celebration.start) / ECHO_STREAK_ORBIT_DURATION, 0, 1);
+  const celebration = scene.echoLevelCelebration;
+  const progress = Phaser.Math.Clamp((now - celebration.start) / ECHO_LEVEL_ORBIT_DURATION, 0, 1);
   const easedProgress = easeInOutSine(progress);
   const orbitAngle = celebration.startAngle
-    + celebration.direction * Math.PI * 2 * ECHO_STREAK_ORBIT_TURNS * easedProgress;
+    + celebration.direction * Math.PI * 2 * ECHO_LEVEL_ORBIT_TURNS * easedProgress;
   const pulse = Math.sin(progress * Math.PI);
-  const radiusX = ECHO_STREAK_ORBIT_RADIUS_X + pulse * 8;
-  const radiusY = ECHO_STREAK_ORBIT_RADIUS_Y + pulse * 6;
-  const x = scene.ship.x + Math.cos(orbitAngle) * radiusX;
-  const y = scene.ship.y + Math.sin(orbitAngle) * radiusY;
+  const radiusX = ECHO_LEVEL_ORBIT_RADIUS_X + pulse * 8;
+  const radiusY = ECHO_LEVEL_ORBIT_RADIUS_Y + pulse * 6;
+  const orbitOffsetX = Math.cos(orbitAngle) * radiusX;
+  const orbitOffsetY = Math.sin(orbitAngle) * radiusY;
+  const entryProgress = easeInOutSine(Phaser.Math.Clamp(
+    progress / ECHO_LEVEL_ORBIT_TRANSITION_RATIO,
+    0,
+    1
+  ));
+  const exitProgress = easeInOutSine(Phaser.Math.Clamp(
+    (progress - (1 - ECHO_LEVEL_ORBIT_TRANSITION_RATIO)) / ECHO_LEVEL_ORBIT_TRANSITION_RATIO,
+    0,
+    1
+  ));
+  const homePosition = getEchoHomePosition(scene);
+  const orbitX = scene.ship.x + Phaser.Math.Linear(celebration.startOffsetX, orbitOffsetX, entryProgress);
+  const orbitY = scene.ship.y + Phaser.Math.Linear(celebration.startOffsetY, orbitOffsetY, entryProgress);
+  const x = Phaser.Math.Linear(orbitX, homePosition.x, exitProgress);
+  const y = Phaser.Math.Linear(orbitY, homePosition.y, exitProgress);
+  const orbitRotation = orbitAngle + Math.PI / 2 + celebration.direction * Math.PI * 2 * easedProgress;
+  const homeRotation = -0.18 + Math.sin(now * 0.0021) * 0.08;
+  const rotationDelta = Phaser.Math.Angle.Wrap(homeRotation - orbitRotation);
 
   scene.echoCompanion.setPosition(x, y);
-  scene.echoCompanion.setRotation(orbitAngle + Math.PI / 2 + celebration.direction * Math.PI * 2 * easedProgress);
+  scene.echoCompanion.setRotation(orbitRotation + rotationDelta * exitProgress);
+  celebration.energyLink.setAlpha(Math.min(entryProgress * 2, 1) * (1 - exitProgress));
+  drawEchoEnergyLink(scene, celebration.energyLink, easedProgress);
+
+  if (!celebration.activationTriggered && progress >= 0.66) {
+    celebration.activationTriggered = true;
+    flashShipEye(scene);
+    triggerAxisActivationBurst(scene, celebration);
+  }
 
   if (progress >= 1) {
-    scene.echoStreakCelebration = null;
+    clearEchoLevelEnergyEffect(scene);
+    scene.echoLevelCelebration = null;
     scheduleNextEchoIdleSpin(scene, now + 900);
   }
   return true;
 }
 
-function getEchoStreakUpgradeDelay(scene) {
+function getEchoLevelUpgradeDelay(scene) {
   if (!scene || !scene.time) return 0;
-  if (scene.echoStreakCelebration) {
-    const celebrationEnd = scene.echoStreakCelebration.start
-      + ECHO_STREAK_ORBIT_DURATION
-      + ECHO_STREAK_UPGRADE_SETTLE_DELAY;
+  if (scene.echoLevelCelebration) {
+    const celebrationEnd = scene.echoLevelCelebration.start
+      + ECHO_LEVEL_ORBIT_DURATION
+      + ECHO_LEVEL_UPGRADE_SETTLE_DELAY;
     return Math.max(0, celebrationEnd - scene.time.now);
   }
-  if (scene.pendingEchoStreakCelebration) {
-    return ECHO_STREAK_UPGRADE_SETTLE_DELAY;
+  if (scene.pendingEchoLevelCelebration) {
+    return ECHO_LEVEL_UPGRADE_SETTLE_DELAY;
   }
   return 0;
 }
 
 function resetEchoPersonality(scene) {
   if (!scene) return;
+  clearEchoLevelEnergyEffect(scene);
   scene.echoIdleSpin = null;
-  scene.echoStreakCelebration = null;
-  scene.pendingEchoStreakCelebration = false;
+  scene.echoLevelCelebration = null;
+  scene.pendingEchoLevelCelebration = false;
   scheduleNextEchoIdleSpin(scene);
+}
+
+function clearEchoLevelEnergyEffect(scene) {
+  if (!scene || !scene.echoLevelCelebration) return;
+  const celebration = scene.echoLevelCelebration;
+  if (celebration.activationBurstTween && celebration.activationBurstTween.stop) {
+    celebration.activationBurstTween.stop();
+  }
+  if (celebration.shipActivationTween && celebration.shipActivationTween.stop) {
+    celebration.shipActivationTween.stop();
+  }
+  if (celebration.energyLink) celebration.energyLink.destroy();
+  if (celebration.activationBurst) celebration.activationBurst.destroy();
+  celebration.energyLink = null;
+  celebration.activationBurst = null;
+  if (scene.ship) scene.ship.setScale(SHIP_SCALE);
 }
 
 function scheduleNextEchoIdleSpin(scene, fromTime = null) {
@@ -2364,6 +3100,7 @@ function setEchoEyeVisible(scene, visible) {
 }
 
 function hideEchoCompanion(scene) {
+  clearEchoLevelEnergyEffect(scene);
   if (scene.echoCompanion) scene.echoCompanion.setVisible(false);
   setEchoEyeVisible(scene, false);
 }
@@ -2371,7 +3108,7 @@ function hideEchoCompanion(scene) {
 function updateEchoAttacks(scene) {
   if (!isEchoHelpActive() || !scene.echoCompanion || !scene.echoCompanion.visible) return;
   if (scene.echoAttackTarget || scene.echoReturningHome) return;
-  if (scene.echoStreakCelebration || scene.pendingEchoStreakCelebration) return;
+  if (scene.echoLevelCelebration || scene.pendingEchoLevelCelebration) return;
 
   scene.balls.getChildren().forEach((hostile) => {
     if (scene.echoAttackTarget) return;
@@ -2388,7 +3125,7 @@ function updateEchoAttacks(scene) {
 }
 
 function isEchoAttackableKind(kind) {
-  return kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'comet' || isAsteroidKind(kind);
+  return kind === 'damageBooster' || isScissorKind(kind) || kind === 'spikeDrone' || kind === 'giroDrone' || isAsteroidKind(kind);
 }
 
 function isHostileInsideEchoAttackRadius(scene, hostile) {
@@ -2423,7 +3160,7 @@ function blockHostileWithEcho(scene, hostile) {
   showAbsorbEffect(scene, x, y, kind, false);
   playShieldBlockSound(scene);
   flashEchoCompanion(scene);
-  addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: ECHO_HELP_COLOR });
+  awardEnemyDefeatScore(scene, SHIELD_BLOCK_SCORE, x, y, ECHO_HELP_COLOR);
   destroyShieldBlockedHostile(scene, hostile);
 }
 
@@ -2858,6 +3595,10 @@ function createMenu(scene) {
     playButtonSound(scene);
     startGame.call(scene, { mode: 'xyInfinite' });
   });
+  bindScreenClick('menu', 'boss-only-mode-button', () => {
+    playButtonSound(scene);
+    startGame.call(scene, { mode: 'xyBossOnly' });
+  });
   bindScreenClick('menu', 'ranking-button', () => {
     playButtonSound(scene);
     showRanking.call(scene);
@@ -2937,6 +3678,7 @@ function setOnlyOverlayVisible(scene, visibleOverlay) {
     scene.pauseOverlay,
     scene.optionsOverlay,
     scene.upgradeOverlay,
+    scene.echoTutorialOverlay,
   ].forEach((overlay) => {
     if (overlay) overlay.setVisible(overlay === visibleOverlay);
   });
@@ -2950,6 +3692,7 @@ function showOverlayScreen(scene, screenName) {
     pause: scene.pauseOverlay,
     options: scene.optionsOverlay,
     upgrade: scene.upgradeOverlay,
+    tutorial: scene.echoTutorialOverlay,
   };
 
   setOnlyOverlayVisible(scene, overlayByScreen[screenName] || null);
@@ -3148,10 +3891,13 @@ function setPauseOverlayMode(scene, mode = 'normal') {
   if (!scene.pauseOverlay || !scene.pauseOverlay.element) return;
 
   const isUpgradePause = mode === 'upgrade';
+  const isUpgradeDetailPause = mode === 'upgrade-detail';
   scene.pauseOverlay.element.classList.toggle('is-upgrade-pause', isUpgradePause);
+  scene.pauseOverlay.element.classList.toggle('is-upgrade-detail-pause', isUpgradeDetailPause);
   scene.pauseOverlay.element.classList.remove('is-frozen-pause-menu');
   if (scene.pauseOverlay.panel) {
     scene.pauseOverlay.panel.classList.toggle('ui-panel-upgrade-pause', isUpgradePause);
+    scene.pauseOverlay.panel.classList.toggle('ui-panel-upgrade-detail', isUpgradeDetailPause);
   }
   if (scene.pauseOverlay.title) {
     scene.pauseOverlay.title.textContent = 'PAUSA';
@@ -3178,9 +3924,24 @@ function hideFrozenPauseMenu(scene) {
   if (scene.pauseOverlay && scene.pauseOverlay.element) {
     scene.pauseOverlay.element.classList.remove('is-frozen-pause-menu');
   }
+  setPauseOverlayMode(scene, 'normal');
   prepareControlPauseResume(scene);
   showOverlayScreen(scene, null);
   setPauseSettingsVisible(true);
+}
+
+function showPausedUpgradeDetails(scene, upgradeKind) {
+  if (!scene || state !== 'paused') return;
+  const config = getUpgradeConfig(upgradeKind);
+  if (!config) return;
+
+  setPauseOverlayMode(scene, 'upgrade-detail');
+  setXyControlActive(scene, false);
+  setXyControlVisible(scene, false);
+  setPauseSettingsVisible(false);
+  if (scene.pauseOverlay.title) scene.pauseOverlay.title.textContent = config.label;
+  if (scene.pauseOverlay.copy) scene.pauseOverlay.copy.textContent = getPausedUpgradeDescription(upgradeKind, config);
+  showOverlayScreen(scene, 'pause');
 }
 
 function createUpgradeOverlay(scene) {
@@ -3190,6 +3951,197 @@ function createUpgradeOverlay(scene) {
     second: createDomUpgradeButton(scene, 'upgrade-second'),
   };
   return overlay;
+}
+
+function createEchoTutorialOverlay(scene) {
+  const overlay = createDomOverlay('echo-tutorial-overlay', false);
+  overlay.text = document.getElementById('echo-dialog-text');
+  overlay.progress = document.getElementById('echo-dialog-progress');
+  overlay.nextButton = document.getElementById('echo-dialog-next');
+  overlay.skipButton = document.getElementById('echo-dialog-skip');
+  overlay.panel = overlay.element ? overlay.element.querySelector('.echo-dialog-panel') : null;
+
+  const advance = (event) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    advanceEchoTutorial(scene);
+  };
+
+  if (overlay.nextButton) {
+    overlay.nextButton.addEventListener('click', advance);
+  }
+  if (overlay.skipButton) {
+    overlay.skipButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (state === 'tutorial') finishEchoTutorial(scene);
+    });
+  }
+
+  return overlay;
+}
+
+function startEchoTutorial(scene) {
+  startEchoDialog(scene, ECHO_TUTORIAL_LINES, () => pauseBeforeFirstGameplaySpawn(scene));
+}
+
+function startEchoDialog(scene, lines, onComplete) {
+  if (!scene || !scene.echoTutorialOverlay) {
+    if (onComplete) onComplete();
+    return;
+  }
+
+  state = 'tutorial';
+  isDraggingShip = false;
+  scene.echoTutorialLines = lines;
+  scene.echoTutorialOnComplete = onComplete;
+  scene.echoTutorialIndex = 0;
+  scene.echoTutorialTimer = null;
+  scene.echoTutorialTyping = false;
+  scene.echoTutorialFullLine = '';
+  setXyControlVisible(scene, false);
+  setHudVisible(scene, false);
+  updateEchoCompanion(scene, 0);
+  showOverlayScreen(scene, 'tutorial');
+  renderEchoTutorialLine(scene);
+}
+
+function renderEchoTutorialLine(scene) {
+  const overlay = scene && scene.echoTutorialOverlay;
+  if (!overlay) return;
+
+  const lines = scene.echoTutorialLines || ECHO_TUTORIAL_LINES;
+  const index = Phaser.Math.Clamp(scene.echoTutorialIndex || 0, 0, lines.length - 1);
+  const line = lines[index];
+  clearEchoTutorialTimer(scene);
+  scene.echoTutorialFullLine = line;
+  scene.echoTutorialTyping = true;
+  let characterIndex = 0;
+  scene.echoTutorialCharacters = prepareEchoTutorialText(overlay.text, line);
+  if (overlay.progress) overlay.progress.textContent = (index + 1) + '/' + lines.length;
+  if (overlay.nextButton) overlay.nextButton.textContent = index >= lines.length - 1 ? 'CERRAR TRANSMISION' : 'CONTINUAR';
+
+  scene.echoTutorialTimer = scene.time.addEvent({
+    delay: ECHO_DIALOG_CHARACTER_DELAY,
+    loop: true,
+    callback: () => {
+      if (state !== 'tutorial' || characterIndex >= scene.echoTutorialCharacters.length) {
+        completeEchoTutorialLine(scene);
+        return;
+      }
+
+      const characterEntry = scene.echoTutorialCharacters[characterIndex];
+      characterIndex += 1;
+      if (characterEntry.element) characterEntry.element.classList.remove('is-pending');
+      if (/\S/.test(characterEntry.character)) playEchoDialogBeep();
+
+      if (characterIndex >= scene.echoTutorialCharacters.length) completeEchoTutorialLine(scene);
+    },
+  });
+}
+
+function prepareEchoTutorialText(textElement, line) {
+  if (!textElement) return [];
+
+  textElement.replaceChildren();
+  const characters = [];
+  const tokens = line.match(/\s+|\S+/g) || [];
+
+  tokens.forEach((token) => {
+    if (/^\s+$/.test(token)) {
+      textElement.appendChild(document.createTextNode(token));
+      Array.from(token).forEach((character) => {
+        characters.push({ character, element: null });
+      });
+      return;
+    }
+
+    const word = document.createElement('span');
+    word.className = 'echo-dialog-word';
+    Array.from(token).forEach((character) => {
+      const characterElement = document.createElement('span');
+      characterElement.className = 'echo-dialog-character is-pending';
+      characterElement.textContent = character;
+      word.appendChild(characterElement);
+      characters.push({ character, element: characterElement });
+    });
+    textElement.appendChild(word);
+  });
+
+  return characters;
+}
+
+function advanceEchoTutorial(scene) {
+  if (!scene || state !== 'tutorial') return;
+  if (scene.echoTutorialTyping) {
+    completeEchoTutorialLine(scene);
+    return;
+  }
+  clearEchoTutorialTimer(scene);
+
+  scene.echoTutorialIndex = (scene.echoTutorialIndex || 0) + 1;
+  const lines = scene.echoTutorialLines || ECHO_TUTORIAL_LINES;
+  if (scene.echoTutorialIndex >= lines.length) {
+    finishEchoTutorial(scene);
+    return;
+  }
+  renderEchoTutorialLine(scene);
+}
+
+function finishEchoTutorial(scene) {
+  clearEchoTutorialTimer(scene);
+  scene.echoTutorialTyping = false;
+  const onComplete = scene.echoTutorialOnComplete;
+  scene.echoTutorialLines = null;
+  scene.echoTutorialOnComplete = null;
+  showOverlayScreen(scene, null);
+  setHudVisible(scene, true);
+  if (onComplete) onComplete();
+}
+
+function completeEchoTutorialLine(scene) {
+  if (!scene) return;
+  clearEchoTutorialTimer(scene);
+  scene.echoTutorialTyping = false;
+  const overlay = scene.echoTutorialOverlay;
+  if (overlay && overlay.text) {
+    overlay.text.querySelectorAll('.echo-dialog-character.is-pending').forEach((characterElement) => {
+      characterElement.classList.remove('is-pending');
+    });
+  }
+}
+
+function clearEchoTutorialTimer(scene) {
+  if (scene && scene.echoTutorialTimer) {
+    scene.echoTutorialTimer.remove(false);
+    scene.echoTutorialTimer = null;
+  }
+}
+
+function playEchoDialogBeep() {
+  if (!soundEffectsEnabled || soundEffectsVolume <= 0) return;
+
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+  if (!echoDialogAudioContext) echoDialogAudioContext = new AudioContextClass();
+  if (echoDialogAudioContext.state === 'suspended') {
+    echoDialogAudioContext.resume().catch(() => {});
+    return;
+  }
+
+  const now = echoDialogAudioContext.currentTime;
+  const oscillator = echoDialogAudioContext.createOscillator();
+  const gain = echoDialogAudioContext.createGain();
+  oscillator.type = 'square';
+  oscillator.frequency.setValueAtTime(620 + Math.random() * 55, now);
+  gain.gain.setValueAtTime(0.025 * soundEffectsVolume, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + ECHO_DIALOG_BEEP_DURATION);
+  oscillator.connect(gain);
+  gain.connect(echoDialogAudioContext.destination);
+  oscillator.start(now);
+  oscillator.stop(now + ECHO_DIALOG_BEEP_DURATION);
 }
 
 function createOptionsOverlay(scene) {
@@ -3391,6 +4343,7 @@ function setUiDepth(scene) {
     scene.pauseOverlay,
     scene.optionsOverlay,
     scene.upgradeOverlay,
+    scene.echoTutorialOverlay,
   ].forEach((item) => {
     if (item) item.setDepth(UI_DEPTH);
   });
@@ -3406,6 +4359,8 @@ function setUiDepth(scene) {
 // --- Control de estados ---
 
 function showMenu() {
+  cancelIntroSequence(this);
+  clearEchoTutorialTimer(this);
   state = 'menu';
   currentGameMode = 'xy';
   isDraggingShip = false;
@@ -3426,7 +4381,6 @@ function showMenu() {
   resetRedWave(this);
   resetDroneWave(this);
   resetAsteroidWave(this);
-  resetCometWave(this);
   resetPlasmaWave(this);
   resetBossWave(this);
   this.resumeSpawnDelay = null;
@@ -3439,6 +4393,7 @@ function showMenu() {
 }
 
 function showRanking() {
+  cancelIntroSequence(this);
   state = 'ranking';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
@@ -3454,8 +4409,11 @@ function showRanking() {
 }
 
 function startGame(options = {}) {
-  state = 'playing';
+  cancelIntroSequence(this);
+  clearEchoTutorialTimer(this);
   currentGameMode = getValidGameMode(options.mode);
+  const shouldShowEchoTutorial = currentGameMode === 'xy' && !options.skipEchoTutorial;
+  state = shouldShowEchoTutorial ? 'intro' : 'playing';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
   setPauseSettingsVisible(false);
@@ -3467,7 +4425,7 @@ function startGame(options = {}) {
   this.tweens.resumeAll();
   clearGameplayVisuals(this);
   showOverlayScreen(this, null);
-  setHudVisible(this, true);
+  setHudVisible(this, !shouldShowEchoTutorial);
   resetCounters.call(this);
   if (isInfiniteGameMode()) {
     enableInfiniteModeThreats(this);
@@ -3477,7 +4435,6 @@ function startGame(options = {}) {
   resetRedWave(this);
   resetDroneWave(this);
   resetAsteroidWave(this);
-  resetCometWave(this);
   resetPlasmaWave(this);
   resetBossWave(this);
   this.resumeSpawnDelay = null;
@@ -3487,7 +4444,7 @@ function startGame(options = {}) {
     this.finalDamageGameOverEvent = null;
   }
 
-  setXyControlVisible(this, true);
+  setXyControlVisible(this, false);
   if (isXyGameMode()) {
     resetXyShipControl(this);
   } else {
@@ -3495,14 +4452,410 @@ function startGame(options = {}) {
     updateXyControlFromShip(this);
   }
 
+  if (shouldShowEchoTutorial) {
+    startGameIntro(this);
+    return;
+  }
+
+  beginGameplayAfterEchoTutorial(this);
+}
+
+function startGameIntro(scene) {
+  if (!scene || !scene.ship || !scene.echoCompanion) {
+    startEchoTutorial(scene);
+    return;
+  }
+
+  cancelIntroSequence(scene);
+  state = 'intro';
+  isDraggingShip = false;
+  showOverlayScreen(scene, null);
+  setHudVisible(scene, false);
+  setXyControlVisible(scene, false);
+  clearShipTrail(scene);
+
+  const centerX = getGameWidth(scene) / 2;
+  const shipHomeY = getShipY(scene);
+  const sequence = {
+    orbit: { progress: 0 },
+  };
+  scene.introSequence = sequence;
+
+  scene.ship
+    .setVisible(false)
+    .setPosition(centerX - 34, getGameHeight(scene) + SHIP_HEIGHT)
+    .setAngle(-7);
+  scene.ship.body.reset(scene.ship.x, scene.ship.y);
+  scene.shipEyeGlow.setAlpha(0).setScale(0.72).setVisible(false);
+  scene.shipEyeCore.setAlpha(0).setScale(0.82).setVisible(false);
+  hideEchoCompanion(scene);
+
+  scene.time.delayedCall(INTRO_EMPTY_SPACE_DURATION, () => {
+    if (!isIntroSequenceActive(scene, sequence)) return;
+
+    scene.ship.setVisible(true);
+    sequence.axisArrivalTween = scene.tweens.add({
+      targets: scene.ship,
+      x: centerX,
+      y: shipHomeY,
+      angle: 0,
+      duration: INTRO_AXIS_ARRIVAL_DURATION,
+      ease: 'Sine.easeInOut',
+      onUpdate: () => {
+        scene.ship.body.reset(scene.ship.x, scene.ship.y);
+        updateShipEyeGlow(scene);
+      },
+      onComplete: () => startIntroEchoArrival(scene, sequence),
+    });
+  });
+}
+
+function startIntroEchoArrival(scene, sequence) {
+  if (!isIntroSequenceActive(scene, sequence)) return;
+
+  const orbitRadiusX = ECHO_LEVEL_ORBIT_RADIUS_X + 10;
+  const orbitRadiusY = ECHO_LEVEL_ORBIT_RADIUS_Y + 8;
+  const startAngle = Math.PI / 2;
+  scene.echoCompanion
+    .setVisible(true)
+    .setAlpha(0.9)
+    .setScale(ECHO_SIZE / ECHO_TEXTURE_SIZE)
+    .setPosition(scene.ship.x, getGameHeight(scene) + ECHO_SIZE * 2)
+    .setRotation(0);
+  setEchoEyeVisible(scene, true);
+  updateEchoEyePosition(scene);
+
+  sequence.echoArrivalTween = scene.tweens.add({
+    targets: scene.echoCompanion,
+    x: scene.ship.x + Math.cos(startAngle) * orbitRadiusX,
+    y: scene.ship.y + Math.sin(startAngle) * orbitRadiusY,
+    duration: INTRO_ECHO_ARRIVAL_DURATION,
+    ease: 'Sine.easeOut',
+    onUpdate: () => updateEchoEyePosition(scene),
+    onComplete: () => startIntroEchoOrbit(scene, sequence, startAngle, orbitRadiusX, orbitRadiusY),
+  });
+}
+
+function startIntroEchoOrbit(scene, sequence, startAngle, radiusX, radiusY) {
+  if (!isIntroSequenceActive(scene, sequence)) return;
+
+  playLevelUpSound(scene);
+  sequence.energyLink = scene.add.graphics()
+    .setDepth(SHIP_DEPTH + 1)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  sequence.orbit.progress = 0;
+  sequence.echoOrbitTween = scene.tweens.add({
+    targets: sequence.orbit,
+    progress: 1,
+    duration: INTRO_ECHO_ORBIT_DURATION,
+    ease: 'Sine.easeInOut',
+    onUpdate: () => {
+      const progress = sequence.orbit.progress;
+      const angle = startAngle + Math.PI * 2 * INTRO_ECHO_ORBIT_TURNS * progress;
+      scene.echoCompanion.setPosition(
+        scene.ship.x + Math.cos(angle) * radiusX,
+        scene.ship.y + Math.sin(angle) * radiusY
+      );
+      scene.echoCompanion.setRotation(angle + Math.PI / 2 + Math.PI * 4 * progress);
+      updateEchoEyePosition(scene);
+      drawIntroEnergyLink(scene, sequence);
+    },
+    onComplete: () => illuminateAxisEyeForIntro(scene, sequence),
+  });
+}
+
+function drawIntroEnergyLink(scene, sequence) {
+  if (!sequence.energyLink || !scene.ship || !scene.echoCompanion) return;
+  drawEchoEnergyLink(scene, sequence.energyLink, sequence.orbit.progress);
+}
+
+function drawEchoEnergyLink(scene, graphics, progress) {
+  if (!graphics || !scene.ship || !scene.echoCompanion) return;
+  const angle = Phaser.Math.DegToRad(scene.ship.angle || 0);
+  const eyeOffsetX = SHIP_EYE_LOCAL_X * SHIP_SCALE;
+  const eyeOffsetY = SHIP_EYE_LOCAL_Y * SHIP_SCALE;
+  const targetX = scene.ship.x + Math.cos(angle) * eyeOffsetX - Math.sin(angle) * eyeOffsetY;
+  const targetY = scene.ship.y + Math.sin(angle) * eyeOffsetX + Math.cos(angle) * eyeOffsetY;
+  const sourceX = scene.echoCompanion.x;
+  const sourceY = scene.echoCompanion.y;
+  const charge = Phaser.Math.Easing.Sine.InOut(progress);
+  const pulse = 0.5 + Math.sin(progress * Math.PI * 14) * 0.5;
+  const linkAngle = Phaser.Math.Angle.Between(sourceX, sourceY, targetX, targetY);
+  const perpendicularX = Math.cos(linkAngle + Math.PI / 2);
+  const perpendicularY = Math.sin(linkAngle + Math.PI / 2);
+
+  graphics.clear();
+  graphics.lineStyle(10 + charge * 7 + pulse * 3, 0xffb52e, 0.06 + charge * 0.08);
+  graphics.lineBetween(sourceX, sourceY, targetX, targetY);
+
+  [4, 1.5].forEach((width, layerIndex) => {
+    graphics.lineStyle(
+      width,
+      layerIndex === 0 ? 0xffe16b : 0xffffff,
+      layerIndex === 0 ? 0.48 + charge * 0.22 : 0.82 + pulse * 0.18
+    );
+    graphics.beginPath();
+    graphics.moveTo(sourceX, sourceY);
+    for (let pointIndex = 1; pointIndex <= 12; pointIndex += 1) {
+      const travel = pointIndex / 12;
+      const jitter = Math.sin(progress * 54 + pointIndex * 2.7 + layerIndex) * (2.4 + charge * 2);
+      graphics.lineTo(
+        Phaser.Math.Linear(sourceX, targetX, travel) + perpendicularX * jitter * Math.sin(Math.PI * travel),
+        Phaser.Math.Linear(sourceY, targetY, travel) + perpendicularY * jitter * Math.sin(Math.PI * travel)
+      );
+    }
+    graphics.strokePath();
+  });
+
+  const particleCount = 4 + Math.floor(charge * 4);
+  for (let index = 0; index < particleCount; index += 1) {
+    const travel = (progress * (5 + charge * 3) + index / particleCount) % 1;
+    const x = Phaser.Math.Linear(sourceX, targetX, travel);
+    const y = Phaser.Math.Linear(sourceY, targetY, travel);
+    const sparkSize = 1.4 + travel * 1.8 + pulse * 0.5;
+    graphics.fillStyle(0xffd84d, 0.2 + travel * 0.35);
+    graphics.fillCircle(x, y, sparkSize * 2.4);
+    graphics.fillStyle(0xffffff, 0.75 + travel * 0.25);
+    graphics.fillCircle(x, y, sparkSize);
+  }
+
+  graphics.lineStyle(1.5 + pulse, 0xffe16b, 0.22 + charge * 0.45);
+  graphics.strokeCircle(targetX, targetY, 7 + charge * 17 + pulse * 3);
+  graphics.lineStyle(1, 0xffffff, 0.16 + charge * 0.35);
+  graphics.strokeCircle(targetX, targetY, 13 + charge * 23 - pulse * 3);
+  graphics.fillStyle(0xffd84d, 0.08 + charge * 0.12);
+  graphics.fillCircle(targetX, targetY, 10 + charge * 8);
+
+  graphics.fillStyle(0xffd84d, 0.08 + pulse * 0.06);
+  graphics.fillCircle(sourceX, sourceY, 10 + charge * 5);
+}
+
+function fadeIntroEnergyLink(scene, sequence) {
+  if (!sequence.energyLink) return;
+
+  sequence.energyLinkFadeTween = scene.tweens.add({
+    targets: sequence.energyLink,
+    alpha: 0,
+    duration: INTRO_ENERGY_LINK_FADE_DURATION,
+    ease: 'Sine.easeOut',
+    onComplete: () => clearIntroEnergyLink(sequence),
+  });
+}
+
+function clearIntroEnergyLink(sequence) {
+  if (!sequence || !sequence.energyLink) return;
+  sequence.energyLink.destroy();
+  sequence.energyLink = null;
+}
+
+function triggerAxisActivationBurst(scene, sequence) {
+  if (!scene || !sequence || !scene.ship) return;
+
+  const angle = Phaser.Math.DegToRad(scene.ship.angle || 0);
+  const eyeOffsetX = SHIP_EYE_LOCAL_X * SHIP_SCALE;
+  const eyeOffsetY = SHIP_EYE_LOCAL_Y * SHIP_SCALE;
+  const x = scene.ship.x + Math.cos(angle) * eyeOffsetX - Math.sin(angle) * eyeOffsetY;
+  const y = scene.ship.y + Math.sin(angle) * eyeOffsetX + Math.cos(angle) * eyeOffsetY;
+
+  sequence.activationBurst = scene.add.graphics()
+    .setPosition(x, y)
+    .setDepth(SHIP_DEPTH + 3)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  sequence.activationBurst.fillStyle(0xffffff, 0.82);
+  sequence.activationBurst.fillCircle(0, 0, 10);
+  sequence.activationBurst.lineStyle(3, 0xffd84d, 0.9);
+  sequence.activationBurst.strokeCircle(0, 0, 15);
+  sequence.activationBurst.lineStyle(1.5, 0xffffff, 0.75);
+  sequence.activationBurst.strokeCircle(0, 0, 23);
+
+  sequence.activationBurstTween = scene.tweens.add({
+    targets: sequence.activationBurst,
+    scaleX: 2.4,
+    scaleY: 2.4,
+    alpha: 0,
+    duration: 480,
+    ease: 'Cubic.easeOut',
+    onComplete: () => {
+      if (sequence.activationBurst) sequence.activationBurst.destroy();
+      sequence.activationBurst = null;
+    },
+  });
+  sequence.shipActivationTween = scene.tweens.add({
+    targets: scene.ship,
+    scaleX: SHIP_SCALE * 1.035,
+    scaleY: SHIP_SCALE * 1.035,
+    duration: 110,
+    yoyo: true,
+    ease: 'Sine.easeOut',
+    onComplete: () => scene.ship.setScale(SHIP_SCALE),
+  });
+  if (scene.cameras && scene.cameras.main) {
+    scene.cameras.main.shake(100, 0.0015);
+  }
+}
+
+function illuminateAxisEyeForIntro(scene, sequence) {
+  if (!isIntroSequenceActive(scene, sequence)) return;
+
+  setIntroAxisEyeLit(scene);
+  triggerAxisActivationBurst(scene, sequence);
+  fadeIntroEnergyLink(scene, sequence);
+
+  sequence.eyeGlowTween = scene.tweens.add({
+    targets: scene.shipEyeGlow,
+    alpha: 0.24,
+    scale: 1.16,
+    duration: 420,
+    yoyo: true,
+    repeat: 1,
+    ease: 'Sine.easeInOut',
+    onUpdate: () => updateShipEyeGlow(scene),
+  });
+  sequence.eyeCoreTween = scene.tweens.add({
+    targets: scene.shipEyeCore,
+    alpha: 0.72,
+    scale: 1.06,
+    duration: 320,
+    yoyo: true,
+    repeat: 1,
+    ease: 'Sine.easeInOut',
+    onUpdate: () => updateShipEyeGlow(scene),
+  });
+
+  const homePosition = getEchoHomePosition(scene);
+  sequence.echoSettleTween = scene.tweens.add({
+    targets: scene.echoCompanion,
+    x: homePosition.x,
+    y: homePosition.y,
+    rotation: -0.18,
+    duration: 520,
+    ease: 'Sine.easeInOut',
+    onUpdate: () => {
+      updateEchoEyePosition(scene);
+      drawIntroEnergyLink(scene, sequence);
+    },
+    onComplete: () => startIntroEchoHops(scene, sequence),
+  });
+}
+
+function startIntroEchoHops(scene, sequence) {
+  if (!isIntroSequenceActive(scene, sequence)) return;
+
+  sequence.echoHopTween = scene.tweens.add({
+    targets: scene.echoCompanion,
+    y: scene.echoCompanion.y - INTRO_ECHO_HOP_HEIGHT,
+    duration: INTRO_ECHO_HOP_DURATION,
+    yoyo: true,
+    repeat: 1,
+    ease: 'Sine.easeOut',
+    onUpdate: () => updateEchoEyePosition(scene),
+    onComplete: () => {
+      if (!isIntroSequenceActive(scene, sequence)) return;
+      scene.time.delayedCall(INTRO_DIALOG_DELAY, () => {
+        if (!isIntroSequenceActive(scene, sequence)) return;
+        clearIntroAxisEyeLight(scene);
+        scene.introSequence = null;
+        resetEchoPersonality(scene);
+        startEchoTutorial(scene);
+      });
+    },
+  });
+}
+
+function setIntroAxisEyeLit(scene) {
+  if (!scene || !scene.shipEyeGlow || !scene.shipEyeCore) return;
+
+  scene.shipEyeGlow
+    .setFillStyle(0xffd84d, 1)
+    .setAlpha(0.42)
+    .setScale(1.08)
+    .setVisible(true);
+  scene.shipEyeCore
+    .setFillStyle(0xffffb8, 1)
+    .setAlpha(0.95)
+    .setScale(1)
+    .setVisible(true);
+  updateShipEyeGlow(scene);
+}
+
+function clearIntroAxisEyeLight(scene) {
+  if (!scene || !scene.shipEyeGlow || !scene.shipEyeCore) return;
+
+  scene.tweens.killTweensOf([scene.shipEyeGlow, scene.shipEyeCore]);
+  scene.shipEyeGlow.setAlpha(0).setScale(1).setVisible(false);
+  scene.shipEyeCore.setAlpha(0).setScale(1).setVisible(false);
+  updateShipEyeGlow(scene);
+}
+
+function isIntroSequenceActive(scene, sequence) {
+  return Boolean(scene && state === 'intro' && scene.introSequence === sequence);
+}
+
+function cancelIntroSequence(scene) {
+  if (!scene || !scene.introSequence) return;
+  const sequence = scene.introSequence;
+  [
+    sequence.axisArrivalTween,
+    sequence.echoArrivalTween,
+    sequence.echoOrbitTween,
+    sequence.energyLinkFadeTween,
+    sequence.activationBurstTween,
+    sequence.shipActivationTween,
+    sequence.eyeGlowTween,
+    sequence.eyeCoreTween,
+    sequence.echoSettleTween,
+    sequence.echoHopTween,
+  ].forEach((tween) => {
+    if (tween && tween.stop) tween.stop();
+  });
+  clearIntroEnergyLink(sequence);
+  if (sequence.activationBurst) sequence.activationBurst.destroy();
+  if (scene.ship) scene.ship.setScale(SHIP_SCALE);
+  if (scene.tweens && sequence.orbit) scene.tweens.killTweensOf(sequence.orbit);
+  scene.introSequence = null;
+}
+
+function beginGameplayAfterEchoTutorial(scene) {
+  if (!scene) return;
+
+  state = 'playing';
+  showOverlayScreen(scene, null);
+  setHudVisible(scene, true);
+  setXyControlVisible(scene, true);
+  if (isXyGameMode()) {
+    resetXyShipControl(scene);
+  }
+
+  if (isBossOnlyGameMode()) {
+    queueNextBossOnlyWave(scene);
+    pauseBeforeFirstGameplaySpawn(scene);
+    return;
+  }
+
   // Primera bola inmediata, luego spawn periodico
-  spawnBall(this);
-  scheduleNextSpawn(this);
-  restartBackgroundMusic(this);
+  spawnBall(scene);
+  scheduleNextSpawn(scene);
+  restartBackgroundMusic(scene);
+}
+
+function pauseBeforeFirstGameplaySpawn(scene) {
+  if (!scene) return;
+
+  state = 'paused';
+  isDraggingShip = false;
+  scene.resumeSpawnDelay = null;
+  setPauseOverlayMode(scene, 'normal');
+  setXyControlActive(scene, false);
+  prepareControlPauseResume(scene);
+  showOverlayScreen(scene, null);
+  setPauseSettingsVisible(true);
+  restartBackgroundMusic(scene);
 }
 
 function endGame() {
   if (state !== 'playing' && state !== 'paused' && state !== 'dying') return; // Evitar llamadas dobles
+  cancelIntroSequence(this);
+  clearEchoTutorialTimer(this);
   state = 'gameover';
   isDraggingShip = false;
   this.xyPauseResumeArmed = false;
@@ -3522,7 +4875,6 @@ function endGame() {
   resetRedWave(this);
   resetDroneWave(this);
   resetAsteroidWave(this);
-  resetCometWave(this);
   resetPlasmaWave(this);
   resetBossWave(this);
   this.resumeSpawnDelay = null;
@@ -3533,7 +4885,10 @@ function endGame() {
   playMenuMusic(this);
   setHudVisible(this, false);
   showOverlayScreen(this, 'gameover');
-  if (isXyInfiniteGameMode()) {
+  if (isBossOnlyGameMode()) {
+    this.gameOverContainer.finalScore.setText('Solo Jefes - Jefes superados: ' + Math.max(0, this.bossOnlyBossNumber - 1));
+    prepareUnrankedGameOver(this);
+  } else if (isXyInfiniteGameMode()) {
     this.gameOverContainer.finalScore.setText('Modo Infinito - Puntuación: ' + score);
     prepareUnrankedGameOver(this);
   } else {
@@ -3545,11 +4900,14 @@ function endGame() {
 
 function enableInfiniteModeThreats(scene) {
   scene.obreraSpawnsUnlocked = true;
+  scene.scissorSpawnsUnlocked = true;
   scene.droneSpawnsUnlocked = true;
+  scene.giroDroneSpawnsUnlocked = true;
   scene.asteroidSpawnsUnlocked = true;
-  scene.cometSpawnsUnlocked = true;
   scene.plasmaSpawnsUnlocked = true;
   scene.redNeedleSpawnsUnlocked = true;
+  scene.replicatorSpawnsUnlocked = true;
+  scene.crystallizedOrbSpawnsUnlocked = true;
   scene.travelSentinelUnlocked = true;
   scene.nextTravelSentinelEligibleAt = 0;
 }
@@ -3572,9 +4930,9 @@ function resetCounters() {
   ballsCaught = 0;
   energyStreak = 0;
   maxEnergyStreak = 0;
-  currentGravity = BASE_GRAVITY;
-  currentBoosterGravity = Math.round(BASE_GRAVITY * BOOSTER_GRAVITY_RATIO);
-  currentSpawnDelay = INITIAL_SPAWN_DELAY;
+  currentGravity = isBossOnlyGameMode() ? MAX_BALL_GRAVITY : BASE_GRAVITY;
+  currentBoosterGravity = Math.round(currentGravity * BOOSTER_GRAVITY_RATIO);
+  currentSpawnDelay = isBossOnlyGameMode() ? MIN_SPAWN_DELAY : INITIAL_SPAWN_DELAY;
   maxLives = INITIAL_HEART_CAPACITY;
   lives = maxLives;
   levelProgressScore = 0;
@@ -3589,7 +4947,9 @@ function resetCounters() {
   vitalExpanderLevel = 0;
   energyResonanceLevel = 0;
   energyRefinerLevelBonus = 0;
+  shieldDefeatLevelBonus = 0;
   enemyTrailTimer = 0;
+  this.previousShipPosition = null;
   this.echoAttackTarget = null;
   this.echoReturningHome = false;
   resetEchoPersonality(this);
@@ -3599,15 +4959,22 @@ function resetCounters() {
   this.nextRedWaveEligibleAt = 0;
   this.nextAsteroidWaveEligibleAt = 0;
   this.obreraSpawnsUnlocked = false;
+  this.scissorSpawnsUnlocked = false;
   this.droneSpawnsUnlocked = false;
+  this.giroDroneSpawnsUnlocked = false;
   this.asteroidSpawnsUnlocked = false;
-  this.cometSpawnsUnlocked = false;
   this.plasmaSpawnsUnlocked = false;
   this.redNeedleSpawnsUnlocked = false;
+  this.replicatorSpawnsUnlocked = false;
+  this.crystallizedOrbSpawnsUnlocked = false;
+  this.replicatorShipHistory = [];
   this.travelSentinelUnlocked = false;
   this.nextTravelSentinelEligibleAt = 0;
   this.pendingBossWave = null;
   this.pendingBossWaves = [];
+  this.bossOnlyBossNumber = 0;
+  this.bossOnlyTypeRevealed = false;
+  this.levelUpgradeSequenceActive = false;
   resetBossWave(this);
   updatePlayerLevelText(this);
   updateStreakText();
@@ -3649,12 +5016,10 @@ function clearGameplayVisuals(scene) {
   scene.shipLifeIndicator = null;
   scene.pointPopupSlots = [];
   clearShipTrail(scene);
-  clearCometTrailGraphics(scene);
 
   if (scene.ship) {
     scene.tweens.killTweensOf(scene.ship);
-    scene.ship.clearTint();
-    scene.ship.setAlpha(1);
+    clearShipDamageFeedback(scene);
     setShipTextureForCurrentState(scene);
     refreshShipSize(scene);
     moveShipTo(scene, getGameWidth(scene) / 2, getShipY(scene));
@@ -3718,6 +5083,7 @@ function startFinalDamageGameOver(scene) {
     spawnEvent.remove(false);
     spawnEvent = null;
   }
+  pauseFallingObjects(scene);
   scene.finalDamageGameOverEvent = scene.time.delayedCall(FINAL_DAMAGE_GAME_OVER_DELAY, () => {
     scene.finalDamageGameOverEvent = null;
     endGame.call(scene);
@@ -3736,6 +5102,21 @@ function isShipDamageInvulnerable(scene) {
   return Boolean(scene && scene.shipDamageTween);
 }
 
+function clearShipDamageFeedback(scene, stopDamageTween = true) {
+  if (!scene || !scene.ship) return;
+
+  if (scene.shipDamageClearEvent) {
+    scene.shipDamageClearEvent.remove(false);
+    scene.shipDamageClearEvent = null;
+  }
+  if (stopDamageTween && scene.shipDamageTween) {
+    scene.shipDamageTween.stop();
+  }
+  scene.shipDamageTween = null;
+  scene.ship.clearTint();
+  scene.ship.setAlpha(1);
+}
+
 function flashPlayerShip(scene, damaged = false) {
   if (!scene.ship) return;
 
@@ -3745,8 +5126,7 @@ function flashPlayerShip(scene, damaged = false) {
     scene.ship.setAlpha(1);
   }
   if (scene.shipDamageTween) {
-    scene.shipDamageTween.stop();
-    scene.shipDamageTween = null;
+    clearShipDamageFeedback(scene);
   }
   scene.tweens.add({
     targets: scene.ship,
@@ -3759,6 +5139,7 @@ function flashPlayerShip(scene, damaged = false) {
   });
   if (!damaged) return;
 
+  const damageFeedbackDuration = 85 * (4 + 1) * 2;
   scene.ship.setTint(0xff2b3f);
   scene.shipDamageTween = scene.tweens.add({
     targets: scene.ship,
@@ -3769,11 +5150,10 @@ function flashPlayerShip(scene, damaged = false) {
     ease: 'Sine.easeInOut',
     onRepeat: () => scene.ship.setTint(scene.ship.isTinted ? 0xffffff : 0xff2b3f),
     onYoyo: () => scene.ship.setTint(0xff2b3f),
-    onComplete: () => {
-      scene.shipDamageTween = null;
-      scene.ship.clearTint();
-      scene.ship.setAlpha(1);
-    },
+    onComplete: () => clearShipDamageFeedback(scene, false),
+  });
+  scene.shipDamageClearEvent = scene.time.delayedCall(damageFeedbackDuration + 40, () => {
+    clearShipDamageFeedback(scene);
   });
 }
 
@@ -4051,9 +5431,20 @@ function scheduleNextSpawn(scene, delayOverride = null) {
     spawnEvent = null;
   }
 
+  if (isBossOnlyGameMode() && !hasPendingBossWave(scene) && !hasActiveLevelBossEncounter(scene)) {
+    queueNextBossOnlyWave(scene);
+  }
+
   if (consumePendingBossWave(scene)) {
     return;
   }
+
+  if (
+    isBossOnlyGameMode() &&
+    !scene.activeRedWave &&
+    !scene.activeDroneWave &&
+    !scene.activeAsteroidWave
+  ) return;
 
   if (scene.activeRedWave && !scene.activeRedWave.isSpawningDamageBoosters) {
     return;
@@ -4064,10 +5455,6 @@ function scheduleNextSpawn(scene, delayOverride = null) {
   }
 
   if (scene.activeAsteroidWave && !scene.activeAsteroidWave.isSpawningAsteroids) {
-    return;
-  }
-
-  if (scene.activeCometWave && !scene.activeCometWave.isSpawningComets) {
     return;
   }
 
@@ -4104,10 +5491,29 @@ function recoverGameplaySpawning(scene) {
   if (scene.activeRedWave && !scene.activeRedWave.isSpawningDamageBoosters) return;
   if (scene.activeDroneWave && !scene.activeDroneWave.isSpawningDrones) return;
   if (scene.activeAsteroidWave && !scene.activeAsteroidWave.isSpawningAsteroids) return;
-  if (scene.activeCometWave && !scene.activeCometWave.isSpawningComets) return;
   if (isBlockingBossWave(scene)) return;
 
   scheduleNextSpawn(scene);
+}
+
+function hasActiveLevelBossEncounter(scene) {
+  return Boolean(
+    scene.activeRedWave ||
+    scene.activeDroneWave ||
+    scene.activeAsteroidWave ||
+    scene.activePlasmaWave ||
+    (scene.activeBossWave && !scene.activeBossWave.isTravelEncounter)
+  );
+}
+
+function queueNextBossOnlyWave(scene) {
+  if (!scene || !isBossOnlyGameMode() || hasPendingBossWave(scene) || hasActiveLevelBossEncounter(scene)) return;
+  const bossNumber = scene.bossOnlyBossNumber || 0;
+  const bossKind = BOSS_ONLY_BOSS_KINDS[bossNumber % BOSS_ONLY_BOSS_KINDS.length];
+  scene.bossOnlyBossNumber = bossNumber + 1;
+  scene.bossOnlyTypeRevealed = false;
+  queuePendingBossWave(scene, createBossConfig(bossKind));
+  updateHud(scene);
 }
 
 function isBlockingBossWave(scene) {
@@ -4123,6 +5529,7 @@ function pauseGame() {
   prepareControlPauseResume(this);
 
   if (spawnEvent) {
+    this.resumeSpawnDelay = getTimerEventRemaining(spawnEvent);
     spawnEvent.remove(false);
     spawnEvent = null;
   }
@@ -4131,6 +5538,14 @@ function pauseGame() {
   pauseTimedGameplay(this);
   showOverlayScreen(this, null);
   setPauseSettingsVisible(true);
+}
+
+function getTimerEventRemaining(event) {
+  if (!event) return null;
+  if (typeof event.getRemaining === 'function') {
+    return Math.max(0, event.getRemaining());
+  }
+  return Math.max(0, (event.delay || 0) - (event.elapsed || 0));
 }
 
 function resumeGame() {
@@ -4143,11 +5558,30 @@ function resumeGame() {
   setXyControlVisible(this, true);
   showOverlayScreen(this, null);
 
+  if (this.pendingLevelUpgradeChoice) {
+    maybeOpenUpgradeChoice(this);
+    return;
+  }
+
   resumeFallingObjects(this);
   resumeTimedGameplay(this);
   releasePendingStreakRepairKit(this);
 
-  resumeGameplaySpawning(this, this.resumeSpawnDelay || null);
+  if (this.pendingEchoWaveWarningKind) {
+    const waveKind = this.pendingEchoWaveWarningKind;
+    this.pendingEchoWaveWarningKind = null;
+    this.waveStartEvent = this.time.addEvent({
+      delay: ECHO_WAVE_WARNING_RESUME_DELAY,
+      callback: () => startWaveCountdown(this, waveKind),
+    });
+  }
+
+  resumeGameplaySpawning(
+    this,
+    this.resumeSpawnDelay !== null && this.resumeSpawnDelay !== undefined
+      ? this.resumeSpawnDelay
+      : null
+  );
   this.resumeSpawnDelay = null;
 }
 
@@ -4165,7 +5599,6 @@ function resumeGameplaySpawning(scene, delayOverride = null) {
   if (scene.activeRedWave && !scene.activeRedWave.isSpawningDamageBoosters) return;
   if (scene.activeDroneWave && !scene.activeDroneWave.isSpawningDrones) return;
   if (scene.activeAsteroidWave && !scene.activeAsteroidWave.isSpawningAsteroids) return;
-  if (scene.activeCometWave && !scene.activeCometWave.isSpawningComets) return;
   if (isBlockingBossWave(scene)) return;
 
   if (!spawnEvent) {
@@ -4176,11 +5609,17 @@ function resumeGameplaySpawning(scene, delayOverride = null) {
 function pauseTimedGameplay(scene) {
   scene.tweens.pauseAll();
   pauseSpikeDrones(scene);
-  [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activeCometWave, scene.activePlasmaWave, scene.activeBossWave]
+  [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activePlasmaWave, scene.activeBossWave]
     .forEach((countdown) => pauseCountdown(scene, countdown));
 
   [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossHorizontalLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.redNeedleBossPassEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
     if (event) event.paused = true;
+  });
+  (scene.bossWarningAnimationEvents || []).forEach((event) => {
+    if (event) event.paused = true;
+  });
+  (scene.bossLaserEffects || []).forEach((effect) => {
+    if (effect && effect.redrawEvent) effect.redrawEvent.paused = true;
   });
   if (scene.bossEnterTween) scene.bossEnterTween.pause();
   if (scene.bossExitTween) scene.bossExitTween.pause();
@@ -4200,11 +5639,17 @@ function pauseTimedGameplay(scene) {
 function resumeTimedGameplay(scene) {
   scene.tweens.resumeAll();
   resumeSpikeDrones(scene);
-  [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activeCometWave, scene.activePlasmaWave, scene.activeBossWave]
+  [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activePlasmaWave, scene.activeBossWave]
     .forEach((countdown) => resumeCountdown(scene, countdown));
 
   [scene.waveStartEvent, scene.waveResumeEvent, scene.bossAttackEvent, scene.bossLaserEvent, scene.bossHorizontalLaserEvent, scene.bossLaserClearEvent, scene.bossEnemySpawnEvent, scene.redNeedleBossPassEvent, scene.plasmaSpawnEvent, scene.bossCueTween, scene.bossCueClearEvent].forEach((event) => {
     if (event) event.paused = false;
+  });
+  (scene.bossWarningAnimationEvents || []).forEach((event) => {
+    if (event) event.paused = false;
+  });
+  (scene.bossLaserEffects || []).forEach((effect) => {
+    if (effect && effect.redrawEvent) effect.redrawEvent.paused = false;
   });
   if (scene.bossEnterTween) scene.bossEnterTween.resume();
   if (scene.bossExitTween) scene.bossExitTween.resume();
@@ -4321,18 +5766,6 @@ function resetAsteroidWave(scene) {
   }
 }
 
-function resetCometWave(scene) {
-  scene.activeCometWave = null;
-  clearWaveTimers(scene);
-  clearBossCue(scene);
-
-  if (scene.ship) {
-    setShipTextureForCurrentState(scene);
-    refreshShipSize(scene);
-    moveShipTo(scene, clampShipX(scene, scene.ship.x));
-  }
-}
-
 function resetPlasmaWave(scene) {
   scene.activePlasmaWave = null;
   if (scene.plasmaSpawnEvent) {
@@ -4402,7 +5835,6 @@ function getActiveWaveCountdown(scene) {
   if (scene.activeRedWave && scene.activeRedWave.hasStarted) return scene.activeRedWave;
   if (scene.activeDroneWave && scene.activeDroneWave.hasStarted) return scene.activeDroneWave;
   if (scene.activeAsteroidWave && scene.activeAsteroidWave.hasStarted) return scene.activeAsteroidWave;
-  if (scene.activeCometWave && scene.activeCometWave.hasStarted) return scene.activeCometWave;
   if (scene.activePlasmaWave && scene.activePlasmaWave.hasStarted) return scene.activePlasmaWave;
   if (scene.activeBossWave && scene.activeBossWave.hasStarted) return scene.activeBossWave;
   return null;
@@ -4466,6 +5898,15 @@ function getEnergyBallValue() {
   return energyRefinerLevel + 1 + maxLevelBonus;
 }
 
+function getEnemyDefeatScore(baseScore) {
+  const maxLevelBonus = shieldBoosterLevel >= MAX_UPGRADE_LEVEL ? shieldDefeatLevelBonus : 0;
+  return baseScore + maxLevelBonus;
+}
+
+function awardEnemyDefeatScore(scene, baseScore, x, y, color) {
+  addScore(scene, getEnemyDefeatScore(baseScore), true, { x, y, color });
+}
+
 function resetEnergyStreak() {
   if (energyStreak === 0) return;
   energyStreak = 0;
@@ -4498,14 +5939,6 @@ function awardEnergyStreakReward(scene) {
     color: '#ffd84d',
   });
   showStreakPointPopup(scene, scene.ship.x, scene.ship.y - 58, 'RACHA!');
-  triggerEchoStreakCelebration(scene);
-
-  if (shouldDelayUpgrade) {
-    scene.deferUpgradeChoiceUntil = Math.max(
-      scene.deferUpgradeChoiceUntil || 0,
-      scene.time.now + getEchoStreakUpgradeDelay(scene)
-    );
-  }
 
   if (shouldDropRepairKit && shouldDelayUpgrade) {
     scene.pendingStreakRepairKit = true;
@@ -4518,7 +5951,9 @@ function addScore(scene, points, animate = true, feedback = null) {
   score += points;
   levelProgressScore += points;
   const currentHud = initHud();
-  if (currentHud.score) currentHud.score.textContent = score;
+  if (currentHud.score) {
+    currentHud.score.textContent = isBossOnlyGameMode() ? getBossOnlyHudName(scene) : score;
+  }
   updateUpgradeBar(scene, animate);
   if (feedback && feedback.style === 'streak') {
     showStreakPointPopup(scene, feedback.x, feedback.y, feedback.label || 'RACHA!');
@@ -4878,7 +6313,7 @@ function updateEnemyPropulsion(scene, delta) {
 
   scene.balls.getChildren().forEach((enemy) => {
     if (!enemy.active) return;
-    if (enemy.getData('kind') === 'damageBooster') {
+    if (enemy.getData('kind') === 'damageBooster' || isScissorKind(enemy.getData('kind'))) {
       emitVerticalEnemyTrail(scene, enemy);
     } else if (enemy.getData('kind') === 'redNeedle') {
       emitRedNeedleTrail(scene, enemy, enemy.getData('horizontalVelocity') || RED_NEEDLE_SPEED, 1);
@@ -5076,19 +6511,79 @@ function updateShieldBooster(scene) {
 function activateRedWave(scene, bossConfig = getBossConfigForLevel(3)) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
+  const isScissorSwarm = bossConfig.kind === 'scissors';
   scene.activeRedWave = {
     endsAt: null,
-    duration: bossConfig.duration || RED_WAVE_DURATION,
+    duration: bossConfig.duration || (isScissorSwarm ? SCISSOR_SWARM_DURATION : RED_WAVE_DURATION),
     isSpawningDamageBoosters: false,
     hasStarted: false,
+    hasShownEchoWarning: false,
     isDraining: false,
-    bossName: bossConfig.name || 'Enjambre',
+    spawnKind: isScissorSwarm ? 'scissor' : 'damageBooster',
+    bossKind: isScissorSwarm ? 'scissors' : 'red',
+    bossName: bossConfig.name || (isScissorSwarm ? 'Enjambre de Escisoras' : 'Enjambre de Obreras'),
   };
 
   setShipTextureForCurrentState(scene);
   refreshShipSize(scene);
   moveShipTo(scene, clampShipX(scene, scene.ship.x));
 
+  hideWaveBar(scene);
+
+  if (spawnEvent) {
+    spawnEvent.remove(false);
+    spawnEvent = null;
+  }
+
+  scheduleWaveStart(scene, 'red');
+}
+
+function activateReplicatorWave(scene, bossConfig = createBossConfig('replicators')) {
+  resetTimedBoosters(scene);
+  playBackgroundMusic(scene);
+  scene.activeRedWave = {
+    endsAt: null,
+    duration: bossConfig.duration || REPLICATOR_WAVE_DURATION,
+    isSpawningDamageBoosters: false,
+    hasStarted: false,
+    hasShownEchoWarning: false,
+    isDraining: false,
+    spawnKind: 'replicator',
+    bossKind: 'replicators',
+    bossName: bossConfig.name || 'Replicadores',
+  };
+
+  setShipTextureForCurrentState(scene);
+  refreshShipSize(scene);
+  moveShipTo(scene, clampShipX(scene, scene.ship.x));
+  hideWaveBar(scene);
+
+  if (spawnEvent) {
+    spawnEvent.remove(false);
+    spawnEvent = null;
+  }
+
+  scheduleWaveStart(scene, 'red');
+}
+
+function activateCrystallizedWave(scene, bossConfig = createBossConfig('crystallized')) {
+  resetTimedBoosters(scene);
+  playBackgroundMusic(scene);
+  scene.activeRedWave = {
+    endsAt: null,
+    duration: bossConfig.duration || CRYSTALLIZED_WAVE_DURATION,
+    isSpawningDamageBoosters: false,
+    hasStarted: false,
+    hasShownEchoWarning: false,
+    isDraining: false,
+    spawnKind: 'crystallizedOrb',
+    bossKind: 'crystallized',
+    bossName: bossConfig.name || 'Tormenta Cristalizada',
+  };
+
+  setShipTextureForCurrentState(scene);
+  refreshShipSize(scene);
+  moveShipTo(scene, clampShipX(scene, scene.ship.x));
   hideWaveBar(scene);
 
   if (spawnEvent) {
@@ -5112,11 +6607,6 @@ function clearAllFallingObjects(scene) {
   if (!scene.balls) return;
   scene.balls.clear(true, true);
   clearPlasmaBars(scene);
-  clearCometTrailGraphics(scene);
-}
-
-function clearCometTrailGraphics(scene) {
-  if (scene && scene.cometTrailGraphics) scene.cometTrailGraphics.clear();
 }
 
 function updateRedWave(scene) {
@@ -5139,6 +6629,9 @@ function activateDroneWave(scene, bossConfig = createBossConfig('drones')) {
     isSpawningDrones: false,
     hasStarted: false,
     isDraining: false,
+    spawnKind: bossConfig.kind === 'girodrones' ? 'giroDrone' : 'spikeDrone',
+    spawnDelay: bossConfig.kind === 'girodrones' ? GIRODRONE_WAVE_SPAWN_DELAY : DRONE_WAVE_SPAWN_DELAY,
+    bossKind: bossConfig.kind || 'drones',
     bossName: bossConfig.name || 'Drones',
   };
 
@@ -5175,6 +6668,7 @@ function activateAsteroidWave(scene, bossConfig = getBossConfigForLevel(6)) {
     duration: bossConfig.duration || ASTEROID_WAVE_DURATION,
     isSpawningAsteroids: false,
     hasStarted: false,
+    hasShownEchoWarning: false,
     isDraining: false,
     bossName: bossConfig.name || 'Cinturón',
   };
@@ -5200,6 +6694,7 @@ function activatePlasmaWave(scene, bossConfig = getBossConfigForLevel(12)) {
     endsAt: null,
     duration: bossConfig.duration || PLASMA_WAVE_DURATION,
     hasStarted: false,
+    hasShownEchoWarning: false,
     isSpawningPlasma: false,
     isDraining: false,
     bossName: bossConfig.name || 'Marea de Plasma',
@@ -5236,44 +6731,6 @@ function updateAsteroidWave(scene) {
   finishWaveSpawning(scene, asteroidWave, 'asteroid');
 }
 
-function activateCometWave(scene, bossConfig = createBossConfig('comet')) {
-  resetTimedBoosters(scene);
-  playBackgroundMusic(scene);
-  scene.activeCometWave = {
-    endsAt: null,
-    duration: bossConfig.duration || COMET_WAVE_DURATION,
-    isSpawningComets: false,
-    hasStarted: false,
-    isDraining: false,
-    spawnCount: 0,
-    bossName: bossConfig.name || 'Lluvia de estrellas',
-  };
-
-  setShipTextureForCurrentState(scene);
-  refreshShipSize(scene);
-  moveShipTo(scene, clampShipX(scene, scene.ship.x));
-
-  hideWaveBar(scene);
-
-  if (spawnEvent) {
-    spawnEvent.remove(false);
-    spawnEvent = null;
-  }
-
-  scheduleWaveStart(scene, 'comet');
-}
-
-function updateCometWave(scene) {
-  const cometWave = scene.activeCometWave;
-  if (!cometWave) return;
-  if (!cometWave.hasStarted) return;
-
-  const remaining = Math.max(0, cometWave.endsAt - scene.time.now);
-  if (remaining > 0) return;
-
-  finishWaveSpawning(scene, cometWave, 'comet');
-}
-
 function updatePlasmaWave(scene) {
   const plasmaWave = scene.activePlasmaWave;
   if (!plasmaWave) return;
@@ -5293,6 +6750,7 @@ function activateBossWave(scene, bossConfig = getBossConfigForLevel(9)) {
     endsAt: null,
     duration: bossConfig.duration || BOSS_WAVE_DURATION,
     hasStarted: false,
+    hasShownEchoWarning: false,
     attacksDone: 0,
     attacksTotal: bossConfig.attacks || BOSS_WAVE_ATTACKS,
     isRetreating: false,
@@ -5318,6 +6776,7 @@ function activateRedNeedleBossWave(scene, bossConfig = createBossConfig('redNeed
     endsAt: null,
     duration: bossConfig.duration || BOSS_WAVE_DURATION,
     hasStarted: false,
+    hasShownEchoWarning: false,
     attacksDone: 0,
     attacksTotal: bossConfig.attacks || RED_NEEDLE_BOSS_ATTACKS,
     isRetreating: false,
@@ -5356,18 +6815,20 @@ function activateTravelSentinel(scene) {
 
 function activateLevelBoss(scene, bossConfig) {
   if (!bossConfig) return;
-  if (bossConfig.kind === 'red') {
+  if (bossConfig.kind === 'red' || bossConfig.kind === 'scissors') {
     activateRedWave(scene, bossConfig);
-  } else if (bossConfig.kind === 'drones') {
+  } else if (bossConfig.kind === 'drones' || bossConfig.kind === 'girodrones') {
     activateDroneWave(scene, bossConfig);
   } else if (bossConfig.kind === 'asteroid') {
     activateAsteroidWave(scene, bossConfig);
-  } else if (bossConfig.kind === 'comet') {
-    activateCometWave(scene, bossConfig);
   } else if (bossConfig.kind === 'plasma') {
     activatePlasmaWave(scene, bossConfig);
   } else if (bossConfig.kind === 'redNeedleBoss') {
     activateRedNeedleBossWave(scene, bossConfig);
+  } else if (bossConfig.kind === 'replicators') {
+    activateReplicatorWave(scene, bossConfig);
+  } else if (bossConfig.kind === 'crystallized') {
+    activateCrystallizedWave(scene, bossConfig);
   } else if (bossConfig.kind === 'boss') {
     activateBossWave(scene, bossConfig);
   }
@@ -5382,6 +6843,8 @@ function updateBossWave(scene) {
     return;
   }
 
+  updateSentinelEyeTracking(scene);
+  updateBossElectricLaserEffects(scene);
   recoverStalledBossWave(scene, bossWave);
   if (scene.activeBossWave !== bossWave) return;
 
@@ -5494,12 +6957,45 @@ function createSentinelShip(scene) {
   arms.lineBetween(rightArmX + armWidth - 8, armTop + 18, rightArmX + armWidth - 8, armBottom - 12);
 
   const body = scene.add.image(0, 0, 'bossShip').setOrigin(0.5, 0.5);
+  const eyeGlow = scene.add.circle(0, 27, 11, 0xffa7b4, 0.92)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  const eyeCore = scene.add.circle(0, 27, 6, 0xffedf0, 0.98)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  const eyeHighlight = scene.add.circle(-2, 25, 2.5, 0xffffff, 0.98)
+    .setBlendMode(Phaser.BlendModes.ADD);
   container
-    .add([arms, body])
+    .add([arms, body, eyeGlow, eyeCore, eyeHighlight])
     .setDepth(FX_DEPTH + 1)
-    .setData('sentinelHiddenY', getSentinelHiddenY(scene));
+    .setData('sentinelHiddenY', getSentinelHiddenY(scene))
+    .setData('sentinelEyeGlow', eyeGlow)
+    .setData('sentinelEyeCore', eyeCore)
+    .setData('sentinelEyeHighlight', eyeHighlight);
 
   return container;
+}
+
+function updateSentinelEyeTracking(scene) {
+  const sentinel = scene.bossShip;
+  if (!sentinel || !sentinel.getData || !scene.ship) return;
+
+  const eyeGlow = sentinel.getData('sentinelEyeGlow');
+  const eyeCore = sentinel.getData('sentinelEyeCore');
+  const eyeHighlight = sentinel.getData('sentinelEyeHighlight');
+  if (!eyeGlow || !eyeCore || !eyeHighlight) return;
+
+  const eyeWorldX = sentinel.x;
+  const eyeWorldY = sentinel.y + 27;
+  const angle = Phaser.Math.Angle.Between(eyeWorldX, eyeWorldY, scene.ship.x, scene.ship.y);
+  const distance = Phaser.Math.Distance.Between(eyeWorldX, eyeWorldY, scene.ship.x, scene.ship.y);
+  const trackingStrength = Phaser.Math.Clamp(distance / 180, 0.35, 1);
+  const targetX = Math.cos(angle) * 7 * trackingStrength;
+  const targetY = Math.sin(angle) * 6 * trackingStrength;
+  const nextX = Phaser.Math.Linear(eyeCore.x, targetX, 0.16);
+  const nextY = Phaser.Math.Linear(eyeCore.y - 27, targetY, 0.16);
+
+  eyeGlow.setPosition(nextX * 0.42, 27 + nextY * 0.42);
+  eyeCore.setPosition(nextX, 27 + nextY);
+  eyeHighlight.setPosition(nextX - 2, 27 + nextY - 2);
 }
 
 function getSentinelHiddenY(scene) {
@@ -5803,65 +7299,233 @@ function getNextBossLaserY(scene, bossWave) {
 
 function showBossLaserWarning(scene, laserX) {
   clearBossWarningParticles(scene);
-  scene.bossWarningParticles = [];
-  const minY = 72;
-  const maxY = getGameHeight(scene) - 12;
+  const laserTop = getBossVerticalLaserTop(scene);
+  const laserLength = getGameHeight(scene) - laserTop;
+  createBossLaserWarningEffect(
+    scene,
+    laserX,
+    laserTop + laserLength / 2,
+    laserLength
+  );
+}
 
-  for (let i = 0; i < 42; i += 1) {
-    const particle = trackGameplayVisual(scene, scene.add.image(
-      laserX + Phaser.Math.Between(-15, 15),
-      Phaser.Math.Between(minY, maxY),
-      'goldTrailParticle'
-    ));
-    particle
+function getBossVerticalLaserTop(scene) {
+  return Math.max(0, getXyShipTopLimit(scene) - BOSS_LASER_SENTINEL_OVERLAP);
+}
+
+function showBossHorizontalLaserWarning(scene, laserY) {
+  createBossLaserWarningEffect(
+    scene,
+    getGameWidth(scene) / 2,
+    laserY,
+    getGameWidth(scene) - 32,
+    true
+  );
+}
+
+function createBossLaserWarningEffect(scene, centerX, centerY, length, horizontal = false) {
+  scene.bossWarningParticles = scene.bossWarningParticles || [];
+  scene.bossWarningAnimationEvents = scene.bossWarningAnimationEvents || [];
+  const halfLength = length / 2;
+  const startedAt = scene.time.now;
+  const seed = Phaser.Math.Between(0, 9999);
+  const graphics = scene.add.graphics()
+    .setDepth(FX_DEPTH - 1)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  const redrawWarning = () => {
+    const elapsed = scene.time.now - startedAt;
+    const progress = Phaser.Math.Clamp(elapsed / BOSS_LASER_WARN_DURATION, 0, 1);
+    const charge = Phaser.Math.Easing.Cubic.In(progress);
+    const pulse = 0.5 + Math.sin(elapsed * (0.012 + charge * 0.015)) * 0.5;
+    const railOffset = Phaser.Math.Linear(27, 6, charge);
+    const pointCount = Math.max(32, Math.floor(length / 11));
+    const strokePath = (points, width, color, alpha) => {
+      if (points.length < 2) return;
+      graphics.lineStyle(width, color, alpha);
+      graphics.beginPath();
+      graphics.moveTo(points[0].x, points[0].y);
+      points.slice(1).forEach((point) => graphics.lineTo(point.x, point.y));
+      graphics.strokePath();
+    };
+
+    graphics.clear();
+
+    graphics.lineStyle(24, 0xff0018, 0.025 + charge * 0.11);
+    if (horizontal) {
+      graphics.lineBetween(centerX - halfLength, centerY, centerX + halfLength, centerY);
+    } else {
+      graphics.lineBetween(centerX, centerY - halfLength, centerX, centerY + halfLength);
+    }
+    graphics.lineStyle(3 + charge * 3, 0xff1830, 0.18 + charge * 0.62);
+    if (horizontal) {
+      graphics.lineBetween(centerX - halfLength, centerY, centerX + halfLength, centerY);
+    } else {
+      graphics.lineBetween(centerX, centerY - halfLength, centerX, centerY + halfLength);
+    }
+
+    [-1, 1].forEach((side) => {
+      const points = [];
+      for (let point = 0; point <= pointCount; point += 1) {
+        const pathProgress = point / pointCount;
+        const distance = -halfLength + length * pathProgress;
+        const offset = side * (
+          railOffset +
+          Math.sin(elapsed * 0.007 + seed + pathProgress * Math.PI * 13) * (4.5 - charge * 2)
+        );
+        points.push(horizontal
+          ? { x: centerX + distance, y: centerY + offset }
+          : { x: centerX + offset, y: centerY + distance });
+      }
+      strokePath(points, 5, 0xff001f, 0.08 + charge * 0.24);
+      strokePath(points, 1.4, 0xff4a58, 0.34 + charge * 0.54);
+    });
+
+    graphics.lineStyle(1.5 + charge * 2.5, 0xffffff, charge * (0.16 + pulse * 0.34));
+    if (horizontal) {
+      graphics.lineBetween(centerX - halfLength, centerY, centerX + halfLength, centerY);
+    } else {
+      graphics.lineBetween(centerX, centerY - halfLength, centerX, centerY + halfLength);
+    }
+  };
+
+  redrawWarning();
+  const redrawEvent = scene.time.addEvent({
+    delay: 16,
+    loop: true,
+    callback: redrawWarning,
+  });
+  scene.bossWarningAnimationEvents.push(redrawEvent);
+  scene.bossWarningParticles.push(graphics);
+
+  for (let index = 0; index < 64; index += 1) {
+    const along = Phaser.Math.FloatBetween(-halfLength, halfLength);
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const startOffset = side * Phaser.Math.Between(16, 38);
+    const radius = Phaser.Math.FloatBetween(0.8, 2.1);
+    const particle = scene.add.circle(
+      horizontal ? centerX + along : centerX + startOffset,
+      horizontal ? centerY + startOffset : centerY + along,
+      radius,
+      index % 7 === 0 ? 0xffffff : 0xff1028,
+      Phaser.Math.FloatBetween(0.45, 0.9)
+    )
       .setDepth(FX_DEPTH)
-      .setTint(0xff263c)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(Phaser.Math.FloatBetween(0.75, 1.7))
-      .setAlpha(0.85);
+      .setBlendMode(Phaser.BlendModes.ADD);
 
     scene.tweens.add({
       targets: particle,
-      x: laserX + Phaser.Math.Between(-5, 5),
-      y: Phaser.Math.Between(minY, maxY),
-      scale: 0.2,
-      alpha: 0.15,
-      duration: BOSS_LASER_WARN_DURATION,
+      x: horizontal ? centerX + along : centerX + side * Phaser.Math.Between(2, 6),
+      y: horizontal ? centerY + side * Phaser.Math.Between(2, 6) : centerY + along,
+      alpha: index % 7 === 0 ? 0.9 : 0.22,
+      scale: Phaser.Math.FloatBetween(0.45, 0.8),
+      duration: Phaser.Math.Between(620, BOSS_LASER_WARN_DURATION),
+      delay: Phaser.Math.Between(0, 180),
       ease: 'Sine.easeIn',
-      onComplete: () => particle.destroy(),
     });
     scene.bossWarningParticles.push(particle);
   }
 }
 
-function showBossHorizontalLaserWarning(scene, laserY) {
-  scene.bossWarningParticles = scene.bossWarningParticles || [];
-  const width = getGameWidth(scene);
+function createBossElectricLaserEffect(scene, centerX, centerY, length, horizontal = false) {
+  const graphics = scene.add.graphics()
+    .setDepth(FX_DEPTH)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  scene.bossLaserEffects = scene.bossLaserEffects || [];
+  const effect = {
+    graphics,
+    centerX,
+    centerY,
+    length,
+    horizontal,
+    seed: Phaser.Math.Between(0, 9999),
+  };
+  scene.bossLaserEffects.push(effect);
+  drawBossElectricLaserEffect(effect, scene.time.now);
+  return graphics;
+}
 
-  for (let i = 0; i < 42; i += 1) {
-    const particle = trackGameplayVisual(scene, scene.add.image(
-      Phaser.Math.Between(22, width - 22),
-      laserY + Phaser.Math.Between(-15, 15),
-      'goldTrailParticle'
-    ));
-    particle
-      .setDepth(FX_DEPTH)
-      .setTint(0xff263c)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(Phaser.Math.FloatBetween(0.7, 1.55))
-      .setAlpha(0.82);
+function updateBossElectricLaserEffects(scene) {
+  if (!scene.bossLaserEffects) return;
+  scene.bossLaserEffects.forEach((effect) => {
+    if (effect && effect.graphics && effect.graphics.active) {
+      drawBossElectricLaserEffect(effect, scene.time.now);
+    }
+  });
+}
 
-    scene.tweens.add({
-      targets: particle,
-      x: Phaser.Math.Between(28, width - 28),
-      y: laserY + Phaser.Math.Between(-5, 5),
-      scale: 0.2,
-      alpha: 0.12,
-      duration: BOSS_LASER_WARN_DURATION,
-      ease: 'Sine.easeIn',
-      onComplete: () => particle.destroy(),
-    });
-    scene.bossWarningParticles.push(particle);
+function drawBossElectricLaserEffect(effect, time) {
+  const { graphics, centerX, centerY, length, horizontal, seed } = effect;
+  const halfLength = length / 2;
+  const pulse = 0.5 + Math.sin(time * 0.016 + seed) * 0.5;
+  const drawBeamRect = (thickness, color, alpha) => {
+    graphics.fillStyle(color, alpha);
+    if (horizontal) {
+      graphics.fillRect(centerX - halfLength, centerY - thickness / 2, length, thickness);
+    } else {
+      graphics.fillRect(centerX - thickness / 2, centerY - halfLength, thickness, length);
+    }
+  };
+  const strokePath = (points, width, color, alpha) => {
+    if (points.length < 2) return;
+    graphics.lineStyle(width, color, alpha);
+    graphics.beginPath();
+    graphics.moveTo(points[0].x, points[0].y);
+    points.slice(1).forEach((point) => graphics.lineTo(point.x, point.y));
+    graphics.strokePath();
+  };
+
+  graphics.clear();
+  drawBeamRect(58, 0xff0018, 0.07 + pulse * 0.05);
+  drawBeamRect(40, 0xff001f, 0.13 + pulse * 0.08);
+  drawBeamRect(25, 0xff0828, 0.32 + pulse * 0.11);
+  drawBeamRect(12, 0xff1830, 0.88 + pulse * 0.1);
+  drawBeamRect(4.5 + pulse * 1.5, 0xffffff, 0.98);
+
+  // Continuous edge arcs undulate smoothly instead of changing randomly.
+  [-1, 1].forEach((side) => {
+    const points = [];
+    const pointCount = Math.max(36, Math.floor(length / 10));
+    for (let point = 0; point <= pointCount; point += 1) {
+      const progress = point / pointCount;
+      const along = -halfLength + length * progress;
+      const offset = side * (
+        14 +
+        Math.sin(time * 0.007 + seed + progress * Math.PI * 15) * 5 +
+        Math.sin(time * 0.0035 + progress * Math.PI * 6) * 3
+      );
+      points.push(horizontal
+        ? { x: centerX + along, y: centerY + offset }
+        : { x: centerX + offset, y: centerY + along });
+    }
+    strokePath(points, 6, 0xff001f, 0.26);
+    strokePath(points, 1.6, 0xff5b68, 0.92);
+  });
+
+  const particleCount = horizontal ? 48 : 72;
+  for (let particle = 0; particle < particleCount; particle += 1) {
+    const direction = particle % 3 === 0 ? -1 : 1;
+    const travel = (
+      time * (0.00018 + (particle % 5) * 0.000012) * direction +
+      particle / particleCount +
+      seed * 0.001
+    ) % 1;
+    const wrappedTravel = travel < 0 ? travel + 1 : travel;
+    const along = -halfLength + length * wrappedTravel;
+    const side = particle % 2 === 0 ? -1 : 1;
+    const offset = side * (
+      5 +
+      (particle % 4) * 2.8 +
+      Math.sin(time * 0.006 + seed + particle * 1.7) * 3
+    );
+    const radius = 0.7 + (particle % 4) * 0.32 + pulse * 0.25;
+    const alpha = 0.28 + (particle % 5) * 0.09;
+    const x = horizontal ? centerX + along : centerX + offset;
+    const y = horizontal ? centerY + offset : centerY + along;
+
+    graphics.fillStyle(particle % 9 === 0 ? 0xffffff : 0xff1830, alpha);
+    graphics.fillCircle(x, y, radius);
+    graphics.fillStyle(0xff001f, alpha * 0.18);
+    graphics.fillCircle(x, y, radius * 2.4);
   }
 }
 
@@ -5879,14 +7543,16 @@ function fireBossLaser(scene, laserX, laserY) {
   bossWave.attacksDone += 1;
   bossWave.previousLaserX = laserX;
 
-  const laserHeight = getGameHeight(scene);
-  const laserCenterY = laserHeight / 2 + 78;
-  scene.bossLaser = scene.add.rectangle(laserX, laserCenterY, BOSS_LASER_WIDTH, laserHeight, 0xff263c, 0.72)
+  const laserTop = getBossVerticalLaserTop(scene);
+  const laserHeight = getGameHeight(scene) - laserTop;
+  const laserCenterY = laserTop + laserHeight / 2;
+  scene.bossLaser = scene.add.rectangle(laserX, laserCenterY, BOSS_LASER_WIDTH, laserHeight, 0xff001f, 0.2)
     .setOrigin(0.5, 0.5)
     .setDepth(FX_DEPTH - 2);
-  scene.bossLaserCore = scene.add.rectangle(laserX, laserCenterY, 9, laserHeight, 0xffedf0, 0.86)
+  scene.bossLaserCore = scene.add.rectangle(laserX, laserCenterY, 5, laserHeight, 0xffffff, 0.96)
     .setOrigin(0.5, 0.5)
     .setDepth(FX_DEPTH - 1);
+  createBossElectricLaserEffect(scene, laserX, laserCenterY, laserHeight);
   showBossHorizontalLaserWarning(scene, laserY);
   scene.bossHorizontalLaserEvent = scene.time.addEvent({
     delay: BOSS_LASER_WARN_DURATION,
@@ -5914,12 +7580,13 @@ function fireBossHorizontalLaser(scene, laserY) {
 
   const laserWidth = getGameWidth(scene);
   const laserCenterX = laserWidth / 2;
-  scene.bossHorizontalLaser = scene.add.rectangle(laserCenterX, laserY, laserWidth, BOSS_HORIZONTAL_LASER_HEIGHT, 0xff263c, 0.7)
+  scene.bossHorizontalLaser = scene.add.rectangle(laserCenterX, laserY, laserWidth, BOSS_HORIZONTAL_LASER_HEIGHT, 0xff001f, 0.2)
     .setOrigin(0.5, 0.5)
     .setDepth(FX_DEPTH - 2);
-  scene.bossHorizontalLaserCore = scene.add.rectangle(laserCenterX, laserY, laserWidth, 8, 0xffedf0, 0.84)
+  scene.bossHorizontalLaserCore = scene.add.rectangle(laserCenterX, laserY, laserWidth, 5, 0xffffff, 0.96)
     .setOrigin(0.5, 0.5)
     .setDepth(FX_DEPTH - 1);
+  createBossElectricLaserEffect(scene, laserCenterX, laserY, laserWidth, true);
   playBossLaserSound(scene);
 }
 
@@ -5985,7 +7652,117 @@ function startWaveCountdown(scene, waveKind) {
   }
 
   scene.waveStartEvent = null;
+  if (
+    waveKind === 'red' &&
+    scene.activeRedWave &&
+    scene.activeRedWave.bossKind === 'scissors' &&
+    !scene.activeRedWave.hasShownEchoWarning
+  ) {
+    scene.activeRedWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_SCISSOR_SWARM_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (
+    waveKind === 'red' &&
+    scene.activeRedWave &&
+    scene.activeRedWave.bossKind === 'crystallized' &&
+    !scene.activeRedWave.hasShownEchoWarning
+  ) {
+    scene.activeRedWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_CRYSTALLIZED_WAVE_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (
+    waveKind === 'red' &&
+    scene.activeRedWave &&
+    scene.activeRedWave.bossKind === 'replicators' &&
+    !scene.activeRedWave.hasShownEchoWarning
+  ) {
+    scene.activeRedWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_REPLICATOR_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (waveKind === 'red' && scene.activeRedWave && !scene.activeRedWave.hasShownEchoWarning) {
+    scene.activeRedWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_SWARM_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (
+    waveKind === 'drones' &&
+    scene.activeDroneWave &&
+    scene.activeDroneWave.bossKind === 'girodrones' &&
+    !scene.activeDroneWave.hasShownEchoWarning
+  ) {
+    scene.activeDroneWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_GIRODRONE_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (
+    waveKind === 'drones' &&
+    scene.activeDroneWave &&
+    !scene.activeDroneWave.hasShownEchoWarning
+  ) {
+    scene.activeDroneWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_DRONE_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (
+    waveKind === 'asteroid' &&
+    scene.activeAsteroidWave &&
+    !scene.activeAsteroidWave.hasShownEchoWarning
+  ) {
+    scene.activeAsteroidWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_ASTEROID_BELT_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (
+    waveKind === 'plasma' &&
+    scene.activePlasmaWave &&
+    !scene.activePlasmaWave.hasShownEchoWarning
+  ) {
+    scene.activePlasmaWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_PLASMA_WAVE_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (
+    waveKind === 'boss' &&
+    scene.activeBossWave &&
+    scene.activeBossWave.kind === 'redNeedleBoss' &&
+    !scene.activeBossWave.hasShownEchoWarning
+  ) {
+    scene.activeBossWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_RED_NEEDLE_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (
+    waveKind === 'boss' &&
+    scene.activeBossWave &&
+    scene.activeBossWave.kind === 'boss' &&
+    !scene.activeBossWave.hasShownEchoWarning
+  ) {
+    scene.activeBossWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_SENTINEL_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
   showBossCueBand(scene, waveKind, 'warning', () => startWaveAfterCue(scene, waveKind));
+}
+
+function pauseBeforeEchoWaveWarning(scene, waveKind) {
+  if (!scene) return;
+
+  if (isBossOnlyGameMode()) {
+    scene.bossOnlyTypeRevealed = true;
+    updateHud(scene);
+  }
+  state = 'paused';
+  isDraggingShip = false;
+  scene.pendingEchoWaveWarningKind = waveKind;
+  scene.resumeSpawnDelay = null;
+  setPauseOverlayMode(scene, 'normal');
+  setXyControlActive(scene, false);
+  prepareControlPauseResume(scene);
+  showOverlayScreen(scene, null);
+  setPauseSettingsVisible(true);
 }
 
 function startWaveAfterCue(scene, waveKind) {
@@ -6001,9 +7778,7 @@ function startWaveAfterCue(scene, waveKind) {
       ? scene.activeDroneWave
       : waveKind === 'asteroid'
         ? scene.activeAsteroidWave
-        : waveKind === 'comet'
-          ? scene.activeCometWave
-          : scene.activePlasmaWave;
+        : scene.activePlasmaWave;
   if (!wave || wave.hasStarted) return;
 
   wave.hasStarted = true;
@@ -6014,8 +7789,6 @@ function startWaveAfterCue(scene, waveKind) {
     wave.isSpawningDrones = true;
   } else if (waveKind === 'asteroid') {
     wave.isSpawningAsteroids = true;
-  } else if (waveKind === 'comet') {
-    wave.isSpawningComets = true;
   } else if (waveKind === 'plasma') {
     wave.isSpawningPlasma = true;
   }
@@ -6082,10 +7855,9 @@ function showBossCueBand(scene, waveKind, cueKind, onCross) {
 }
 
 function getWaveBossName(scene, waveKind) {
-  if (waveKind === 'red' && scene.activeRedWave) return scene.activeRedWave.bossName || 'Enjambre';
+  if (waveKind === 'red' && scene.activeRedWave) return scene.activeRedWave.bossName || 'Enjambre de Obreras';
   if (waveKind === 'drones' && scene.activeDroneWave) return scene.activeDroneWave.bossName || 'Drones';
   if (waveKind === 'asteroid' && scene.activeAsteroidWave) return scene.activeAsteroidWave.bossName || 'Cinturón';
-  if (waveKind === 'comet' && scene.activeCometWave) return scene.activeCometWave.bossName || 'Lluvia de estrellas';
   if (waveKind === 'plasma' && scene.activePlasmaWave) return scene.activePlasmaWave.bossName || 'Marea de Plasma';
   if (waveKind === 'boss' && scene.activeBossWave) return scene.activeBossWave.bossName || 'Centinela';
   return 'Jefe';
@@ -6133,8 +7905,6 @@ function finishWaveSpawning(scene, wave, waveKind) {
     wave.isSpawningDrones = false;
   } else if (waveKind === 'asteroid') {
     wave.isSpawningAsteroids = false;
-  } else if (waveKind === 'comet') {
-    wave.isSpawningComets = false;
   } else if (waveKind === 'plasma') {
     wave.isSpawningPlasma = false;
     if (scene.plasmaSpawnEvent) {
@@ -6160,27 +7930,34 @@ function endWaveAfterPause(scene, waveKind) {
       ? scene.activeDroneWave
       : waveKind === 'asteroid'
         ? scene.activeAsteroidWave
-        : waveKind === 'comet'
-          ? scene.activeCometWave
-          : waveKind === 'plasma'
-            ? scene.activePlasmaWave
-            : scene.activeBossWave;
+        : waveKind === 'plasma'
+          ? scene.activePlasmaWave
+          : scene.activeBossWave;
   if (!currentWave) return;
 
   hideWaveBar(scene);
 
   if (waveKind === 'red') {
-    scene.obreraSpawnsUnlocked = true;
+    if (currentWave.bossKind === 'replicators') {
+      scene.replicatorSpawnsUnlocked = true;
+    } else if (currentWave.bossKind === 'red') {
+      scene.obreraSpawnsUnlocked = true;
+    } else if (currentWave.bossKind === 'scissors') {
+      scene.scissorSpawnsUnlocked = true;
+    } else if (currentWave.bossKind === 'crystallized') {
+      scene.crystallizedOrbSpawnsUnlocked = true;
+    }
     scene.activeRedWave = null;
   } else if (waveKind === 'drones') {
-    scene.droneSpawnsUnlocked = true;
+    if (currentWave.bossKind === 'girodrones') {
+      scene.giroDroneSpawnsUnlocked = true;
+    } else {
+      scene.droneSpawnsUnlocked = true;
+    }
     scene.activeDroneWave = null;
   } else if (waveKind === 'asteroid') {
     scene.asteroidSpawnsUnlocked = true;
     scene.activeAsteroidWave = null;
-  } else if (waveKind === 'comet') {
-    scene.cometSpawnsUnlocked = true;
-    scene.activeCometWave = null;
   } else if (waveKind === 'plasma') {
     scene.plasmaSpawnsUnlocked = true;
     scene.activePlasmaWave = null;
@@ -6444,15 +8221,33 @@ function destroyPlasmaBar(bar) {
 }
 
 function clearBossWarningParticles(scene) {
+  if (scene.bossWarningAnimationEvents) {
+    scene.bossWarningAnimationEvents.forEach((event) => {
+      if (event) event.remove(false);
+    });
+    scene.bossWarningAnimationEvents = [];
+  }
   if (!scene.bossWarningParticles) return;
   scene.bossWarningParticles.forEach((particle) => {
-    if (particle && particle.active) particle.destroy();
+    if (!particle) return;
+    scene.tweens.killTweensOf(particle);
+    if (particle.active) particle.destroy();
   });
   scene.bossWarningParticles = [];
 }
 
 function clearBossLaser(scene) {
   stopBossLaserSound(scene);
+  if (scene.bossLaserEffects) {
+    scene.bossLaserEffects.forEach((effect) => {
+      if (!effect) return;
+      if (effect.redrawEvent) effect.redrawEvent.remove(false);
+      const graphics = effect.graphics || effect;
+      scene.tweens.killTweensOf(graphics);
+      if (graphics.active) graphics.destroy();
+    });
+    scene.bossLaserEffects = [];
+  }
   if (scene.bossLaser) {
     scene.bossLaser.destroy();
     scene.bossLaser = null;
@@ -6521,12 +8316,44 @@ function updateUpgradeProgressText(scene, pointsTowardUpgrade = null) {
 }
 
 function maybeOpenUpgradeChoice(scene) {
-  if (levelProgressScore < nextUpgradeScore || state !== 'playing') return;
-  const echoStreakUpgradeDelay = getEchoStreakUpgradeDelay(scene);
-  if (echoStreakUpgradeDelay > 0) {
+  if (isBossOnlyGameMode()) return;
+  if (state !== 'playing' && state !== 'leveling') return;
+  const hasPendingLevelUpgradeChoice = Boolean(scene.pendingLevelUpgradeChoice);
+  if (!hasPendingLevelUpgradeChoice && levelProgressScore < nextUpgradeScore) return;
+
+  if (!hasPendingLevelUpgradeChoice) {
+    playLevelUpSound(scene);
+    advancePlayerLevel(scene);
+
+    while (levelProgressScore >= nextUpgradeScore && !hasAvailableUpgrades()) {
+      advancePlayerLevel(scene);
+      updateUpgradeBar(scene);
+    }
+
+    if (!hasAvailableUpgrades()) {
+      scene.levelUpgradeSequenceActive = false;
+      state = 'playing';
+      updateUpgradeBar(scene);
+      resumeFallingObjects(scene);
+      resumeTimedGameplay(scene);
+      releasePendingStreakRepairKit(scene);
+      if (!consumePendingBossWave(scene)) recoverGameplaySpawning(scene);
+      return;
+    }
+
+    if (!scene.levelUpgradeSequenceActive) {
+      scene.levelUpgradeSequenceActive = true;
+      triggerEchoLevelCelebration(scene);
+    }
+
+    scene.pendingLevelUpgradeChoice = true;
+  }
+
+  const echoLevelUpgradeDelay = getEchoLevelUpgradeDelay(scene);
+  if (echoLevelUpgradeDelay > 0) {
     scene.deferUpgradeChoiceUntil = Math.max(
       scene.deferUpgradeChoiceUntil || 0,
-      scene.time.now + echoStreakUpgradeDelay
+      scene.time.now + echoLevelUpgradeDelay
     );
   }
   if (scene.deferUpgradeChoiceUntil && scene.time.now < scene.deferUpgradeChoiceUntil) {
@@ -6534,43 +8361,31 @@ function maybeOpenUpgradeChoice(scene) {
     return;
   }
   scene.deferUpgradeChoiceUntil = 0;
+  if (scene.upgradeChoiceOpening) return;
 
-  playLevelUpSound(scene);
-  advancePlayerLevel(scene);
+  scene.upgradeChoiceOpening = true;
+  scene.upgradeChoiceOpenEvent = scene.time.delayedCall(UPGRADE_BAR_TWEEN_DURATION, () => {
+    scene.upgradeChoiceOpenEvent = null;
+    scene.upgradeChoiceOpening = false;
+    if (state !== 'playing' && state !== 'leveling') return;
 
-  while (levelProgressScore >= nextUpgradeScore && !hasAvailableUpgrades()) {
-    advancePlayerLevel(scene);
-    updateUpgradeBar(scene);
-  }
+    scene.pendingLevelUpgradeChoice = false;
+    state = 'upgrading';
+    isDraggingShip = false;
+    scene.input.setDefaultCursor('default');
+    setXyControlActive(scene, false);
+    if (isXyGameMode()) updateXyControlFromShip(scene);
 
-  if (!hasAvailableUpgrades()) {
-    updateUpgradeBar(scene);
-    resumeFallingObjects(scene);
-    resumeTimedGameplay(scene);
-    releasePendingStreakRepairKit(scene);
-    if (!consumePendingBossWave(scene)) recoverGameplaySpawning(scene);
-    return;
-  }
-
-  state = 'upgrading';
-  isDraggingShip = false;
-  scene.input.setDefaultCursor('default');
-  setXyControlActive(scene, false);
-  if (isXyGameMode()) updateXyControlFromShip(scene);
-
-  if (spawnEvent) {
-    spawnEvent.remove(false);
-    spawnEvent = null;
-  }
-
-  pauseFallingObjects(scene);
-  pauseTimedGameplay(scene);
-  scene.availableUpgradeChoices = getRandomUpgradeChoices();
-  updateUpgradeButtons(scene);
-  updateUpgradeBar(scene, true, () => {
-    if (state === 'upgrading') {
-      showOverlayScreen(scene, 'upgrade');
+    if (spawnEvent) {
+      spawnEvent.remove(false);
+      spawnEvent = null;
     }
+
+    pauseFallingObjects(scene);
+    pauseTimedGameplay(scene);
+    scene.availableUpgradeChoices = getRandomUpgradeChoices();
+    updateUpgradeButtons(scene);
+    showOverlayScreen(scene, 'upgrade');
   });
 }
 
@@ -6589,6 +8404,9 @@ function advancePlayerLevel(scene) {
   playerLevel += 1;
   if (energyRefinerLevel >= MAX_UPGRADE_LEVEL) {
     energyRefinerLevelBonus += 1;
+  }
+  if (shieldBoosterLevel >= MAX_UPGRADE_LEVEL) {
+    shieldDefeatLevelBonus += 1;
   }
   nextUpgradeScore = getLevelRequirement(playerLevel);
   queuePendingBossWave(scene, getBossConfigForLevel(completedLevel));
@@ -6636,6 +8454,7 @@ function getUpgradeConfig(upgradeKind) {
         level === 1 ? 'Desbloquea la barrera protectora.' : '',
         'Protege del daño y destruye algunos enemigos durante ' + formatSeconds(getTimedBoosterDuration()) + ' segundos.',
         'Tasa de aparición ' + getBoosterChancePercent(level) + '%.',
+        level >= MAX_UPGRADE_LEVEL ? 'Por cada nivel que superes, los enemigos derrotados proporcionan +1 punto.' : '',
       ]),
       color: '#4da3ff',
     };
@@ -6757,6 +8576,14 @@ function chooseUpgrade(scene, upgradeKind) {
   showOverlayScreen(scene, null);
   scene.availableUpgradeChoices = null;
 
+  if (levelProgressScore >= nextUpgradeScore) {
+    state = 'leveling';
+    maybeOpenUpgradeChoice(scene);
+    return;
+  }
+
+  scene.levelUpgradeSequenceActive = false;
+
   if (hasPendingBossWave(scene)) {
     state = 'paused';
     scene.resumeSpawnDelay = null;
@@ -6765,12 +8592,6 @@ function chooseUpgrade(scene, upgradeKind) {
     prepareControlPauseResume(scene);
     showOverlayScreen(scene, null);
     setPauseSettingsVisible(true);
-    return;
-  }
-
-  if (levelProgressScore >= nextUpgradeScore) {
-    state = 'playing';
-    maybeOpenUpgradeChoice(scene);
     return;
   }
 
@@ -6797,6 +8618,7 @@ function getUpgradeLevel(upgradeKind) {
 
 function consumePendingBossWave(scene) {
   if (!scene || !hasPendingBossWave(scene) || state !== 'playing') return false;
+  if (scene.pendingLevelUpgradeChoice) return false;
   if (
     getActiveTimedBooster(scene) ||
     getActiveWaveCountdown(scene) ||
@@ -6829,7 +8651,14 @@ function releasePendingStreakRepairKit(scene) {
 function clearPendingStreakReward(scene) {
   if (!scene) return;
   scene.deferUpgradeChoiceUntil = 0;
+  scene.pendingLevelUpgradeChoice = false;
+  scene.levelUpgradeSequenceActive = false;
+  scene.upgradeChoiceOpening = false;
   scene.pendingStreakRepairKit = false;
+  if (scene.upgradeChoiceOpenEvent) {
+    scene.upgradeChoiceOpenEvent.remove(false);
+    scene.upgradeChoiceOpenEvent = null;
+  }
   if (scene.deferredUpgradeChoiceEvent) {
     scene.deferredUpgradeChoiceEvent.remove(false);
     scene.deferredUpgradeChoiceEvent = null;
@@ -6881,7 +8710,7 @@ function updateUpgradeStatusIcons(scene) {
 
     upgradePair.forEach((upgradeKind) => {
       const config = getUpgradeConfig(upgradeKind);
-      addUpgradeStatusIcon(scene, getUpgradeLevel(upgradeKind), config.color, config.label, {
+      addUpgradeStatusIcon(scene, upgradeKind, getUpgradeLevel(upgradeKind), config.color, config.label, {
         locked: isUpgradeLockedForHud(upgradeKind),
         lockLabel: getUpgradeLockLabel(upgradeKind),
         lockColor: getUpgradeLockColor(upgradeKind),
@@ -6915,7 +8744,7 @@ function getUpgradeLockColor(upgradeKind) {
   return 'rgba(255, 216, 77, 0.31)';
 }
 
-function addUpgradeStatusIcon(scene, level, color, label, options = {}) {
+function addUpgradeStatusIcon(scene, upgradeKind, level, color, label, options = {}) {
   const currentHud = initHud();
   if (!currentHud.upgrades) return;
   const parent = options.parent || currentHud.upgrades;
@@ -6930,8 +8759,61 @@ function addUpgradeStatusIcon(scene, level, color, label, options = {}) {
   const isMaxed = level > 0 && level >= (options.maxLevel || MAX_UPGRADE_LEVEL);
   const statusLabel = isMaxed ? 'nivel máximo' : (level > 0 ? 'nivel ' + level : 'sin desbloquear');
   chip.setAttribute('aria-label', label + ': ' + (isLocked ? options.lockLabel : statusLabel));
+  chip.setAttribute('role', 'button');
+  chip.setAttribute('tabindex', currentHud.root && currentHud.root.classList.contains('is-paused-upgrades-readable') ? '0' : '-1');
+  chip.dataset.upgradeKind = upgradeKind;
   chip.textContent = isMaxed ? 'MAX' : (level > 0 ? 'Nv.' + level : '');
+  ['pointerdown', 'pointerup', 'touchstart', 'touchend'].forEach((eventName) => {
+    chip.addEventListener(eventName, (event) => {
+      if (state !== 'paused') return;
+      event.stopPropagation();
+    }, { passive: true });
+  });
+  chip.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (state !== 'paused') return;
+    playButtonSound(scene);
+    showPausedUpgradeDetails(scene, upgradeKind);
+  });
+  chip.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (state !== 'paused') return;
+    playButtonSound(scene);
+    showPausedUpgradeDetails(scene, upgradeKind);
+  });
   parent.appendChild(chip);
+}
+
+function getPausedUpgradeDescription(upgradeKind, config = getUpgradeConfig(upgradeKind)) {
+  const level = getUpgradeLevel(upgradeKind);
+  const maxLevel = getUpgradeMaxLevel(upgradeKind);
+  const isLocked = isUpgradeLockedForHud(upgradeKind);
+  const nextLevel = Math.min(maxLevel, level + 1);
+  const lines = [];
+
+  if (isLocked) {
+    lines.push('Bloqueada: ' + getUpgradeLockLabel(upgradeKind) + '.');
+    lines.push('Cuando se desbloquee: ' + config.getDescription(1));
+    return getUpgradeDescriptionLines(lines);
+  }
+
+  if (level <= 0) {
+    lines.push('Sin desbloquear.');
+    lines.push('Próxima mejora: ' + config.getDescription(1));
+    return getUpgradeDescriptionLines(lines);
+  }
+
+  lines.push('Nivel actual ' + level + '/' + maxLevel + '.');
+  lines.push(config.getDescription(level));
+  if (level >= maxLevel) {
+    lines.push('Mejora al nivel máximo.');
+  } else {
+    lines.push('Siguiente nivel: ' + config.getDescription(nextLevel));
+  }
+  return getUpgradeDescriptionLines(lines);
 }
 
 function isEnergyPurifierActive() {
@@ -6963,8 +8845,7 @@ function setUpgradeButtonState(button, config, level) {
 function pauseFallingObjects(scene) {
   scene.balls.getChildren().forEach((ball) => {
     if (!ball.active) return;
-    const kind = ball.getData('kind');
-    if (isAsteroidKind(kind) && ball.getData('pausedAngularVelocity') === undefined) {
+    if (ball.getData('pausedAngularVelocity') === undefined) {
       ball.setData('pausedAngularVelocity', ball.body.angularVelocity || 0);
       ball.setAngularVelocity(0);
     }
@@ -6977,12 +8858,10 @@ function resumeFallingObjects(scene) {
   scene.balls.getChildren().forEach((ball) => {
     if (!ball.active) return;
     const kind = ball.getData('kind');
-    if (isAsteroidKind(kind)) {
-      const pausedAngularVelocity = ball.getData('pausedAngularVelocity');
-      if (pausedAngularVelocity !== undefined) {
-        ball.setAngularVelocity(pausedAngularVelocity);
-        ball.setData('pausedAngularVelocity', undefined);
-      }
+    const pausedAngularVelocity = ball.getData('pausedAngularVelocity');
+    if (pausedAngularVelocity !== undefined) {
+      ball.setAngularVelocity(pausedAngularVelocity);
+      ball.setData('pausedAngularVelocity', undefined);
     }
     ball.body.setVelocityX(getHorizontalVelocity(kind, scene, ball));
     ball.body.setVelocityY(getFallingVelocity(kind, scene, ball));
@@ -7018,9 +8897,14 @@ function isPreciseShipOverlap(scene, objectA, objectB) {
     if (spikeState === 'disabled' && !isShieldActive(scene)) return false;
     if (spikeState !== 'expanded' && !isSpikeDroneGreenState(spikeState) && !isShieldActive(scene)) return false;
   }
+  if (object.getData('kind') === 'giroDrone') return isGiroDroneOverlappingShip(scene, object);
   if (object.getData('kind') === 'redNeedle') return isRedNeedleOverlappingShip(scene, object);
   if (object.getData('kind') === 'redNeedleLaser') return isRedNeedleLaserOverlappingShip(scene, object);
   if (object.getData('kind') === 'damageBooster') return isDamageBoosterOverlappingShip(scene, object);
+  if (isScissorKind(object.getData('kind'))) return isScissorOverlappingShip(scene, object);
+  if (object.getData('kind') === 'replicator') {
+    return isRectOverlappingShip(scene, object.x, object.y, REPLICATOR_HITBOX_WIDTH, REPLICATOR_HITBOX_HEIGHT);
+  }
 
   if (isShieldActive(scene) && isShieldBlockedKind(object.getData('kind'))) {
     return getDistanceToShieldCenter(scene, object) <= SHIELD_BUBBLE_RADIUS + getObjectCollisionRadius(object);
@@ -7045,6 +8929,49 @@ function isRedNeedleOverlappingShip(scene, needle, scale = needle.scaleX || 1) {
 
 function isDamageBoosterOverlappingShip(scene, enemy) {
   return isRectOverlappingShip(scene, enemy.x, enemy.y, RED_ENEMY_HITBOX_WIDTH, RED_ENEMY_HITBOX_HEIGHT);
+}
+
+function isScissorOverlappingShip(scene, enemy) {
+  return isRectOverlappingShip(
+    scene,
+    enemy.x,
+    enemy.y,
+    isScissorHalfKind(enemy.getData('kind')) ? SCISSOR_HALF_HITBOX_WIDTH : SCISSOR_HITBOX_WIDTH,
+    isScissorHalfKind(enemy.getData('kind')) ? SCISSOR_HALF_HITBOX_HEIGHT : SCISSOR_HITBOX_HEIGHT
+  );
+}
+
+function isGiroDroneOverlappingShip(scene, giroDrone) {
+  if (giroDrone.getData('spikeState') === 'disabled') return false;
+  const giroState = giroDrone.getData('spikeState');
+  if (
+    isGiroDroneCoreOverlappingShip(scene, giroDrone) &&
+    (isGiroDroneGreenState(giroState) || isGiroDroneOrangeState(giroState))
+  ) {
+    return true;
+  }
+  if (giroState === 'expanded' && isGiroDroneDamageHaloOverlappingShip(scene, giroDrone)) return true;
+
+  const satellite = giroDrone.getData('orbitSatellite');
+  if (!satellite || satellite.active === false) return false;
+  return isGiroDroneDamageHaloOverlappingShip(scene, satellite);
+}
+
+function isGiroDroneDamageHaloOverlappingShip(scene, object) {
+  if (isShieldActive(scene)) {
+    const distance = Phaser.Math.Distance.Between(scene.ship.x, scene.ship.y, object.x, object.y);
+    return distance <= SHIELD_BUBBLE_RADIUS + GIRODRONE_DAMAGE_HALO_RADIUS;
+  }
+
+  return getDistanceToShipHitbox(scene, object) <= GIRODRONE_DAMAGE_HALO_RADIUS;
+}
+
+function isGiroDroneCoreOverlappingShip(scene, giroDrone) {
+  if (isShieldActive(scene)) {
+    return getDistanceToShieldCenter(scene, giroDrone) <= SHIELD_BUBBLE_RADIUS + GIRODRONE_CORE_RADIUS;
+  }
+
+  return getDistanceToShipHitbox(scene, giroDrone) <= GIRODRONE_CORE_RADIUS;
 }
 
 function isRectOverlappingShip(scene, x, y, width, height) {
@@ -7094,12 +9021,15 @@ function getObjectCollisionRadius(object) {
   const kind = object.getData('kind');
   if (kind === 'redNeedle') return RED_NEEDLE_WIDTH / 2;
   if (kind === 'redNeedleLaser') return RED_NEEDLE_LASER_WIDTH / 2;
-  if (kind === 'cometTrail') return 0;
-  if (kind === 'comet') return 10;
   if (kind === 'damageBooster') return RED_ENEMY_SHIELD_RADIUS;
+  if (kind === 'scissor') return SCISSOR_HITBOX_HEIGHT / 2;
+  if (isScissorHalfKind(kind)) return SCISSOR_HALF_HITBOX_HEIGHT / 2;
+  if (kind === 'replicator') return REPLICATOR_HITBOX_WIDTH / 2;
   if (kind === 'spikeDrone') return object.getData('collisionRadius') || SPIKE_DRONE_FOLDED_RADIUS;
+  if (kind === 'giroDrone') return GIRODRONE_ORBIT_RADIUS + GIRODRONE_SATELLITE_RADIUS;
   if (kind === 'bigAsteroid') return 34;
   if (kind === 'asteroid') return 18;
+  if (kind === 'crystallizedOrb') return CRYSTALLIZED_ORB_RADIUS;
   if (isEnergyOrbSpeedKind(kind)) return 16;
   return 15;
 }
@@ -7143,28 +9073,37 @@ function getPointToSegmentDistance(x, y, pointA, pointB) {
 // --- Logica de bolas ---
 
 function spawnBall(scene) {
-  if (isBlockingBossWave(scene) || hasPendingBossWave(scene)) return;
+  if (
+    isBlockingBossWave(scene) ||
+    (hasPendingBossWave(scene) && !getActiveTimedBooster(scene))
+  ) return;
 
   if (shouldStartTravelSentinel(scene)) {
     activateTravelSentinel(scene);
     return;
   }
 
-  const kind = getNextSpawnKind(scene);
-  if (!kind) return;
-  if (kind === 'plasmaBar') {
-    spawnPlasmaBar(scene);
-    return;
-  }
-  if (kind === 'redNeedle') {
-    spawnRedNeedle(scene);
-    return;
-  }
-  if (kind === 'comet') {
-    spawnComet(scene);
-    return;
-  }
-  spawnFallingKind(scene, kind);
+  const kinds = getNextSpawnKinds(scene);
+  if (!kinds.length) return;
+
+  const spawnedObjects = [];
+  kinds.forEach((kind) => {
+    if (!kind) return;
+    if (kind === 'plasmaBar') {
+      spawnPlasmaBar(scene);
+      return;
+    }
+    if (kind === 'redNeedle') {
+      spawnRedNeedle(scene);
+      return;
+    }
+
+    const forcedX = spawnedObjects.length > 0 && isEnergyOrbSpeedKind(kind)
+      ? findSpawnXAwayFrom(scene, spawnedObjects, PAIRED_SPAWN_MIN_SPACING)
+      : null;
+    const object = spawnFallingKind(scene, kind, forcedX);
+    if (object) spawnedObjects.push(object);
+  });
 }
 
 function spawnForcedFallingKind(scene, kind, x = null) {
@@ -7177,13 +9116,23 @@ function spawnFallingKind(scene, kind, forcedX = null) {
   const isBooster = isBoosterKind(kind);
   const x = forcedX !== null ? forcedX : isAsteroidKind(kind)
     ? findAsteroidSpawnX(scene)
-    : kind === 'damageBooster'
+    : kind === 'damageBooster' || kind === 'scissor'
     ? findRedWaveEnemySpawnX(scene)
+    : kind === 'replicator' && scene.activeRedWave && scene.activeRedWave.bossKind === 'replicators'
+      ? findReplicatorWaveSpawnX(scene)
+    : kind === 'giroDrone'
+      ? findGiroDroneSpawnX(scene)
     : isBooster
       ? findBoosterSpawnX(scene)
       : findSpawnX(scene);
   const texture = getTextureForKind(kind);
-  const spawnY = kind === 'bigAsteroid' ? -54 : -20;
+  const spawnY = kind === 'bigAsteroid'
+    ? -54
+    : kind === 'replicator'
+      ? -SHIP_HEIGHT
+      : kind === 'scissor'
+        ? -SCISSOR_TEXTURE_HEIGHT / 2
+        : -20;
 
   // Crear desde el grupo para evitar conflictos
   const ball = scene.balls.create(x, spawnY, texture);
@@ -7203,12 +9152,23 @@ function spawnFallingKind(scene, kind, forcedX = null) {
     attachEnergyOrbOverlay(scene, ball, getEnergyOrbWispPalette(kind));
   } else if (kind === 'contaminatedOrb') {
     attachEnergyOrbOverlay(scene, ball, getEnergyOrbWispPalette(kind));
+  } else if (kind === 'crystallizedOrb') {
+    setBallEnergyColorData(ball, 'gold');
+    attachEnergyOrbOverlay(scene, ball, getEnergyOrbWispPalette(kind, getEnergyOrbColor(ball)));
   } else if (isAsteroidKind(kind)) {
     ball.setAngularVelocity(Phaser.Math.Between(-110, 110));
-  } else if (kind === 'damageBooster') {
+  } else if (kind === 'damageBooster' || kind === 'scissor') {
     setupRedEnemySway(ball);
+    if (kind === 'scissor') {
+      ball.setData('displayName', 'Escisora');
+      ball.setData('splitY', getGameHeight(scene) * SCISSOR_SPLIT_Y_RATIO);
+    }
+  } else if (kind === 'replicator') {
+    setupReplicator(scene, ball);
   } else if (kind === 'spikeDrone') {
     setupSpikeDrone(scene, ball);
+  } else if (kind === 'giroDrone') {
+    setupGiroDrone(scene, ball);
   }
 
   return ball;
@@ -7289,192 +9249,95 @@ function spawnRedNeedleLaser(scene, x, y) {
   playRedNeedleShotSound(scene);
 }
 
-function spawnComet(scene) {
-  const startX = getCometSpawnX(scene);
-  const targetX = scene.activeCometWave && scene.ship ? scene.ship.x : getGameWidth(scene) / 2;
-  const direction = Math.abs(startX - targetX) < 28
-    ? (Math.random() < 0.5 ? 1 : -1)
-    : (startX < targetX ? 1 : -1);
-  const comet = scene.balls.create(startX, getCometSpawnY(scene), 'comet');
-  comet.setData('kind', 'comet');
-  comet.setData('horizontalVelocity', getCometHorizontalVelocity(scene, direction));
-  comet.setData('fallVelocity', getCometFallingVelocity(scene));
-  comet.setData('trailPoints', []);
-  comet.setOrigin(0.5);
-  comet.setDepth(FALLING_OBJECT_DEPTH + 1);
-  comet.setScale(0.82);
-  comet.setAngle(direction > 0 ? 50 : -50);
-  setFallingObjectBody(comet, 'comet');
-  comet.body.setAllowGravity(false);
-  comet.body.setCollideWorldBounds(false);
-  comet.body.setVelocityX(comet.getData('horizontalVelocity'));
-  comet.body.setVelocityY(comet.getData('fallVelocity'));
+function updateScissors(scene) {
+  if (!scene.balls) return;
 
-}
+  scene.balls.getChildren().forEach((scissor) => {
+    if (!scissor.active || !scissor.body) return;
+    const kind = scissor.getData('kind');
 
-function getCometSpawnX(scene) {
-  const width = getGameWidth(scene);
-  const safeMin = 28;
-  const safeMax = width - 28;
-  if (!scene.activeCometWave) return Phaser.Math.Between(safeMin, safeMax);
+    if (kind === 'scissor') {
+      scissor.body.setVelocityY(getFallingVelocity('scissor', scene, scissor));
+      if (scissor.y >= (scissor.getData('splitY') || getGameHeight(scene) * SCISSOR_SPLIT_Y_RATIO)) {
+        splitScissor(scene, scissor);
+      }
+      return;
+    }
 
-  scene.activeCometWave.spawnCount = (scene.activeCometWave.spawnCount || 0) + 1;
-  const pressureX = getCometPressureSpawnX(scene, scene.activeCometWave.spawnCount, safeMin, safeMax);
-  if (pressureX !== null) {
-    scene.activeCometWave.lastSpawnX = pressureX;
-    return pressureX;
-  }
+    if (!isScissorHalfKind(kind)) return;
+    const horizontalVelocity = scissor.getData('horizontalVelocity') || (kind === 'scissorLeft' ? -SCISSOR_HALF_HORIZONTAL_SPEED : SCISSOR_HALF_HORIZONTAL_SPEED);
+    scissor.body.setVelocityX(horizontalVelocity);
+    scissor.body.setVelocityY(getFallingVelocity(kind, scene, scissor));
+    scissor.setRotation(0);
 
-  const lastX = scene.activeCometWave.lastSpawnX;
-  const recentComets = scene.balls
-    ? scene.balls.getChildren().filter((ball) => (
-      ball.active &&
-      ball.getData('kind') === 'comet' &&
-      ball.y < 230
-    ))
-    : [];
-  const candidates = [];
-  for (let i = 0; i < 16; i += 1) {
-    const x = Phaser.Math.Between(safeMin, safeMax);
-    const hasRoomFromLast = lastX === undefined || Math.abs(x - lastX) >= COMET_WAVE_MIN_SPAWN_SPACING;
-    const hasRoomFromRecent = recentComets.every((comet) => Math.abs(comet.x - x) >= COMET_WAVE_MIN_SPAWN_SPACING);
-    if (hasRoomFromLast && hasRoomFromRecent) candidates.push(x);
-  }
-  if (candidates.length) {
-    const x = Phaser.Utils.Array.GetRandom(candidates);
-    scene.activeCometWave.lastSpawnX = x;
-    return x;
-  }
-
-  const fallbackCandidates = [];
-  for (let i = 0; i < 8; i += 1) {
-    fallbackCandidates.push(Phaser.Math.Linear(safeMin, safeMax, i / 7));
-  }
-  fallbackCandidates.sort((a, b) => (
-    getClosestEnemyDistance(b, recentComets) - getClosestEnemyDistance(a, recentComets)
-  ));
-  const fallbackX = Phaser.Math.Clamp(fallbackCandidates[0] || width / 2, safeMin, safeMax);
-  scene.activeCometWave.lastSpawnX = fallbackX;
-  return fallbackX;
-}
-
-function getCometPressureSpawnX(scene, spawnCount, safeMin, safeMax) {
-  if (spawnCount % 3 !== 0 || !scene.ship) return null;
-
-  const offset = (spawnCount % 2 === 0 ? -1 : 1) * Phaser.Math.Between(42, 72);
-  const x = Phaser.Math.Clamp(scene.ship.x + offset, safeMin, safeMax);
-  const recentComets = scene.balls
-    ? scene.balls.getChildren().filter((ball) => (
-      ball.active &&
-      ball.getData('kind') === 'comet' &&
-      ball.y < 180
-    ))
-    : [];
-  const hasRoom = recentComets.every((comet) => Math.abs(comet.x - x) >= SHIP_WIDTH + 12);
-  return hasRoom ? x : null;
-}
-
-function getCometSpawnY(scene) {
-  return scene.activeCometWave
-    ? Phaser.Math.Between(-96, -28)
-    : Phaser.Math.Between(-76, -24);
-}
-
-function getCometFallingVelocity(scene) {
-  const ratio = scene.activeCometWave ? COMET_WAVE_GRAVITY_RATIO : COMET_GRAVITY_RATIO;
-  return Math.round(BASE_GRAVITY * ratio);
-}
-
-function getCometHorizontalVelocity(scene, direction) {
-  const ratio = scene.activeCometWave ? COMET_WAVE_HORIZONTAL_SPEED_RATIO : COMET_HORIZONTAL_SPEED_RATIO;
-  return Math.round(BASE_GRAVITY * ratio) * direction;
-}
-
-function updateComets(scene) {
-  scene.balls.getChildren().forEach((comet) => {
-    if (!comet.active || comet.getData('kind') !== 'comet') return;
-    if (!comet.body) return;
-
-    comet.body.setVelocityX(comet.getData('horizontalVelocity') || getCometHorizontalVelocity(scene, 1));
-    comet.body.setVelocityY(comet.getData('fallVelocity') || getCometFallingVelocity(scene));
-    keepCometInsideHorizontalBounds(scene, comet);
-    updateCometTrailPoint(scene, comet);
-  });
-}
-
-function keepCometInsideHorizontalBounds(scene, comet) {
-  const margin = 16;
-  const width = getGameWidth(scene);
-  let horizontalVelocity = comet.getData('horizontalVelocity') || 0;
-
-  if (comet.x <= margin && horizontalVelocity < 0) {
-    comet.x = margin;
-    horizontalVelocity = Math.abs(horizontalVelocity);
-  } else if (comet.x >= width - margin && horizontalVelocity > 0) {
-    comet.x = width - margin;
-    horizontalVelocity = -Math.abs(horizontalVelocity);
-  } else {
-    return;
-  }
-
-  comet.setData('horizontalVelocity', horizontalVelocity);
-  comet.body.setVelocityX(horizontalVelocity);
-  comet.setAngle(horizontalVelocity > 0 ? 50 : -50);
-}
-
-function updateCometTrailPoint(scene, comet) {
-  const now = scene.time ? scene.time.now : 0;
-  const points = comet.getData('trailPoints') || [];
-  const previousPoint = points[points.length - 1];
-  const point = { x: comet.x, y: comet.y, createdAt: now };
-
-  if (!previousPoint || Phaser.Math.Distance.Between(previousPoint.x, previousPoint.y, point.x, point.y) >= COMET_TRAIL_MIN_POINT_DISTANCE) {
-    points.push(point);
-  }
-
-  comet.setData('trailPoints', points
-    .filter((trailPoint) => now - trailPoint.createdAt <= COMET_TRAIL_LIFETIME)
-    .slice(-COMET_TRAIL_MAX_POINTS));
-}
-
-function updateCometTrails(scene) {
-  drawCometTrails(scene);
-}
-
-function drawCometTrails(scene) {
-  const graphics = scene.cometTrailGraphics;
-  if (!graphics || !scene.balls) return;
-
-  const now = scene.time ? scene.time.now : 0;
-  graphics.clear();
-  graphics.setBlendMode(Phaser.BlendModes.ADD);
-
-  scene.balls.getChildren().forEach((comet) => {
-    if (!comet.active || comet.getData('kind') !== 'comet') return;
-    const points = smoothShipTrailPoints(comet.getData('trailPoints') || []);
-    if (points.length < 2) return;
-
-    for (let i = 1; i < points.length; i += 1) {
-      const previousPoint = points[i - 1];
-      const currentPoint = points[i];
-      const age = now - currentPoint.createdAt;
-      const freshness = Phaser.Math.Clamp(1 - age / COMET_TRAIL_LIFETIME, 0, 1);
-      const positionRatio = i / (points.length - 1);
-      const taper = Math.pow(Math.min(freshness, positionRatio), 1.08);
-      const width = Math.max(0.8, COMET_TRAIL_WIDTH * taper);
-      const alpha = 0.06 + 0.38 * taper;
-      const haloColor = mixRgbColor(0x4da3ff, 0xff4a36, positionRatio);
-      const bodyColor = mixRgbColor(0x83fff1, 0xff6a32, positionRatio);
-      const coreColor = mixRgbColor(0xd9ffff, 0xfff1ce, positionRatio);
-
-      graphics.lineStyle(width * 1.35, haloColor, alpha * 0.22);
-      graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
-      graphics.lineStyle(width, bodyColor, alpha);
-      graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
-      graphics.lineStyle(Math.max(0.7, width * 0.24), coreColor, alpha * 0.7);
-      graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
+    const margin = SCISSOR_HALF_TEXTURE_WIDTH;
+    if (
+      scissor.x < -margin ||
+      scissor.x > getGameWidth(scene) + margin ||
+      scissor.y > getGameHeight(scene) + SCISSOR_TEXTURE_HEIGHT
+    ) {
+      scissor.destroy();
     }
   });
+}
+
+function splitScissor(scene, scissor) {
+  if (!scissor || !scissor.active || scissor.getData('hasSplit')) return;
+
+  const x = scissor.x;
+  const y = scissor.y;
+  const velocityY = getFallingVelocity('scissor', scene, scissor);
+  scissor.setData('hasSplit', true);
+  createScissorHalf(scene, 'scissorLeft', x - SCISSOR_HALF_TEXTURE_WIDTH / 2, y, -SCISSOR_HALF_HORIZONTAL_SPEED, velocityY);
+  createScissorHalf(scene, 'scissorRight', x + SCISSOR_HALF_TEXTURE_WIDTH / 2, y, SCISSOR_HALF_HORIZONTAL_SPEED, velocityY);
+  emitScissorSplitBurst(scene, x, y);
+  scissor.destroy();
+}
+
+function createScissorHalf(scene, kind, x, y, velocityX, velocityY) {
+  const half = scene.balls.create(x, y, getTextureForKind(kind));
+  half.setData('kind', kind);
+  half.setData('displayName', 'Escisora');
+  half.setData('horizontalVelocity', velocityX);
+  half.setData('fallVelocity', velocityY);
+  half.setOrigin(0.5);
+  half.setDepth(FALLING_OBJECT_DEPTH);
+  half.setRotation(0);
+  setFallingObjectBody(half, kind);
+  half.body.setBounce(0, 0);
+  half.body.setAllowGravity(false);
+  half.body.setCollideWorldBounds(false);
+  half.body.setVelocityX(velocityX);
+  half.body.setVelocityY(velocityY);
+  return half;
+}
+
+function emitScissorSplitBurst(scene, x, y) {
+  for (let i = 0; i < 18; i += 1) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const particle = trackGameplayVisual(scene, scene.add.image(
+      x + Phaser.Math.Between(-3, 3),
+      y + Phaser.Math.Between(-20, 20),
+      'goldTrailParticle'
+    ));
+    particle
+      .setDepth(FX_DEPTH)
+      .setTint(i % 4 === 0 ? 0xffd7df : i % 3 === 0 ? 0xff8a9a : 0xff263c)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(Phaser.Math.FloatBetween(0.35, 0.75))
+      .setAlpha(0.92);
+
+    scene.tweens.add({
+      targets: particle,
+      x: particle.x + side * Phaser.Math.Between(12, 42),
+      y: particle.y + Phaser.Math.Between(-18, 18),
+      scale: 0.08,
+      alpha: 0,
+      duration: Phaser.Math.Between(120, 260),
+      ease: 'Sine.easeOut',
+      onComplete: () => particle.destroy(),
+    });
+  }
 }
 
 function setupRedEnemySway(enemy) {
@@ -7483,11 +9346,280 @@ function setupRedEnemySway(enemy) {
   enemy.setData('swayVelocity', Phaser.Math.FloatBetween(RED_ENEMY_SWAY_MAX_VELOCITY * 0.65, RED_ENEMY_SWAY_MAX_VELOCITY));
 }
 
+function setupReplicator(scene, replicator) {
+  const isReplicatorWave = Boolean(scene.activeRedWave && scene.activeRedWave.bossKind === 'replicators');
+  const previousReplicator = isReplicatorWave
+    ? getLastActiveReplicator(scene, replicator)
+    : null;
+  replicator
+    .setScale(REPLICATOR_SCALE)
+    .setFlipY(true)
+    .setAlpha(0.9)
+    .setTint(0xdffcff);
+  replicator.setData('displayName', 'Replicador');
+  replicator.setData(
+    'followDelay',
+    isReplicatorWave
+      ? REPLICATOR_CHAIN_FOLLOW_DELAY
+      : Phaser.Math.Between(REPLICATOR_FOLLOW_DELAY_MIN, REPLICATOR_FOLLOW_DELAY_MAX)
+  );
+  replicator.setData('nextGlitchAt', 0);
+  replicator.setData('followTarget', previousReplicator);
+  replicator.setData('lastFollowTargetX', previousReplicator ? previousReplicator.x : scene.ship.x);
+  replicator.setData('movementHistory', []);
+
+  const chromaticGhosts = [
+    scene.add.image(replicator.x, replicator.y, 'ship')
+      .setOrigin(0.5)
+      .setScale(REPLICATOR_SCALE)
+      .setFlipY(true)
+      .setTint(0xff00b8)
+      .setAlpha(0.3)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(FALLING_OBJECT_DEPTH - 1),
+    scene.add.image(replicator.x, replicator.y, 'ship')
+      .setOrigin(0.5)
+      .setScale(REPLICATOR_SCALE)
+      .setFlipY(true)
+      .setTint(0x00f5ff)
+      .setAlpha(0.3)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(FALLING_OBJECT_DEPTH - 1),
+  ];
+
+  const sliceColors = [0xff00b8, 0x00f5ff, 0x78ff00];
+  const glitchSlices = Array.from({ length: REPLICATOR_GLITCH_SLICE_COUNT }, (_, index) => {
+    const sliceHeight = Phaser.Math.Between(3, 8);
+    const sliceY = Phaser.Math.Between(0, SHIP_TEXTURE_HEIGHT - sliceHeight);
+    return scene.add.image(replicator.x, replicator.y, 'ship')
+      .setOrigin(0.5)
+      .setScale(REPLICATOR_SCALE)
+      .setFlipY(true)
+      .setCrop(0, sliceY, SHIP_TEXTURE_WIDTH, sliceHeight)
+      .setTint(sliceColors[index % sliceColors.length])
+      .setAlpha(0)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(FALLING_OBJECT_DEPTH + 1);
+  });
+
+  const glitchPixels = Array.from({ length: REPLICATOR_GLITCH_PIXEL_COUNT }, (_, index) => (
+    scene.add.rectangle(replicator.x, replicator.y, 4, 2, sliceColors[index % sliceColors.length], 0)
+      .setOrigin(0.5)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(FALLING_OBJECT_DEPTH + 1)
+  ));
+
+  const glitchParts = [...chromaticGhosts, ...glitchSlices, ...glitchPixels];
+  const trail = scene.add.graphics()
+    .setDepth(FALLING_OBJECT_DEPTH - 2)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  replicator.setData('chromaticGhosts', chromaticGhosts);
+  replicator.setData('glitchSlices', glitchSlices);
+  replicator.setData('glitchPixels', glitchPixels);
+  replicator.setData('trail', trail);
+  replicator.setData('trailPoints', []);
+  replicator.once('destroy', () => {
+    glitchParts.forEach((part) => part.destroy());
+    trail.destroy();
+  });
+}
+
+function findReplicatorWaveSpawnX(scene) {
+  const previousReplicator = getLastActiveReplicator(scene);
+  return previousReplicator ? previousReplicator.x : findSpawnX(scene);
+}
+
+function getLastActiveReplicator(scene, excludedReplicator = null) {
+  const replicators = scene.balls.getChildren().filter((object) => (
+    object !== excludedReplicator &&
+    object.active &&
+    object.getData('kind') === 'replicator'
+  ));
+  return replicators[replicators.length - 1] || null;
+}
+
+function updateReplicators(scene, time, delta) {
+  if (!scene.ship || !scene.balls) return;
+  if (!scene.replicatorShipHistory) scene.replicatorShipHistory = [];
+  scene.replicatorShipHistory.push({ time, x: scene.ship.x });
+  scene.replicatorShipHistory = scene.replicatorShipHistory.filter((sample) => time - sample.time <= REPLICATOR_FOLLOW_DELAY_MAX + 100);
+
+  const replicators = scene.balls.getChildren().filter((object) => (
+    object.active &&
+    object.getData('kind') === 'replicator' &&
+    object.body
+  ));
+  replicators.forEach((replicator) => {
+    const history = replicator.getData('movementHistory') || [];
+    history.push({ time, x: replicator.x });
+    replicator.setData(
+      'movementHistory',
+      history.filter((sample) => time - sample.time <= REPLICATOR_FOLLOW_DELAY_MAX + 100)
+    );
+  });
+
+  replicators.forEach((replicator) => {
+    const delay = replicator.getData('followDelay') || REPLICATOR_FOLLOW_DELAY_MIN;
+    const targetTime = time - delay;
+    const followTarget = replicator.getData('followTarget');
+    const isFollowingReplicator = Boolean(followTarget);
+    const sourceHistory = isFollowingReplicator && followTarget.active
+      ? followTarget.getData('movementHistory') || []
+      : scene.replicatorShipHistory;
+    const sampledX = getReplicatorHistoryX(sourceHistory, targetTime);
+    const targetX = Number.isFinite(sampledX) ? sampledX : scene.ship.x;
+    if (Number.isFinite(targetX)) replicator.setData('lastFollowTargetX', targetX);
+    const distanceX = targetX - replicator.x;
+    const maxVelocity = Math.min(REPLICATOR_FOLLOW_SPEED, Math.abs(distanceX) * 4.2);
+    replicator.body.setVelocityX(Math.sign(distanceX) * maxVelocity);
+    replicator.body.setVelocityY(getFallingVelocity('replicator', scene, replicator));
+
+    if (time >= (replicator.getData('nextGlitchAt') || 0)) {
+      replicator.setData('nextGlitchAt', time + Phaser.Math.Between(REPLICATOR_GLITCH_INTERVAL, REPLICATOR_GLITCH_INTERVAL + 55));
+      refreshReplicatorGlitch(replicator);
+    }
+
+    positionReplicatorGlitch(replicator);
+    updateReplicatorTrail(scene, replicator, time, delta);
+  });
+}
+
+function getReplicatorHistoryX(history, targetTime) {
+  if (!history.length) return null;
+  if (targetTime <= history[0].time) return history[0].x;
+
+  for (let index = 1; index < history.length; index += 1) {
+    const currentSample = history[index];
+    if (currentSample.time < targetTime) continue;
+    const previousSample = history[index - 1];
+    const duration = Math.max(1, currentSample.time - previousSample.time);
+    const progress = Phaser.Math.Clamp((targetTime - previousSample.time) / duration, 0, 1);
+    return Phaser.Math.Linear(previousSample.x, currentSample.x, progress);
+  }
+
+  return history[history.length - 1].x;
+}
+
+function updateReplicatorTrail(scene, replicator, time, delta) {
+  const trail = replicator.getData('trail');
+  if (!trail) return;
+
+  const targetX = replicator.x;
+  const targetY = replicator.y - 14;
+  const anchorX = replicator.getData('trailAnchorX');
+  const anchorY = replicator.getData('trailAnchorY');
+  const smoothedX = anchorX === undefined
+    ? targetX
+    : Phaser.Math.Linear(anchorX, targetX, SHIP_TRAIL_POSITION_SMOOTHING);
+  const smoothedY = anchorY === undefined
+    ? targetY
+    : Phaser.Math.Linear(anchorY, targetY, SHIP_TRAIL_POSITION_SMOOTHING);
+  replicator.setData('trailAnchorX', smoothedX);
+  replicator.setData('trailAnchorY', smoothedY);
+
+  let points = replicator.getData('trailPoints') || [];
+  const previousPoint = points[points.length - 1];
+  const movedEnough = !previousPoint || Phaser.Math.Distance.Between(
+    previousPoint.x,
+    previousPoint.y,
+    smoothedX,
+    smoothedY
+  ) >= SHIP_TRAIL_MIN_POINT_DISTANCE;
+
+  if (movedEnough || !previousPoint || time - previousPoint.createdAt >= SHIP_TRAIL_IDLE_INTERVAL) {
+    points.push({ x: smoothedX, y: smoothedY, createdAt: time });
+  } else {
+    const fallRatio = getFallingVelocity('replicator', scene, replicator) / BASE_GRAVITY;
+    const drift = fallRatio * SHIP_TRAIL_IDLE_SPEED * Math.min(delta || 16, SHIP_TRAIL_IDLE_MAX_DELTA);
+    points.forEach((point) => {
+      point.y -= drift;
+    });
+  }
+
+  points = points
+    .filter((point) => time - point.createdAt <= REPLICATOR_TRAIL_DURATION)
+    .slice(-REPLICATOR_TRAIL_MAX_POINTS);
+  replicator.setData('trailPoints', points);
+  drawReplicatorTrail(trail, points, time);
+}
+
+function drawReplicatorTrail(graphics, trailPoints, time) {
+  const points = smoothShipTrailPoints(trailPoints);
+  graphics.clear();
+  if (points.length < 2) return;
+
+  for (let i = 1; i < points.length; i += 1) {
+    const previousPoint = points[i - 1];
+    const currentPoint = points[i];
+    const age = time - currentPoint.createdAt;
+    const freshness = Phaser.Math.Clamp(1 - age / REPLICATOR_TRAIL_DURATION, 0, 1);
+    const positionRatio = i / (points.length - 1);
+    const taper = Math.pow(Math.min(freshness, positionRatio), 1.18);
+    const width = Math.max(0.8, SHIP_TRAIL_WIDTH * REPLICATOR_SCALE * taper);
+    const alpha = SHIP_TRAIL_BASE_ALPHA + SHIP_TRAIL_ALPHA_RANGE * taper;
+    const blueMix = Phaser.Math.Clamp((positionRatio - (1 - SHIP_TRAIL_BLUE_CORE_RATIO)) / SHIP_TRAIL_BLUE_CORE_RATIO, 0, 1);
+    const haloColor = mixRgbColor(0xff9f1c, 0x1269d3, blueMix);
+    const bodyColor = mixRgbColor(0xf08a2a, 0x1678c8, blueMix);
+    const coreColor = mixRgbColor(0xffc14f, 0x44b8dc, blueMix);
+
+    graphics.lineStyle(width * 1.25, haloColor, alpha * 0.28);
+    graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
+    graphics.lineStyle(width, bodyColor, alpha);
+    graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
+    graphics.lineStyle(Math.max(0.6, width * 0.22), coreColor, alpha * SHIP_TRAIL_CORE_ALPHA_RATIO);
+    graphics.lineBetween(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
+  }
+}
+
+function refreshReplicatorGlitch(replicator) {
+  replicator.setAlpha(Phaser.Math.FloatBetween(0.82, 0.96));
+
+  const chromaticGhosts = replicator.getData('chromaticGhosts') || [];
+  chromaticGhosts.forEach((ghost, index) => {
+    const direction = index === 0 ? -1 : 1;
+    ghost.setData('glitchOffsetX', direction * Phaser.Math.Between(3, 8));
+    ghost.setData('glitchOffsetY', Phaser.Math.Between(-2, 2));
+    ghost.setAlpha(Phaser.Math.FloatBetween(0.18, 0.38));
+  });
+
+  const glitchSlices = replicator.getData('glitchSlices') || [];
+  glitchSlices.forEach((slice) => {
+    const sliceHeight = Phaser.Math.Between(2, 7);
+    const sliceY = Phaser.Math.Between(0, SHIP_TEXTURE_HEIGHT - sliceHeight);
+    slice.setCrop(0, sliceY, SHIP_TEXTURE_WIDTH, sliceHeight);
+    slice.setData('glitchOffsetX', Phaser.Math.Between(-18, 18));
+    slice.setData('glitchOffsetY', 0);
+    slice.setAlpha(Math.random() < 0.78 ? Phaser.Math.FloatBetween(0.24, 0.62) : 0);
+  });
+
+  const glitchPixels = replicator.getData('glitchPixels') || [];
+  glitchPixels.forEach((pixel) => {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    pixel.setData('glitchOffsetX', side * Phaser.Math.Between(28, 72));
+    pixel.setData('glitchOffsetY', Phaser.Math.Between(-22, 22));
+    pixel.setDisplaySize(Phaser.Math.Between(2, 12), Phaser.Math.Between(1, 3));
+    pixel.setAlpha(Math.random() < 0.65 ? Phaser.Math.FloatBetween(0.28, 0.8) : 0);
+  });
+}
+
+function positionReplicatorGlitch(replicator) {
+  const chromaticGhosts = replicator.getData('chromaticGhosts') || [];
+  const glitchSlices = replicator.getData('glitchSlices') || [];
+  const glitchPixels = replicator.getData('glitchPixels') || [];
+  [...chromaticGhosts, ...glitchSlices, ...glitchPixels].forEach((part) => {
+    part.setPosition(
+      replicator.x + (part.getData('glitchOffsetX') || 0),
+      replicator.y + (part.getData('glitchOffsetY') || 0)
+    );
+  });
+}
+
 function updateRedEnemySway(scene, time) {
   const min = 34;
   const max = Math.max(min, getGameWidth(scene) - 34);
   scene.balls.getChildren().forEach((enemy) => {
-    if (!enemy.active || enemy.getData('kind') !== 'damageBooster') return;
+    const kind = enemy.getData('kind');
+    if (!enemy.active || (kind !== 'damageBooster' && kind !== 'scissor')) return;
     if (!enemy.body) return;
 
     const phase = enemy.getData('swayPhase') || 0;
@@ -7502,7 +9634,7 @@ function updateRedEnemySway(scene, time) {
     }
 
     enemy.body.setVelocityX(velocityX);
-    enemy.body.setVelocityY(getFallingVelocity('damageBooster', scene, enemy));
+    enemy.body.setVelocityY(getFallingVelocity(kind, scene, enemy));
   });
 }
 
@@ -7575,6 +9707,166 @@ function updateSpikeDrones(scene) {
   });
 }
 
+function setupGiroDrone(scene, giroDrone) {
+  const direction = Math.random() < 0.5 ? -1 : 1;
+  const phase = Phaser.Math.Between(0, SPIKE_DRONE_FOLDED_DURATION + SPIKE_DRONE_WARNING_DURATION + SPIKE_DRONE_EXPANDED_DURATION);
+  const stateConfig = getSpikeDroneStateFromPhase(phase);
+  const coreEnergy = trackGameplayVisual(scene, scene.add.graphics().setDepth(FALLING_OBJECT_DEPTH + 2));
+  const energy = trackGameplayVisual(scene, scene.add.graphics().setDepth(FALLING_OBJECT_DEPTH + 2));
+  const satellite = trackGameplayVisual(scene, scene.add.image(giroDrone.x, giroDrone.y, 'giroDroneSatelliteRed'))
+    .setOrigin(0.5)
+    .setDepth(FALLING_OBJECT_DEPTH + 1)
+    .setScale(GIRODRONE_SCALE);
+
+  giroDrone.setScale(GIRODRONE_SCALE);
+  giroDrone.setAngularVelocity(0);
+  giroDrone.setData('displayName', 'Girodron');
+  giroDrone.setData('collisionRadius', GIRODRONE_CORE_RADIUS);
+  giroDrone.setData('coreEnergy', coreEnergy);
+  giroDrone.setData('orbitSatellite', satellite);
+  giroDrone.setData('orbitEnergy', energy);
+  giroDrone.setData('orbitAngle', Phaser.Math.FloatBetween(0, Math.PI * 2));
+  giroDrone.setData('orbitDirection', direction);
+  giroDrone.setData('orbitRadius', GIRODRONE_ORBIT_RADIUS);
+  applyGiroDroneCoreState(giroDrone, stateConfig.state, scene);
+  giroDrone.setData('nextSpikeStateAt', scene.time.now + stateConfig.remaining);
+  setFallingObjectBody(giroDrone, 'giroDrone');
+  updateGiroDroneVisuals(giroDrone, scene.time.now);
+
+  giroDrone.once('destroy', () => {
+    if (satellite && satellite.active !== false) satellite.destroy();
+    if (energy && energy.active !== false) energy.destroy();
+    if (coreEnergy && coreEnergy.active !== false) coreEnergy.destroy();
+  });
+}
+
+function updateGiroDrones(scene, delta) {
+  scene.balls.getChildren().forEach((giroDrone) => {
+    if (!giroDrone.active || giroDrone.getData('kind') !== 'giroDrone') return;
+    if (!giroDrone.body) return;
+
+    giroDrone.body.setVelocityX(0);
+    giroDrone.body.setVelocityY(getFallingVelocity('giroDrone', scene, giroDrone));
+
+    const stateName = giroDrone.getData('spikeState') || 'folded';
+    if (stateName !== 'disabled') {
+      const angle = (giroDrone.getData('orbitAngle') || 0) +
+        (delta || 16) * GIRODRONE_ORBIT_SPEED * (giroDrone.getData('orbitDirection') || 1);
+      giroDrone.setData('orbitAngle', angle);
+    }
+
+    const nextStateAt = giroDrone.getData('nextSpikeStateAt') || 0;
+    if (stateName !== 'disabled' && scene.time.now >= nextStateAt) {
+      if (stateName === 'folded') {
+        applyGiroDroneCoreState(giroDrone, 'warningGreen', scene);
+        giroDrone.setData('nextSpikeStateAt', scene.time.now + SPIKE_DRONE_WARNING_GREEN_DURATION);
+      } else if (stateName === 'warningGreen') {
+        applyGiroDroneCoreState(giroDrone, 'warningRed', scene);
+        giroDrone.setData('nextSpikeStateAt', scene.time.now + SPIKE_DRONE_WARNING_RED_DURATION);
+      } else if (stateName === 'warningRed') {
+        applyGiroDroneCoreState(giroDrone, 'expanded', scene);
+        playSpikeDroneSound(scene);
+        giroDrone.setData('nextSpikeStateAt', scene.time.now + SPIKE_DRONE_EXPANDED_DURATION);
+      } else {
+        applyGiroDroneCoreState(giroDrone, 'folded', scene);
+        giroDrone.setData('nextSpikeStateAt', scene.time.now + SPIKE_DRONE_FOLDED_DURATION);
+      }
+    }
+
+    updateGiroDroneVisuals(giroDrone, scene.time.now);
+  });
+}
+
+function updateGiroDroneVisuals(giroDrone, time = 0) {
+  updateGiroDroneCoreEnergy(giroDrone, time);
+  updateGiroDroneSatellite(giroDrone, time);
+}
+
+function updateGiroDroneCoreEnergy(giroDrone, time = 0) {
+  const energy = giroDrone.getData('coreEnergy');
+  if (!energy || energy.active === false) return;
+  energy.clear();
+  if (giroDrone.getData('spikeState') !== 'expanded') return;
+  drawGiroDroneRedEnergy(energy, giroDrone.x, giroDrone.y, time, GIRODRONE_DAMAGE_HALO_RADIUS, GIRODRONE_CORE_ENERGY_PARTICLE_COUNT);
+}
+
+function updateGiroDroneSatellite(giroDrone, time = 0) {
+  const satellite = giroDrone.getData('orbitSatellite');
+  if (!satellite || satellite.active === false) return;
+
+  const energy = giroDrone.getData('orbitEnergy');
+  const disabled = giroDrone.getData('spikeState') === 'disabled';
+  const angle = giroDrone.getData('orbitAngle') || 0;
+  const radius = giroDrone.getData('orbitRadius') || GIRODRONE_ORBIT_RADIUS;
+  giroDrone.setAngle(0);
+  satellite
+    .setTexture(disabled ? 'giroDroneDisabled' : 'giroDroneSatelliteRed')
+    .setAlpha(1)
+    .setScale(GIRODRONE_SCALE)
+    .setAngle(0)
+    .setPosition(
+      giroDrone.x + Math.cos(angle) * radius,
+      giroDrone.y + Math.sin(angle) * radius
+    );
+
+  if (!energy || energy.active === false) return;
+  energy.clear();
+  if (disabled) return;
+  drawGiroDroneRedEnergy(energy, satellite.x, satellite.y, time, GIRODRONE_DAMAGE_HALO_RADIUS, GIRODRONE_ENERGY_PARTICLE_COUNT);
+}
+
+function drawGiroDroneRedEnergy(graphics, x, y, time = 0, haloRadius = GIRODRONE_DAMAGE_HALO_RADIUS, particleCount = GIRODRONE_ENERGY_PARTICLE_COUNT) {
+  const pulse = (Math.sin(time * 0.006) + 1) / 2;
+  graphics.fillStyle(0xff3045, 0.07 + pulse * 0.05);
+  graphics.fillCircle(x, y, haloRadius + pulse * 3);
+  graphics.lineStyle(1.5, 0xff3045, 0.18 + pulse * 0.16);
+  graphics.strokeCircle(x, y, haloRadius - 3 + pulse * 2);
+
+  for (let i = 0; i < particleCount; i += 1) {
+    const phase = time * 0.0026 + i * ((Math.PI * 2) / particleCount);
+    const orbit = haloRadius - 4 + ((i % 3) * 3) + Math.sin(time * 0.004 + i) * 2;
+    const particleX = x + Math.cos(phase) * orbit;
+    const particleY = y + Math.sin(phase * 1.17) * orbit;
+    const alpha = 0.42 + 0.26 * Math.sin(time * 0.005 + i);
+    graphics.fillStyle(i % 3 === 0 ? 0xffc1c8 : 0xff3045, Phaser.Math.Clamp(alpha, 0.18, 0.72));
+    graphics.fillCircle(particleX, particleY, i % 3 === 0 ? 2.2 : 1.5);
+  }
+}
+
+function applyGiroDroneCoreState(giroDrone, stateName, scene) {
+  giroDrone.setData('spikeState', stateName);
+  if (stateName === 'warningGreen') {
+    giroDrone.setTexture('giroDroneCoreOrange');
+  } else if (stateName === 'warningRed') {
+    giroDrone.setTexture('giroDroneCoreRedWarning');
+  } else if (stateName === 'expanded') {
+    giroDrone.setTexture('giroDroneCoreRed');
+  } else if (stateName === 'disabled') {
+    giroDrone.setTexture('giroDroneDisabled');
+  } else {
+    giroDrone.setTexture('giroDroneCoreGreen');
+  }
+  giroDrone.setScale(GIRODRONE_SCALE);
+  giroDrone.setData('collisionRadius', GIRODRONE_CORE_RADIUS);
+  setFallingObjectBody(giroDrone, 'giroDrone');
+  if (giroDrone.body && scene) {
+    giroDrone.body.setVelocityX(0);
+    giroDrone.body.setVelocityY(getFallingVelocity('giroDrone', scene, giroDrone));
+  }
+}
+
+function isGiroDroneGreenState(stateName) {
+  return stateName === 'folded';
+}
+
+function isGiroDroneOrangeState(stateName) {
+  return stateName === 'warningGreen';
+}
+
+function isGiroDroneRedState(stateName) {
+  return stateName === 'warningRed' || stateName === 'expanded';
+}
+
 function applySpikeDroneState(drone, stateName, scene) {
   drone.setData('spikeState', stateName);
   if (stateName === 'warningGreen') {
@@ -7609,11 +9901,22 @@ function disableSpikeDrone(scene, drone) {
   drone.setAngularVelocity(0);
   playSpikeDroneDisableSound(scene);
   if (shouldReward) {
-    addScore(scene, SPIKE_DRONE_DISABLE_SCORE, true, {
-      x: drone.x,
-      y: drone.y,
-      color: '#ffd84d',
-    });
+    awardEnemyDefeatScore(scene, SPIKE_DRONE_DISABLE_SCORE, drone.x, drone.y, '#ffd84d');
+  }
+}
+
+function disableGiroDrone(scene, giroDrone) {
+  const shouldReward = !giroDrone.getData('disableRewardGranted');
+  giroDrone.setData('disableRewardGranted', true);
+  applyGiroDroneCoreState(giroDrone, 'disabled', scene);
+  giroDrone.setData('collisionRadius', GIRODRONE_CORE_RADIUS);
+  giroDrone.setData('nextSpikeStateAt', undefined);
+  giroDrone.setData('pausedSpikeRemaining', undefined);
+  giroDrone.setAngularVelocity(0);
+  updateGiroDroneVisuals(giroDrone, scene.time.now);
+  playSpikeDroneDisableSound(scene);
+  if (shouldReward) {
+    awardEnemyDefeatScore(scene, GIRODRONE_DISABLE_SCORE, giroDrone.x, giroDrone.y, '#ffd84d');
   }
 }
 
@@ -7624,7 +9927,7 @@ function isSpikeDroneGreenState(stateName) {
 function pauseSpikeDrones(scene) {
   if (!scene.balls) return;
   scene.balls.getChildren().forEach((drone) => {
-    if (!drone.active || drone.getData('kind') !== 'spikeDrone') return;
+    if (!drone.active || (drone.getData('kind') !== 'spikeDrone' && drone.getData('kind') !== 'giroDrone')) return;
     const nextStateAt = drone.getData('nextSpikeStateAt');
     if (nextStateAt === undefined) return;
     drone.setData('pausedSpikeRemaining', Math.max(0, nextStateAt - scene.time.now));
@@ -7634,7 +9937,7 @@ function pauseSpikeDrones(scene) {
 function resumeSpikeDrones(scene) {
   if (!scene.balls) return;
   scene.balls.getChildren().forEach((drone) => {
-    if (!drone.active || drone.getData('kind') !== 'spikeDrone') return;
+    if (!drone.active || (drone.getData('kind') !== 'spikeDrone' && drone.getData('kind') !== 'giroDrone')) return;
     const remaining = drone.getData('pausedSpikeRemaining');
     if (remaining === undefined) return;
     drone.setData('nextSpikeStateAt', scene.time.now + remaining);
@@ -7652,6 +9955,13 @@ function setBallEnergyColor(ball, isPurple) {
   ball.setData('isPinkEnergy', color === 'pink');
 }
 
+function setBallEnergyColorData(ball, color) {
+  const normalizedColor = normalizeEnergyOrbColor(color);
+  ball.setData('energyColor', normalizedColor);
+  ball.setData('isPurpleEnergy', normalizedColor !== 'gold');
+  ball.setData('isPinkEnergy', normalizedColor === 'pink');
+}
+
 function normalizeEnergyOrbColor(color) {
   if (color === 'pink' || color === 'purple' || color === 'gold') return color;
   return color ? 'purple' : 'gold';
@@ -7663,18 +9973,13 @@ function getEnergyOrbColor(orb) {
 }
 
 function setFallingObjectBody(object, kind) {
+  if (kind === 'replicator') {
+    object.body.setSize(REPLICATOR_HITBOX_WIDTH, REPLICATOR_HITBOX_HEIGHT, true);
+    return;
+  }
+
   if (kind === 'redNeedle') {
     object.body.setSize(RED_NEEDLE_WIDTH - 12, RED_NEEDLE_HEIGHT - 6, true);
-    return;
-  }
-
-  if (kind === 'cometTrail') {
-    object.body.setCircle(COMET_TRAIL_HITBOX / 2, 0, 0);
-    return;
-  }
-
-  if (kind === 'comet') {
-    object.body.setCircle(10, 10, 10);
     return;
   }
 
@@ -7688,8 +9993,25 @@ function setFallingObjectBody(object, kind) {
     return;
   }
 
+  if (kind === 'scissor') {
+    object.body.setSize(SCISSOR_HITBOX_WIDTH, SCISSOR_HITBOX_HEIGHT, true);
+    return;
+  }
+
+  if (isScissorHalfKind(kind)) {
+    object.body.setSize(SCISSOR_HALF_HITBOX_WIDTH, SCISSOR_HALF_HITBOX_HEIGHT, true);
+    return;
+  }
+
   if (kind === 'spikeDrone') {
     const radius = object.getData('collisionRadius') || SPIKE_DRONE_FOLDED_RADIUS;
+    const offset = SPIKE_DRONE_TEXTURE_SIZE / 2 - radius;
+    object.body.setCircle(radius, offset, offset);
+    return;
+  }
+
+  if (kind === 'giroDrone') {
+    const radius = GIRODRONE_ORBIT_RADIUS + GIRODRONE_SATELLITE_RADIUS;
     const offset = SPIKE_DRONE_TEXTURE_SIZE / 2 - radius;
     object.body.setCircle(radius, offset, offset);
     return;
@@ -7705,50 +10027,80 @@ function setFallingObjectBody(object, kind) {
     return;
   }
 
+  if (kind === 'crystallizedOrb') {
+    object.body.setCircle(CRYSTALLIZED_ORB_RADIUS, 2, 2);
+    return;
+  }
+
   object.body.setCircle(isEnergyOrbSpeedKind(kind) ? 16 : 15, isEnergyOrbSpeedKind(kind) ? 6 : 3, isEnergyOrbSpeedKind(kind) ? 6 : 3);
 }
 
-function getNextSpawnKind(scene) {
+function getNextSpawnKinds(scene) {
   // Durante Marea de Plasma no debe caer ningun orbe/booster.
   // Las barras de plasma se gestionan con su propio scheduler.
-  if (scene.activePlasmaWave && scene.activePlasmaWave.isSpawningPlasma) return null;
+  if (scene.activePlasmaWave && scene.activePlasmaWave.isSpawningPlasma) return [];
 
-  if (scene.activeRedWave && scene.activeRedWave.isSpawningDamageBoosters) return 'damageBooster';
-  if (scene.activeDroneWave && scene.activeDroneWave.isSpawningDrones) return 'spikeDrone';
-  if (scene.activeBossWave && scene.activeBossWave.isSpawningEnemies) return 'damageBooster';
-  if (scene.activeCometWave && scene.activeCometWave.isSpawningComets) return 'comet';
+  if (scene.activeRedWave && scene.activeRedWave.isSpawningDamageBoosters) {
+    return [scene.activeRedWave.spawnKind || 'damageBooster'];
+  }
+  if (scene.activeDroneWave && scene.activeDroneWave.isSpawningDrones) return [scene.activeDroneWave.spawnKind || 'spikeDrone'];
+  if (scene.activeBossWave && scene.activeBossWave.isSpawningEnemies) return ['damageBooster'];
   if (scene.activeAsteroidWave && scene.activeAsteroidWave.isSpawningAsteroids) {
-    return Math.random() < ASTEROID_WAVE_BIG_ASTEROID_CHANCE ? 'bigAsteroid' : 'asteroid';
+    return [Math.random() < ASTEROID_WAVE_BIG_ASTEROID_CHANCE ? 'bigAsteroid' : 'asteroid'];
   }
 
-  const threatKind = getNextTravelThreatKind(scene);
-  if (threatKind) return threatKind;
-  const plasmaKind = getNextPlasmaKind(scene);
-  if (plasmaKind) return plasmaKind;
-  const cometKind = getNextCometKind(scene);
-  if (cometKind) return cometKind;
-  const asteroidKind = getNextAsteroidKind(scene);
-  if (asteroidKind) return asteroidKind;
-  const boosterKind = getNextBoosterKind(scene);
-  if (scene.activeBossWave && scene.activeBossWave.isTravelEncounter) return boosterKind;
-  if (boosterKind) return boosterKind;
+  if (scene.activeBossWave && scene.activeBossWave.isTravelEncounter) {
+    const boosterKind = getNextBoosterKind(scene);
+    return boosterKind ? [boosterKind] : [];
+  }
+
+  const kinds = [];
+  const supplementalKind = getNextSupplementalSpawnKind(scene);
+  if (supplementalKind) kinds.push(supplementalKind);
+  kinds.push(getNextEnergyOrbKind(scene));
+  return kinds;
+}
+
+function getNextEnergyOrbKind(scene) {
+  if (scene.crystallizedOrbSpawnsUnlocked && Math.random() < CRYSTALLIZED_ORB_CHANCE) {
+    return 'crystallizedOrb';
+  }
   if (isEnergyPurifierActive()) return 'ball';
   return Math.random() < CONTAMINATED_ORB_CHANCE ? 'contaminatedOrb' : 'ball';
 }
 
+function getNextSupplementalSpawnKind(scene) {
+  const candidates = [
+    { kind: getNextTravelThreatKind(scene), weight: TRAVEL_THREAT_POOL_WEIGHT },
+    { kind: getNextPlasmaKind(scene), weight: TRAVEL_HAZARD_POOL_WEIGHT },
+    { kind: getNextAsteroidKind(scene), weight: TRAVEL_HAZARD_POOL_WEIGHT },
+    { kind: getNextBoosterKind(scene), weight: TRAVEL_BOOSTER_POOL_WEIGHT },
+  ].filter((candidate) => candidate.kind);
+
+  return chooseWeightedSpawnCandidate(candidates);
+}
+
 function getNextTravelThreatKind(scene) {
   const isLevelBossActive = scene.activeBossWave && !scene.activeBossWave.isTravelEncounter;
-  if ((!scene.obreraSpawnsUnlocked && !scene.droneSpawnsUnlocked && !scene.redNeedleSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activeCometWave || scene.activePlasmaWave || isLevelBossActive) return null;
+  if ((!scene.obreraSpawnsUnlocked && !scene.scissorSpawnsUnlocked && !scene.droneSpawnsUnlocked && !scene.giroDroneSpawnsUnlocked && !scene.redNeedleSpawnsUnlocked && !scene.replicatorSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || isLevelBossActive) return null;
 
-  if (scene.redNeedleSpawnsUnlocked && !hasActiveRedNeedle(scene) && Math.random() < RED_NEEDLE_SPAWN_CHANCE) return 'redNeedle';
-  if (scene.droneSpawnsUnlocked && Math.random() < SPIKE_DRONE_SPAWN_CHANCE) return 'spikeDrone';
-  if (scene.obreraSpawnsUnlocked && Math.random() < OBRERA_SPAWN_CHANCE) return 'damageBooster';
-  return null;
+  return chooseRolledSpawnOption([
+    { kind: 'replicator', chance: !isSentinelActive(scene) && scene.replicatorSpawnsUnlocked ? REPLICATOR_SPAWN_CHANCE : 0 },
+    { kind: 'redNeedle', chance: scene.redNeedleSpawnsUnlocked && !hasActiveRedNeedle(scene) ? RED_NEEDLE_SPAWN_CHANCE : 0 },
+    { kind: 'giroDrone', chance: scene.giroDroneSpawnsUnlocked ? GIRODRONE_SPAWN_CHANCE : 0 },
+    { kind: 'spikeDrone', chance: scene.droneSpawnsUnlocked ? SPIKE_DRONE_SPAWN_CHANCE : 0 },
+    { kind: 'scissor', chance: scene.scissorSpawnsUnlocked ? SCISSOR_SPAWN_CHANCE : 0 },
+    { kind: 'damageBooster', chance: scene.obreraSpawnsUnlocked ? OBRERA_SPAWN_CHANCE : 0 },
+  ]);
+}
+
+function isSentinelActive(scene) {
+  return Boolean(scene.activeBossWave && scene.activeBossWave.kind === 'boss');
 }
 
 function shouldStartTravelSentinel(scene) {
-  if (!scene.travelSentinelUnlocked || scene.activeBossWave || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activeCometWave || scene.activePlasmaWave) return false;
-  if (hasPendingBossWave(scene) || getActiveTimedBooster(scene) || hasActivePlasmaBars(scene)) return false;
+  if (!scene.travelSentinelUnlocked || scene.activeBossWave || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave) return false;
+  if (hasPendingBossWave(scene) || getActiveTimedBooster(scene) || hasFallingScoreBooster(scene) || hasActivePlasmaBars(scene)) return false;
   if (scene.time.now < scene.nextTravelSentinelEligibleAt) return false;
   if (Math.random() >= TRAVEL_SENTINEL_CHANCE) return false;
 
@@ -7756,50 +10108,60 @@ function shouldStartTravelSentinel(scene) {
 }
 
 function getNextAsteroidKind(scene) {
-  if (!scene.asteroidSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activeCometWave || scene.activePlasmaWave || scene.activeBossWave) return null;
+  if (!scene.asteroidSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || scene.activeBossWave) return null;
 
   if (Math.random() >= TRAVEL_ASTEROID_CHANCE) return null;
   return Math.random() < 0.24 ? 'bigAsteroid' : 'asteroid';
 }
 
 function getNextPlasmaKind(scene) {
-  if (!scene.plasmaSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activeCometWave || scene.activePlasmaWave || scene.activeBossWave) return null;
+  if (!scene.plasmaSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || scene.activeBossWave) return null;
 
   return Math.random() < TRAVEL_PLASMA_CHANCE ? 'plasmaBar' : null;
-}
-
-function getNextCometKind(scene) {
-  if (!scene.cometSpawnsUnlocked || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activeCometWave || scene.activePlasmaWave || scene.activeBossWave) return null;
-
-  return Math.random() < TRAVEL_COMET_CHANCE ? 'comet' : null;
 }
 
 function getNextBoosterKind(scene) {
   if (hasFallingBooster(scene)) return null;
 
   const timedBoosterActive = getActiveTimedBooster(scene);
-  const options = [
-    { kind: 'scoreBooster', chance: timedBoosterActive || scoreBoosterLevel <= 0 ? 0 : getBoosterChanceForLevel(scoreBoosterLevel) },
+  return chooseRolledSpawnOption([
+    { kind: 'scoreBooster', chance: timedBoosterActive || isSentinelActive(scene) || scoreBoosterLevel <= 0 ? 0 : getBoosterChanceForLevel(scoreBoosterLevel) },
     { kind: 'shieldBooster', chance: timedBoosterActive || shieldBoosterLevel <= 0 ? 0 : getBoosterChanceForLevel(shieldBoosterLevel) },
     { kind: 'lifeBooster', chance: canDropLifeBooster() ? getLifeBoosterChance() : 0 },
-  ];
-  const totalChance = options.reduce((sum, option) => sum + option.chance, 0);
-  let roll = Math.random();
+  ]);
+}
 
-  if (roll >= totalChance) return null;
+function chooseRolledSpawnOption(options) {
+  const candidates = options
+    .filter((option) => option.chance > 0 && Math.random() < option.chance)
+    .map((option) => ({ kind: option.kind, weight: option.chance }));
 
-  for (const option of options) {
-    if (roll < option.chance) return option.kind;
-    roll -= option.chance;
+  return chooseWeightedSpawnCandidate(candidates);
+}
+
+function chooseWeightedSpawnCandidate(candidates) {
+  const totalWeight = candidates.reduce((sum, candidate) => sum + candidate.weight, 0);
+  if (totalWeight <= 0) return null;
+
+  let roll = Math.random() * totalWeight;
+  for (const candidate of candidates) {
+    if (roll < candidate.weight) return candidate.kind;
+    roll -= candidate.weight;
   }
 
-  return null;
+  return candidates[candidates.length - 1].kind;
 }
 
 function hasFallingBooster(scene) {
   return scene.balls
     .getChildren()
     .some((ball) => ball.active && isHelpfulBoosterKind(ball.getData('kind')));
+}
+
+function hasFallingScoreBooster(scene) {
+  return scene.balls
+    .getChildren()
+    .some((ball) => ball.active && ball.getData('kind') === 'scoreBooster');
 }
 
 function hasFallingAsteroid(scene) {
@@ -7822,23 +10184,27 @@ function hasActiveRedNeedle(scene) {
 }
 
 function getTextureForKind(kind) {
+  if (kind === 'replicator') return 'ship';
   if (kind === 'redNeedle') return 'redNeedleShip';
   if (kind === 'redNeedleLaser') return 'redNeedleLaser';
-  if (kind === 'comet') return 'comet';
-  if (kind === 'cometTrail') return 'cometTrail';
   if (kind === 'bigAsteroid') return 'bigAsteroid';
   if (isAsteroidKind(kind)) return 'asteroid';
   if (kind === 'damageBooster') return 'enemyShipSmall';
+  if (kind === 'scissor') return 'scissorShip';
+  if (kind === 'scissorLeft') return 'scissorShipLeft';
+  if (kind === 'scissorRight') return 'scissorShipRight';
   if (kind === 'spikeDrone') return 'spikeDrone';
+  if (kind === 'giroDrone') return 'spikeDrone';
   if (kind === 'lifeBooster') return 'lifeBooster';
   if (kind === 'scoreBooster') return 'scoreBooster';
   if (kind === 'shieldBooster') return 'shieldBooster';
   if (kind === 'contaminatedOrb') return 'contaminatedBall';
+  if (kind === 'crystallizedOrb') return 'crystallizedOrb';
   return 'goldBall';
 }
 
 function isBoosterKind(kind) {
-  return kind === 'damageBooster' || kind === 'lifeBooster' || kind === 'scoreBooster' || kind === 'shieldBooster';
+  return kind === 'damageBooster' || kind === 'scissor' || isScissorHalfKind(kind) || kind === 'lifeBooster' || kind === 'scoreBooster' || kind === 'shieldBooster';
 }
 
 function isHelpfulBoosterKind(kind) {
@@ -7846,32 +10212,31 @@ function isHelpfulBoosterKind(kind) {
 }
 
 function isCollectibleBallKind(kind) {
-  return kind === 'ball';
+  return kind === 'ball' || kind === 'crystallizedOrb';
 }
 
 function isEnergyOrbSpeedKind(kind) {
-  return kind === 'ball' || kind === 'contaminatedOrb';
+  return kind === 'ball' || kind === 'contaminatedOrb' || kind === 'crystallizedOrb';
 }
 
 function isAsteroidKind(kind) {
   return kind === 'asteroid' || kind === 'bigAsteroid';
 }
 
-function isCometKind(kind) {
-  return kind === 'comet';
+function isScissorHalfKind(kind) {
+  return kind === 'scissorLeft' || kind === 'scissorRight';
+}
+
+function isScissorKind(kind) {
+  return kind === 'scissor' || isScissorHalfKind(kind);
 }
 
 function isShieldBlockedKind(kind) {
-  return kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || kind === 'comet' || isAsteroidKind(kind);
+  return kind === 'damageBooster' || isScissorKind(kind) || kind === 'replicator' || kind === 'spikeDrone' || kind === 'giroDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || kind === 'crystallizedOrb' || isAsteroidKind(kind);
 }
 
 function isHostileContactKind(kind) {
   return kind === 'contaminatedOrb' || isShieldBlockedKind(kind);
-}
-
-function isCometOutOfBounds(scene, comet) {
-  const margin = COMET_OFFSCREEN_MARGIN;
-  return comet.y > getGameHeight(scene) + margin;
 }
 
 function findSpawnX(scene) {
@@ -7880,9 +10245,38 @@ function findSpawnX(scene) {
   return Phaser.Math.Between(min, max);
 }
 
+function findSpawnXAwayFrom(scene, objects, minSpacing) {
+  const min = 40;
+  const max = Math.max(min, getGameWidth(scene) - 40);
+  const activeObjects = objects.filter((object) => object && object.active);
+
+  if (!activeObjects.length) return Phaser.Math.Between(min, max);
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const x = Phaser.Math.Between(min, max);
+    if (activeObjects.every((object) => Math.abs(object.x - x) >= minSpacing)) return x;
+  }
+
+  const candidates = [min, Math.round((min + max) / 2), max];
+  return candidates.reduce((bestX, x) => (
+    getClosestSpawnDistance(x, activeObjects) > getClosestSpawnDistance(bestX, activeObjects) ? x : bestX
+  ), candidates[0]);
+}
+
+function getClosestSpawnDistance(x, objects) {
+  return objects.reduce((closest, object) => Math.min(closest, Math.abs(object.x - x)), Infinity);
+}
+
 function findBoosterSpawnX(scene) {
   const min = 28;
   const max = Math.max(min, getGameWidth(scene) - 28);
+  return Phaser.Math.Between(min, max);
+}
+
+function findGiroDroneSpawnX(scene) {
+  const margin = Math.min(GIRODRONE_ORBIT_RADIUS + GIRODRONE_SATELLITE_RADIUS + 10, getGameWidth(scene) / 2 - 20);
+  const min = margin;
+  const max = Math.max(min, getGameWidth(scene) - margin);
   return Phaser.Math.Between(min, max);
 }
 
@@ -7906,14 +10300,15 @@ function wrapAsteroidHorizontally(scene, asteroid) {
 }
 
 function findRedWaveEnemySpawnX(scene) {
-  const min = 34;
-  const max = Math.max(min, getGameWidth(scene) - 34);
+  const margin = 34;
+  const min = margin;
+  const max = Math.max(min, getGameWidth(scene) - margin);
   const center = getGameWidth(scene) / 2;
   const recentEnemies = scene.balls
     .getChildren()
     .filter((ball) => (
       ball.active &&
-      ball.getData('kind') === 'damageBooster' &&
+      (ball.getData('kind') === 'damageBooster' || ball.getData('kind') === 'scissor') &&
       ball.y < RED_WAVE_RECENT_ENEMY_HEIGHT
     ));
 
@@ -7999,7 +10394,11 @@ function updateSpeedTexts(scene) {
 
 function updatePlayerLevelText(scene) {
   const currentHud = initHud();
-  if (currentHud.level) currentHud.level.textContent = playerLevel;
+  if (currentHud.level) {
+    currentHud.level.textContent = isBossOnlyGameMode()
+      ? Math.max(1, (scene && scene.bossOnlyBossNumber) || 1)
+      : playerLevel;
+  }
 }
 
 function updateStreakText() {
@@ -8032,14 +10431,18 @@ function getFallingVelocity(kind, scene, object = null) {
 
   if (kind === 'redNeedle') return 0;
   if (kind === 'redNeedleLaser') return RED_NEEDLE_LASER_SPEED;
-  if (kind === 'cometTrail') return object && object.body ? object.body.velocity.y : 0;
-  if (kind === 'comet') return getCometFallingVelocity(scene);
+  if (kind === 'replicator') {
+    if (scene.activeRedWave && scene.activeRedWave.bossKind === 'replicators') {
+      return getFallingVelocity('damageBooster', scene);
+    }
+    return Math.round(currentGravity * TRAVEL_REPLICATOR_GRAVITY_RATIO);
+  }
 
-  if (kind === 'spikeDrone') {
+  if (kind === 'spikeDrone' || kind === 'giroDrone') {
     return Math.round(BASE_GRAVITY * SPIKE_DRONE_GRAVITY_RATIO);
   }
 
-  if (kind === 'damageBooster' && scene.activeRedWave) {
+  if ((kind === 'damageBooster' || isScissorKind(kind)) && scene.activeRedWave) {
     return Math.round(currentGravity * RED_WAVE_ENEMY_GRAVITY_RATIO);
   }
 
@@ -8058,11 +10461,9 @@ function getHorizontalVelocity(kind, scene, object = null) {
   }
 
   if (kind === 'redNeedleLaser') return 0;
-  if (kind === 'cometTrail') return object && object.body ? object.body.velocity.x : 0;
-  if (kind === 'comet') {
-    if (object && object.getData('horizontalVelocity')) return object.getData('horizontalVelocity');
-    const direction = Math.random() < 0.5 ? -1 : 1;
-    return getCometHorizontalVelocity(scene, direction);
+
+  if (isScissorHalfKind(kind)) {
+    return object && object.getData('horizontalVelocity') ? object.getData('horizontalVelocity') : (kind === 'scissorLeft' ? -SCISSOR_HALF_HORIZONTAL_SPEED : SCISSOR_HALF_HORIZONTAL_SPEED);
   }
 
   if (!isAsteroidKind(kind)) return 0;
@@ -8081,10 +10482,15 @@ function getHorizontalVelocity(kind, scene, object = null) {
 
 function getCurrentSpawnDelay(scene) {
   if (scene.activePlasmaWave) return PLASMA_WAVE_SPAWN_DELAY;
-  if (scene.activeDroneWave) return DRONE_WAVE_SPAWN_DELAY;
-  if (scene.activeCometWave) return COMET_WAVE_SPAWN_DELAY;
+  if (scene.activeDroneWave) return scene.activeDroneWave.spawnDelay || DRONE_WAVE_SPAWN_DELAY;
   if (scene.activeAsteroidWave) return ASTEROID_WAVE_SPAWN_DELAY;
-  return scene.activeRedWave ? RED_WAVE_SPAWN_DELAY : currentSpawnDelay;
+  if (scene.activeRedWave) {
+    if (scene.activeRedWave.bossKind === 'replicators') return REPLICATOR_WAVE_SPAWN_DELAY;
+    if (scene.activeRedWave.bossKind === 'crystallized') return CRYSTALLIZED_WAVE_SPAWN_DELAY;
+    if (scene.activeRedWave.bossKind === 'scissors') return SCISSOR_WAVE_SPAWN_DELAY;
+    return RED_WAVE_SPAWN_DELAY;
+  }
+  return currentSpawnDelay;
 }
 
 function getSpawnDelayForGravity(gravity) {
@@ -8107,6 +10513,7 @@ function catchBall(ball, scene) {
   const isPurpleEnergy = energyOrbColor !== 'gold';
   const isPurifiedContaminatedOrb = kind === 'contaminatedOrb' && isEnergyPurifierActive();
   let hitFeedbackShown = false;
+  let crystallizedOrbCollected = false;
   if (kind === 'spikeDrone') {
     const spikeState = ball.getData('spikeState');
     if (!isShieldActive(scene) && isSpikeDroneGreenState(spikeState)) {
@@ -8115,13 +10522,31 @@ function catchBall(ball, scene) {
     }
     if (spikeState !== 'expanded' && !isShieldActive(scene)) return;
   }
+  if (kind === 'giroDrone') {
+    const giroState = ball.getData('spikeState');
+    if (giroState === 'disabled') return;
+    if (!isShieldActive(scene) && isGiroDroneCoreOverlappingShip(scene, ball)) {
+      if (isGiroDroneGreenState(giroState)) {
+        disableGiroDrone(scene, ball);
+        return;
+      }
+      if (isGiroDroneOrangeState(giroState)) {
+        return;
+      }
+    }
+  }
 
-  if (isPurifiedContaminatedOrb) {
+  if (kind === 'crystallizedOrb') {
+    if (isCrystallizedOrbDangerousContact(scene, ball)) {
+      handleHostileShipContact(scene, ball, x, y, kind, energyOrbColor);
+      hitFeedbackShown = true;
+    } else {
+      collectEnergyOrb(scene, ball, x, y, energyOrbColor);
+      crystallizedOrbCollected = true;
+    }
+  } else if (isPurifiedContaminatedOrb) {
     ball.destroy();
-    const points = getEnergyBallValue() * scoreMultiplier;
-    addScore(scene, points, true, { x, y, color: '#ffd84d' });
-    ballsCaught += 1;
-    increaseEnergyStreak(scene);
+    rewardEnergyOrbCatch(scene, x, y, '#ffd84d', false);
   } else if (isHostileContactKind(kind)) {
     handleHostileShipContact(scene, ball, x, y, kind, energyOrbColor);
     hitFeedbackShown = true;
@@ -8136,18 +10561,14 @@ function catchBall(ball, scene) {
     activateShieldBooster(scene);
   } else {
     ball.destroy();
-    const points = getEnergyBallValue() * scoreMultiplier;
     const feedbackColor = energyOrbColor === 'pink' ? ENERGY_RESONANCE_COLOR : isPurpleEnergy ? '#d7a8ff' : '#ffd84d';
-    addScore(scene, points, true, { x, y, color: feedbackColor });
-    ballsCaught += 1;
-    increaseEnergyStreak(scene);
-    registerScoreBoosterOrbCatch(scene);
+    rewardEnergyOrbCatch(scene, x, y, feedbackColor);
   }
 
   if (state !== 'playing') return;
 
   if (!hitFeedbackShown) {
-    if (isHostileContactKind(kind) && !isPurifiedContaminatedOrb) {
+    if (isHostileContactKind(kind) && kind !== 'crystallizedOrb' && !isPurifiedContaminatedOrb) {
       playBadSound(scene);
     } else if (isBoosterKind(kind)) {
       playBoosterSound(scene);
@@ -8159,28 +10580,100 @@ function catchBall(ball, scene) {
     showAbsorbEffect(scene, x, y, isPurifiedContaminatedOrb ? 'ball' : kind, energyOrbColor);
   }
 
-  if (kind === 'ball' || isPurifiedContaminatedOrb) {
+  if (kind === 'ball' || crystallizedOrbCollected || isPurifiedContaminatedOrb) {
     maybeOpenUpgradeChoice(scene);
   }
 }
 
+function isCrystallizedOrbDangerousContact(scene, orb) {
+  if (isCrystallizedOrbSafeTopApproach(scene, orb)) return false;
+
+  const crystalPolygon = CRYSTALLIZED_ORB_CRYSTAL_SHAPE.map(([offsetX, offsetY]) => ({
+    x: orb.x + offsetX,
+    y: orb.y + offsetY,
+  }));
+  return arePolygonsOverlapping(getShipHitboxPolygon(scene), crystalPolygon);
+}
+
+function isCrystallizedOrbSafeTopApproach(scene, orb) {
+  if (scene.ship.y <= orb.y) return true;
+
+  const previousPosition = scene.previousShipPosition;
+  if (!previousPosition) return false;
+  const now = scene.time ? scene.time.now : previousPosition.at;
+  if (now - previousPosition.at > CRYSTALLIZED_ORB_SAFE_APPROACH_MEMORY) return false;
+
+  const previousOrbY = orb.body && orb.body.prev
+    ? orb.body.prev.y + orb.body.halfHeight
+    : orb.y;
+  return previousPosition.y <= previousOrbY;
+}
+
+function arePolygonsOverlapping(firstPolygon, secondPolygon) {
+  if (firstPolygon.some((point) => isPointInPolygon(point.x, point.y, secondPolygon))) return true;
+  if (secondPolygon.some((point) => isPointInPolygon(point.x, point.y, firstPolygon))) return true;
+
+  return firstPolygon.some((firstPoint, firstIndex) => {
+    const firstNextPoint = firstPolygon[(firstIndex + 1) % firstPolygon.length];
+    return secondPolygon.some((secondPoint, secondIndex) => {
+      const secondNextPoint = secondPolygon[(secondIndex + 1) % secondPolygon.length];
+      return areLineSegmentsIntersecting(firstPoint, firstNextPoint, secondPoint, secondNextPoint);
+    });
+  });
+}
+
+function areLineSegmentsIntersecting(firstStart, firstEnd, secondStart, secondEnd) {
+  const firstDirectionX = firstEnd.x - firstStart.x;
+  const firstDirectionY = firstEnd.y - firstStart.y;
+  const secondDirectionX = secondEnd.x - secondStart.x;
+  const secondDirectionY = secondEnd.y - secondStart.y;
+  const denominator = firstDirectionX * secondDirectionY - firstDirectionY * secondDirectionX;
+  if (denominator === 0) return false;
+
+  const startDifferenceX = secondStart.x - firstStart.x;
+  const startDifferenceY = secondStart.y - firstStart.y;
+  const firstDistance = (startDifferenceX * secondDirectionY - startDifferenceY * secondDirectionX) / denominator;
+  const secondDistance = (startDifferenceX * firstDirectionY - startDifferenceY * firstDirectionX) / denominator;
+  return firstDistance >= 0 && firstDistance <= 1 && secondDistance >= 0 && secondDistance <= 1;
+}
+
+function collectEnergyOrb(scene, orb, x, y, energyOrbColor) {
+  orb.destroy();
+  const isPurpleEnergy = energyOrbColor !== 'gold';
+  const feedbackColor = energyOrbColor === 'pink' ? ENERGY_RESONANCE_COLOR : isPurpleEnergy ? '#d7a8ff' : '#ffd84d';
+  rewardEnergyOrbCatch(scene, x, y, feedbackColor);
+}
+
+function rewardEnergyOrbCatch(scene, x, y, feedbackColor, registerBoosterCatch = true) {
+  if (isBossOnlyGameMode()) return;
+  const points = getEnergyBallValue() * scoreMultiplier;
+  addScore(scene, points, true, { x, y, color: feedbackColor });
+  ballsCaught += 1;
+  increaseEnergyStreak(scene);
+  if (registerBoosterCatch) registerScoreBoosterOrbCatch(scene);
+}
+
 function handleHostileShipContact(scene, hostile, x, y, kind, energyOrbColor = 'gold') {
-  if (!isShieldActive(scene) && isShipDamageInvulnerable(scene)) return;
+  const isDangerousEnergyOrb = kind === 'contaminatedOrb' || kind === 'crystallizedOrb';
+  if (!isShieldActive(scene) && isShipDamageInvulnerable(scene)) {
+    if (isDangerousEnergyOrb && hostile && hostile.active) hostile.destroy();
+    return;
+  }
   if (isShieldActive(scene) && hostile && hostile.getData('hasBeenShieldBlocked')) return;
 
-  const absorbKind = kind === 'contaminatedOrb' ? 'ball' : kind;
+  const absorbKind = isDangerousEnergyOrb ? 'ball' : kind;
   const absorbEnergyColor = kind === 'contaminatedOrb' ? 'gold' : energyOrbColor;
   showAbsorbEffect(scene, x, y, absorbKind, absorbEnergyColor);
   if (!isShieldActive(scene) || kind === 'contaminatedOrb') {
     takeDirectDamage(scene);
-    if (kind === 'contaminatedOrb' && hostile && hostile.active) hostile.destroy();
+    if (isDangerousEnergyOrb && hostile && hostile.active) hostile.destroy();
     return;
   }
 
   if (hostile) hostile.setData('hasBeenShieldBlocked', true);
   playShieldBlockSound(scene);
   flashPlayerShip(scene);
-  addScore(scene, SHIELD_BLOCK_SCORE, true, { x, y, color: '#4da3ff' });
+  awardEnemyDefeatScore(scene, SHIELD_BLOCK_SCORE, x, y, '#4da3ff');
   destroyShieldBlockedHostile(scene, hostile);
 }
 
@@ -8714,7 +11207,9 @@ function getAbsorbParticleTint(kind, energyOrbColor = 'gold') {
   if (isAsteroidKind(kind)) return 0xaeb7c8;
   if (kind === 'contaminatedOrb') return 0x0f7f37;
   if (kind === 'damageBooster') return 0xff3b4f;
+  if (isScissorKind(kind)) return 0xff3b4f;
   if (kind === 'spikeDrone') return 0xff3045;
+  if (kind === 'giroDrone') return 0xff3045;
   if (kind === 'redNeedle') return 0xff263c;
   if (kind === 'redNeedleLaser') return 0xff263c;
   if (kind === 'lifeBooster') return 0x4dff88;
