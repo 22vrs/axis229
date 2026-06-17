@@ -33,7 +33,7 @@ Tambien puedes abrir `index.html` directamente en el navegador. Para jugar con r
 
 - Arrastra la nave para moverla libremente en X-Y dentro de la pantalla.
 - Recoge orbes amarillos para sumar puntos y llenar la barra de progreso.
-- Evita enemigos, asteroides, lasers, drones, girodrones, barras de plasma, orbes contaminados y la costra inferior de los orbes cristalizados.
+- Evita enemigos, escisoras, asteroides, lasers, drones, girodrones, barras de plasma, orbes contaminados y la costra inferior de los orbes cristalizados.
 - Usa el boton de pausa del HUD para volver, rendirte o abrir opciones.
 - En opciones puedes activar/desactivar efectos y musica y ajustar sus volumenes por separado.
 - Las preferencias de audio se guardan en `localStorage`.
@@ -57,7 +57,7 @@ Claves usadas en `localStorage`:
 
 En modo infinito, el primer jefe es `Replicadores`; despues los jefes se eligen aleatoriamente entre la rotacion disponible.
 
-En Solo Jefes, `Girodrones` es el primer jefe. Despues continua la rotacion con `Centinela`, `Tormenta Cristalizada` y el resto de jefes; tras `Aguja Roja`, la sucesion vuelve a empezar.
+En Solo Jefes, `Enjambre de Escisoras` es el primer jefe. Despues continua la rotacion con `Girodrones`, `Centinela`, `Tormenta Cristalizada` y el resto de jefes; tras `Aguja Roja`, la sucesion vuelve a empezar.
 La partida comienza pausada sobre el control azul; el primer dialogo de jefe solo se activa despues de pulsarlo.
 
 ## Progresion
@@ -92,7 +92,7 @@ Como funciona:
 - El intervalo de aparicion normal baja de `1500 ms` a `600 ms` usando una curva suavizada (`SPAWN_DELAY_EASING = 1.8`).
 - Los boosters que caen usan el `80%` de la velocidad principal (`BOOSTER_GRAVITY_RATIO = 0.8`), por eso el HUD muestra tambien `BOOST`.
 - Al cambiar la velocidad, los objetos que ya estan cayendo actualizan su velocidad para adaptarse al nuevo ritmo.
-- Las oleadas y jefes pueden usar sus propios intervalos fijos, por ejemplo Enjambre cada `400 ms`, Drones cada `680 ms`, Girodrones cada `920 ms`, Asteroides cada `760 ms` y Plasma cada `2100 ms`.
+- Las oleadas y jefes pueden usar sus propios intervalos fijos, por ejemplo Enjambre de Obreras cada `400 ms`, Enjambre de Escisoras cada `650 ms`, Drones cada `680 ms`, Girodrones cada `920 ms`, Asteroides cada `760 ms` y Plasma cada `2100 ms`.
 - Algunas amenazas no escalan con la velocidad principal y usan ratios o valores propios, como asteroides, drones, lasers y barras de plasma.
 
 ## Orbes
@@ -129,7 +129,7 @@ Si queda un jefe pendiente mientras hay un booster temporal activo, los elemento
 Echo es el acompanante de la nave. Esta presente desde el inicio como apoyo visual y gana utilidad jugable con la mejora `Ayuda de Echo`.
 
 - Detecta amenazas a `128 px` de la nave.
-- Puede atacar obreras, drones de pinchos y asteroides.
+- Puede atacar obreras, escisoras, drones de pinchos y asteroides.
 - Cada amenaza valida tira una vez una probabilidad del `30%`.
 - Al bloquear una amenaza concede `10` puntos, igual que la barrera protectora, mas el bono de derrotas desbloqueado por esta al nivel `5`.
 - Tambien celebra las recompensas de racha antes de abrir la pantalla de mejora si corresponde.
@@ -152,7 +152,7 @@ Hay un jefe cada 3 niveles en modo normal. Despues del nivel 27, la rotacion se 
 
 | Nivel | Jefe | Patron principal | Desbloquea despues |
 | ---: | --- | --- | --- |
-| 3 | Enjambre | Enemigos rojos cada `400 ms`. | Obreras en viaje normal. |
+| 3 | Enjambre de Obreras | Enemigos rojos cada `400 ms`. | Obreras en viaje normal. |
 | 6 | Centinela | Laser vertical con aviso y laser horizontal encadenado. | Centinela viajero. |
 | 9 | Cinturon | Asteroides normales y grandes cada `760 ms`. | Asteroides en viaje normal. |
 | 12 | Marea de Plasma | Barras horizontales con hueco movil cada `2100 ms`. | Barras de plasma en viaje normal. |
@@ -162,11 +162,14 @@ Hay un jefe cada 3 niveles en modo normal. Despues del nivel 27, la rotacion se 
 | 24 | Aguja Roja | `6` pasadas horizontales con disparos laser. | Aguja Roja en viaje normal. |
 | 27 | Tormenta Cristalizada | Sucesion de orbes cristalizados cada `850 ms`: se recogen por arriba y causan dano por la costra inferior. | Desbloquea los orbes cristalizados durante el viaje normal. |
 
+En Solo Jefes se anade como primer combate `Enjambre de Escisoras`: una sucesion de Escisoras que bajan a velocidad de obrera, se dividen a media pantalla y continuan como dos mitades en diagonal.
+
 Duraciones principales:
 
 | Oleada | Duracion |
 | --- | ---: |
-| Enjambre | `15000 ms` |
+| Enjambre de Obreras | `15000 ms` |
+| Enjambre de Escisoras | `15000 ms` |
 | Cinturon | `15000 ms` |
 | Marea de Plasma | `15000 ms` |
 | Drones | `15000 ms` |
@@ -181,7 +184,8 @@ Las probabilidades son por intento de aparicion. Algunas solo se desbloquean tra
 
 | Amenaza | Probabilidad | Condicion | Notas |
 | --- | ---: | --- | --- |
-| Obrera / enemigo rojo | `20%` | Tras vencer a Enjambre. | Puede aparecer durante el centinela viajero. |
+| Obrera / enemigo rojo | `20%` | Tras vencer a Enjambre de Obreras. | Puede aparecer durante el centinela viajero. |
+| Escisora | `5%` | Tras vencer a Enjambre de Escisoras. | Cae como una obrera, se divide arriba de la pantalla y sus mitades continuan en diagonal. |
 | Drone de pinchos | `10%` | Tras vencer a Drones. | Solo dana cuando esta expandido; si esta verde se puede desactivar al tocarlo. |
 | Girodron | `5%` | Tras vencer a Girodrones. | El nucleo verde desactiva ambos drones, el naranja no hace nada y el rojo expandido dana con su halo. El dron rojo exterior tambien dana con su halo. |
 | Aguja Roja | `5%` | Tras vencer a Aguja Roja. | Solo puede haber una activa. |
@@ -195,7 +199,7 @@ Las probabilidades son por intento de aparicion. Algunas solo se desbloquean tra
 Orden de decision en viaje normal:
 
 1. Centinela viajero, si cumple condiciones.
-2. Amenaza viajera: Replicador, Aguja Roja, Girodron, drone de pinchos u obrera.
+2. Amenaza viajera: Replicador, Aguja Roja, Girodron, drone de pinchos, escisora u obrera.
 3. Barra de plasma.
 4. Asteroide.
 5. Booster.

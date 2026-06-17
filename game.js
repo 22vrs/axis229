@@ -59,6 +59,26 @@ const RED_WAVE_ENEMY_GRAVITY_RATIO = 0.72;
 const RED_WAVE_MIN_ENEMY_SPACING = SHIP_WIDTH + 56;
 const RED_WAVE_RECENT_ENEMY_HEIGHT = 230;
 const OBRERA_SPAWN_CHANCE = 0.14;
+const SCISSOR_SPAWN_CHANCE = 0.05;
+const SCISSOR_SWARM_DURATION = 15000;
+const SCISSOR_WAVE_SPAWN_DELAY = 650;
+const SCISSOR_SPLIT_Y_RATIO = 0.32;
+const SCISSOR_HALF_HORIZONTAL_SPEED = 94;
+const SCISSOR_TEXTURE_WIDTH = 48;
+const SCISSOR_TEXTURE_HEIGHT = 48;
+const SCISSOR_HALF_TEXTURE_WIDTH = SCISSOR_TEXTURE_WIDTH / 2;
+const SCISSOR_HITBOX_WIDTH = 30;
+const SCISSOR_HITBOX_HEIGHT = 36;
+const SCISSOR_HALF_HITBOX_WIDTH = SCISSOR_HITBOX_WIDTH / 2;
+const SCISSOR_HALF_HITBOX_HEIGHT = 36;
+const SCISSOR_CUT_SPARK_POINTS = [
+  { x: 30.4, y: 13, radius: 1.7, alpha: 0.92 },
+  { x: 33.6, y: 18, radius: 1.2, alpha: 0.78 },
+  { x: 30.8, y: 24, radius: 1.4, alpha: 0.86 },
+  { x: 33.1, y: 31, radius: 1.8, alpha: 0.9 },
+  { x: 31.2, y: 39, radius: 1.1, alpha: 0.76 },
+  { x: 33.4, y: 47, radius: 1.3, alpha: 0.82 },
+];
 const REPLICATOR_WAVE_DURATION = 15000;
 const REPLICATOR_WAVE_SPAWN_DELAY = 900;
 const REPLICATOR_SPAWN_CHANCE = 0.02;
@@ -283,10 +303,17 @@ const ECHO_TUTORIAL_LINES = [
 ];
 const ECHO_SWARM_WARNING_LINES = [
   "Atención, Axis. Amenaza detectada.",
-  "Se aproxima un Enjambre.",
+  "Se aproxima un Enjambre de Obreras.",
   "Las unidades obreras son antiguas naves mineras corrompidas. Individualmente representan un riesgo bajo.",
   "En grupo son extremadamente peligrosas.",
   "Recomendación: evita cualquier contacto.",
+];
+const ECHO_SCISSOR_SWARM_WARNING_LINES = [
+  "Atención, Axis. Unidades de clase Escisora identificadas.",
+  "Estas variantes fueron diseñadas para atravesar fisuras y túneles inaccesibles para una Obrera convencional.",
+  "Durante la aproximación se dividirán en dos unidades independientes.",
+  "Las trayectorias resultantes pueden dificultar las maniobras evasivas.",
+  "Mantente alerta.",
 ];
 const ECHO_REPLICATOR_WARNING_LINES = [
   "Atención, Axis. Formación de Replicadores identificada.",
@@ -311,10 +338,12 @@ const ECHO_DRONE_WARNING_LINES = [
 ];
 const ECHO_GIRODRONE_WARNING_LINES = [
   "Atención, Axis. Girodrones identificados.",
-  "Son una variante de los Drones de Seguridad: un núcleo central y una unidad roja orbitando.",
-  "El dron exterior mantiene un halo de energía activa. Ese campo provocará daños si lo cruzas.",
-  "El núcleo central sigue el ciclo habitual: verde para neutralizar, naranja sin efecto y rojo expandido peligroso.",
-  "Espera la ventana verde. Evita la órbita exterior.",
+  "Los registros indican que estas unidades protegían infraestructuras críticas.",
+  "El módulo central presenta ciclos periódicos de vulnerabilidad.",
+  "El módulo orbital, no.",
+  "Cuando el núcleo emita una señal verde, podrás neutralizarlo.",
+  "Cuando emita una señal roja, mantén la distancia.",
+  "Evita cualquier contacto con los campos energéticos de ambas unidades.",
 ];
 const ECHO_CRYSTALLIZED_WAVE_WARNING_LINES = [
   "Atención, Axis. Detecto una Tormenta Cristalizada.",
@@ -369,7 +398,7 @@ const ASTEROID_WAVE_HORIZONTAL_SPEED_RATIO = 0.58;
 const ASTEROID_WRAP_MARGIN = 28;
 const UPGRADE_POINTS_REQUIRED = 10;
 const STORY_BOSS_KINDS = ['red', 'boss', 'asteroid', 'plasma', 'replicators', 'drones', 'girodrones', 'redNeedleBoss', 'crystallized'];
-const BOSS_ONLY_BOSS_KINDS = ['girodrones', 'boss', 'crystallized', 'red', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss'];
+const BOSS_ONLY_BOSS_KINDS = ['scissors', 'girodrones', 'boss', 'crystallized', 'red', 'asteroid', 'plasma', 'replicators', 'drones', 'redNeedleBoss'];
 const SHIELD_BLOCK_SCORE = 10;
 const SPIKE_DRONE_DISABLE_SCORE = 5;
 const INITIAL_HEART_CAPACITY = 3;
@@ -476,6 +505,7 @@ let pageAudioListenersBound = false;
 let pageAudioSuspended = false;
 let pageAudioWasPlaying = false;
 let echoDialogAudioContext = null;
+let uiScaleResizeBound = false;
 
 loadAudioSettings();
 
@@ -501,14 +531,35 @@ function initHud() {
   };
 
   updateUiScale();
-  window.addEventListener('resize', updateUiScale);
+  bindUiScaleResize();
   return hud;
+}
+
+function bindUiScaleResize() {
+  if (uiScaleResizeBound) return;
+  uiScaleResizeBound = true;
+  window.addEventListener('resize', updateUiScale);
 }
 
 function updateUiScale() {
   const container = document.getElementById('game-container');
   if (!container) return;
-  container.style.setProperty('--ui-scale', container.clientWidth / GAME_WIDTH);
+  const nextScale = container.clientWidth / GAME_WIDTH;
+  if (!Number.isFinite(nextScale) || nextScale <= 0) return;
+  container.style.setProperty('--ui-scale', nextScale);
+}
+
+function revealGameContainer() {
+  const container = document.getElementById('game-container');
+  if (!container) return;
+  updateUiScale();
+  container.classList.add('is-ready');
+}
+
+function hideGameContainerUntilReady() {
+  const container = document.getElementById('game-container');
+  if (!container) return;
+  container.classList.remove('is-ready');
 }
 
 function setHudVisible(scene, visible) {
@@ -606,8 +657,15 @@ function createBossConfig(kind) {
   if (kind === 'red') {
     return {
       kind: 'red',
-      name: 'Enjambre',
+      name: 'Enjambre de Obreras',
       duration: RED_WAVE_DURATION,
+    };
+  }
+  if (kind === 'scissors') {
+    return {
+      kind: 'scissors',
+      name: 'Enjambre de Escisoras',
+      duration: SCISSOR_SWARM_DURATION,
     };
   }
   if (kind === 'asteroid') {
@@ -693,6 +751,9 @@ function isXyInfiniteGameMode() {
   return currentGameMode === 'xyInfinite';
 }
 
+updateUiScale();
+bindUiScaleResize();
+hideGameContainerUntilReady();
 bootGame();
 
 function bootGame() {
@@ -777,6 +838,7 @@ function create() {
   damageGraphics.generateTexture('damageBooster', 36, 36);
   damageGraphics.destroy();
   createEnemyShipTexture(this);
+  createScissorTextures(this);
   createRedNeedleTextures(this);
   createSpikeDroneTextures(this);
   createGiroDroneTextures(this);
@@ -937,6 +999,7 @@ function create() {
   layoutScene(this);
 
   showMenu.call(this);
+  revealGameContainer();
 
   this.scale.on('resize', () => {
     updateUiScale();
@@ -1574,6 +1637,195 @@ function createEnemyShipTexture(scene) {
 
   graphics.generateTexture('enemyShipSmall', 48, 48);
   graphics.destroy();
+}
+
+function createScissorTextures(scene) {
+  createScissorTexture(scene);
+  createScissorHalfTexture(scene, 'scissorShipLeft', 0);
+  createScissorHalfTexture(scene, 'scissorShipRight', SCISSOR_TEXTURE_WIDTH - SCISSOR_HALF_TEXTURE_WIDTH);
+}
+
+function createScissorTexture(scene) {
+  const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+  const sx = SCISSOR_TEXTURE_WIDTH / 64;
+  const sy = SCISSOR_TEXTURE_HEIGHT / 72;
+  const point = ({ x, y }) => ({ x: x * sx, y: y * sy });
+  const points = (items) => items.map(point);
+  const tx = (x) => x * sx;
+  const ty = (y) => y * sy;
+
+  graphics.fillStyle(0x2a030d, 1);
+  graphics.fillPoints(points([
+    { x: 31, y: 4 },
+    { x: 24, y: 14 },
+    { x: 13, y: 16 },
+    { x: 1, y: 64 },
+    { x: 26, y: 54 },
+    { x: 32, y: 70 },
+    { x: 32, y: 4 },
+  ]), true);
+  graphics.fillPoints(points([
+    { x: 33, y: 4 },
+    { x: 40, y: 14 },
+    { x: 51, y: 16 },
+    { x: 63, y: 64 },
+    { x: 38, y: 54 },
+    { x: 32, y: 70 },
+    { x: 32, y: 4 },
+  ]), true);
+
+  graphics.fillStyle(0x8d1725, 1);
+  graphics.fillPoints(points([
+    { x: 31, y: 7 },
+    { x: 23, y: 19 },
+    { x: 13, y: 22 },
+    { x: 5, y: 60 },
+    { x: 28, y: 50 },
+    { x: 32, y: 66 },
+    { x: 32, y: 7 },
+  ]), true);
+  graphics.fillPoints(points([
+    { x: 33, y: 7 },
+    { x: 41, y: 19 },
+    { x: 51, y: 22 },
+    { x: 59, y: 60 },
+    { x: 36, y: 50 },
+    { x: 32, y: 66 },
+    { x: 32, y: 7 },
+  ]), true);
+
+  graphics.fillStyle(0xd73346, 1);
+  graphics.fillTriangle(tx(31), ty(11), tx(24), ty(24), tx(31), ty(60));
+  graphics.fillTriangle(tx(17), ty(25), tx(8), ty(58), tx(27), ty(49));
+  graphics.fillTriangle(tx(33), ty(11), tx(40), ty(24), tx(33), ty(60));
+  graphics.fillTriangle(tx(47), ty(25), tx(56), ty(58), tx(37), ty(49));
+
+  graphics.fillStyle(0xffc05a, 0.95);
+  graphics.fillTriangle(tx(18), ty(7), tx(25), ty(0), tx(24), ty(16));
+  graphics.fillTriangle(tx(46), ty(7), tx(39), ty(0), tx(40), ty(16));
+
+  graphics.fillStyle(0x151b2a, 0.92);
+  graphics.fillRoundedRect(tx(25), ty(8), tx(14), ty(50), 4);
+  graphics.fillStyle(0xb9e8ff, 0.9);
+  graphics.fillEllipse(tx(32), ty(32), tx(18), ty(18));
+  graphics.fillStyle(0x1d2834, 0.94);
+  graphics.fillEllipse(tx(32), ty(33), tx(12), ty(12));
+  graphics.fillStyle(0x6ee9ff, 0.52);
+  graphics.fillEllipse(tx(30), ty(31), tx(7), ty(5));
+  graphics.fillStyle(0x0b0d14, 0.88);
+  graphics.fillCircle(tx(32), ty(33), tx(4.5));
+  graphics.lineStyle(1, 0xf3fbff, 0.55);
+  graphics.strokeEllipse(tx(32), ty(32), tx(18), ty(18));
+
+  graphics.fillStyle(0x0d121f, 0.86);
+  graphics.fillRoundedRect(tx(13), ty(30), tx(9), ty(4), 1);
+  graphics.fillRoundedRect(tx(42), ty(30), tx(9), ty(4), 1);
+  graphics.fillStyle(0xff6d3f, 0.92);
+  graphics.fillRoundedRect(tx(15), ty(31), tx(5), ty(2), 1);
+  graphics.fillRoundedRect(tx(44), ty(31), tx(5), ty(2), 1);
+  graphics.fillStyle(0xff8f2a, 0.96);
+  graphics.fillRoundedRect(tx(27), ty(56), tx(5), ty(9), 2);
+  graphics.fillRoundedRect(tx(32), ty(56), tx(5), ty(9), 2);
+
+  graphics.lineStyle(1, 0xffa2ad, 0.44);
+  graphics.strokePoints(points([
+    { x: 31, y: 4 },
+    { x: 24, y: 14 },
+    { x: 13, y: 16 },
+    { x: 1, y: 64 },
+    { x: 26, y: 54 },
+    { x: 32, y: 70 },
+    { x: 32, y: 4 },
+  ]), true);
+  graphics.strokePoints(points([
+    { x: 33, y: 4 },
+    { x: 40, y: 14 },
+    { x: 51, y: 16 },
+    { x: 63, y: 64 },
+    { x: 38, y: 54 },
+    { x: 32, y: 70 },
+    { x: 32, y: 4 },
+  ]), true);
+
+  graphics.lineStyle(5, 0xff1d32, 0.18);
+  graphics.lineBetween(tx(32), ty(7), tx(32), ty(68));
+  graphics.lineStyle(3, 0xff3045, 0.36);
+  graphics.lineBetween(tx(32), ty(7), tx(32), ty(68));
+  graphics.lineStyle(1, 0xff9aaa, 0.82);
+  graphics.lineBetween(tx(32), ty(8), tx(32), ty(67));
+  SCISSOR_CUT_SPARK_POINTS.forEach((spark, index) => {
+    graphics.fillStyle(index % 2 === 0 ? 0xff3045 : 0xffb1bd, spark.alpha);
+    graphics.fillCircle(tx(spark.x), ty(spark.y), Math.max(0.7, tx(spark.radius)));
+  });
+  graphics.lineStyle(1, 0xff3045, 0.72);
+  graphics.lineBetween(tx(30.6), ty(20), tx(33.4), ty(23));
+  graphics.lineBetween(tx(33.2), ty(35), tx(30.7), ty(38));
+  graphics.lineStyle(1, 0x101827, 0.56);
+  graphics.lineBetween(tx(32), ty(6), tx(32), ty(69));
+
+  graphics.generateTexture('scissorShip', SCISSOR_TEXTURE_WIDTH, SCISSOR_TEXTURE_HEIGHT);
+  graphics.destroy();
+}
+
+function createScissorHalfTexture(scene, key, sourceX) {
+  const source = scene.textures.get('scissorShip').getSourceImage();
+  const texture = scene.textures.createCanvas(key, SCISSOR_HALF_TEXTURE_WIDTH, SCISSOR_TEXTURE_HEIGHT);
+  const context = texture.getContext();
+  context.drawImage(
+    source,
+    sourceX,
+    0,
+    SCISSOR_HALF_TEXTURE_WIDTH,
+    SCISSOR_TEXTURE_HEIGHT,
+    0,
+    0,
+    SCISSOR_HALF_TEXTURE_WIDTH,
+    SCISSOR_TEXTURE_HEIGHT
+  );
+  const cutX = key === 'scissorShipLeft' ? SCISSOR_HALF_TEXTURE_WIDTH - 1 : 0;
+  const glow = context.createLinearGradient(
+    key === 'scissorShipLeft' ? SCISSOR_HALF_TEXTURE_WIDTH - 7 : 0,
+    0,
+    key === 'scissorShipLeft' ? SCISSOR_HALF_TEXTURE_WIDTH : 7,
+    0
+  );
+  if (key === 'scissorShipLeft') {
+    glow.addColorStop(0, 'rgba(255, 29, 50, 0)');
+    glow.addColorStop(1, 'rgba(255, 48, 69, 0.55)');
+  } else {
+    glow.addColorStop(0, 'rgba(255, 48, 69, 0.55)');
+    glow.addColorStop(1, 'rgba(255, 29, 50, 0)');
+  }
+  context.fillStyle = glow;
+  context.fillRect(key === 'scissorShipLeft' ? SCISSOR_HALF_TEXTURE_WIDTH - 7 : 0, 4, 7, SCISSOR_TEXTURE_HEIGHT - 8);
+  context.strokeStyle = 'rgba(255, 154, 170, 0.92)';
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(cutX + (key === 'scissorShipLeft' ? -0.5 : 0.5), 5);
+  context.lineTo(cutX + (key === 'scissorShipLeft' ? -0.5 : 0.5), SCISSOR_TEXTURE_HEIGHT - 5);
+  context.stroke();
+  const sparks = key === 'scissorShipLeft'
+    ? [
+      [SCISSOR_HALF_TEXTURE_WIDTH - 4.2, 9, 1.15, 0.85],
+      [SCISSOR_HALF_TEXTURE_WIDTH - 1.9, 17, 0.8, 0.7],
+      [SCISSOR_HALF_TEXTURE_WIDTH - 3.4, 28, 1.05, 0.82],
+      [SCISSOR_HALF_TEXTURE_WIDTH - 1.7, 37, 0.9, 0.72],
+    ]
+    : [
+      [4.2, 12, 1.1, 0.84],
+      [1.8, 21, 0.82, 0.7],
+      [3.6, 32, 1.15, 0.86],
+      [2.1, 42, 0.9, 0.74],
+    ];
+  sparks.forEach(([x, y, radius, alpha], index) => {
+    context.fillStyle = index % 2 === 0
+      ? `rgba(255, 48, 69, ${alpha})`
+      : `rgba(255, 177, 189, ${alpha})`;
+    context.beginPath();
+    context.arc(x, y, radius, 0, Math.PI * 2);
+    context.fill();
+  });
+  texture.refresh();
 }
 
 function createRedNeedleTextures(scene) {
@@ -2302,6 +2554,7 @@ function update(time, delta) {
   updateEchoAttacks(this);
   updateEnemyPropulsion(this, delta);
   updateRedNeedles(this);
+  updateScissors(this);
   updateRedEnemySway(this, time);
   updateReplicators(this, time, delta);
   updateSpikeDrones(this);
@@ -2868,7 +3121,7 @@ function updateEchoAttacks(scene) {
 }
 
 function isEchoAttackableKind(kind) {
-  return kind === 'damageBooster' || kind === 'spikeDrone' || kind === 'giroDrone' || isAsteroidKind(kind);
+  return kind === 'damageBooster' || isScissorKind(kind) || kind === 'spikeDrone' || kind === 'giroDrone' || isAsteroidKind(kind);
 }
 
 function isHostileInsideEchoAttackRadius(scene, hostile) {
@@ -4643,6 +4896,7 @@ function endGame() {
 
 function enableInfiniteModeThreats(scene) {
   scene.obreraSpawnsUnlocked = true;
+  scene.scissorSpawnsUnlocked = true;
   scene.droneSpawnsUnlocked = true;
   scene.giroDroneSpawnsUnlocked = true;
   scene.asteroidSpawnsUnlocked = true;
@@ -4701,6 +4955,7 @@ function resetCounters() {
   this.nextRedWaveEligibleAt = 0;
   this.nextAsteroidWaveEligibleAt = 0;
   this.obreraSpawnsUnlocked = false;
+  this.scissorSpawnsUnlocked = false;
   this.droneSpawnsUnlocked = false;
   this.giroDroneSpawnsUnlocked = false;
   this.asteroidSpawnsUnlocked = false;
@@ -6054,7 +6309,7 @@ function updateEnemyPropulsion(scene, delta) {
 
   scene.balls.getChildren().forEach((enemy) => {
     if (!enemy.active) return;
-    if (enemy.getData('kind') === 'damageBooster') {
+    if (enemy.getData('kind') === 'damageBooster' || isScissorKind(enemy.getData('kind'))) {
       emitVerticalEnemyTrail(scene, enemy);
     } else if (enemy.getData('kind') === 'redNeedle') {
       emitRedNeedleTrail(scene, enemy, enemy.getData('horizontalVelocity') || RED_NEEDLE_SPEED, 1);
@@ -6252,16 +6507,17 @@ function updateShieldBooster(scene) {
 function activateRedWave(scene, bossConfig = getBossConfigForLevel(3)) {
   resetTimedBoosters(scene);
   playBackgroundMusic(scene);
+  const isScissorSwarm = bossConfig.kind === 'scissors';
   scene.activeRedWave = {
     endsAt: null,
-    duration: bossConfig.duration || RED_WAVE_DURATION,
+    duration: bossConfig.duration || (isScissorSwarm ? SCISSOR_SWARM_DURATION : RED_WAVE_DURATION),
     isSpawningDamageBoosters: false,
     hasStarted: false,
     hasShownEchoWarning: false,
     isDraining: false,
-    spawnKind: 'damageBooster',
-    bossKind: 'red',
-    bossName: bossConfig.name || 'Enjambre',
+    spawnKind: isScissorSwarm ? 'scissor' : 'damageBooster',
+    bossKind: isScissorSwarm ? 'scissors' : 'red',
+    bossName: bossConfig.name || (isScissorSwarm ? 'Enjambre de Escisoras' : 'Enjambre de Obreras'),
   };
 
   setShipTextureForCurrentState(scene);
@@ -6555,7 +6811,7 @@ function activateTravelSentinel(scene) {
 
 function activateLevelBoss(scene, bossConfig) {
   if (!bossConfig) return;
-  if (bossConfig.kind === 'red') {
+  if (bossConfig.kind === 'red' || bossConfig.kind === 'scissors') {
     activateRedWave(scene, bossConfig);
   } else if (bossConfig.kind === 'drones' || bossConfig.kind === 'girodrones') {
     activateDroneWave(scene, bossConfig);
@@ -7395,6 +7651,16 @@ function startWaveCountdown(scene, waveKind) {
   if (
     waveKind === 'red' &&
     scene.activeRedWave &&
+    scene.activeRedWave.bossKind === 'scissors' &&
+    !scene.activeRedWave.hasShownEchoWarning
+  ) {
+    scene.activeRedWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_SCISSOR_SWARM_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (
+    waveKind === 'red' &&
+    scene.activeRedWave &&
     scene.activeRedWave.bossKind === 'crystallized' &&
     !scene.activeRedWave.hasShownEchoWarning
   ) {
@@ -7585,7 +7851,7 @@ function showBossCueBand(scene, waveKind, cueKind, onCross) {
 }
 
 function getWaveBossName(scene, waveKind) {
-  if (waveKind === 'red' && scene.activeRedWave) return scene.activeRedWave.bossName || 'Enjambre';
+  if (waveKind === 'red' && scene.activeRedWave) return scene.activeRedWave.bossName || 'Enjambre de Obreras';
   if (waveKind === 'drones' && scene.activeDroneWave) return scene.activeDroneWave.bossName || 'Drones';
   if (waveKind === 'asteroid' && scene.activeAsteroidWave) return scene.activeAsteroidWave.bossName || 'Cinturón';
   if (waveKind === 'plasma' && scene.activePlasmaWave) return scene.activePlasmaWave.bossName || 'Marea de Plasma';
@@ -7672,6 +7938,8 @@ function endWaveAfterPause(scene, waveKind) {
       scene.replicatorSpawnsUnlocked = true;
     } else if (currentWave.bossKind === 'red') {
       scene.obreraSpawnsUnlocked = true;
+    } else if (currentWave.bossKind === 'scissors') {
+      scene.scissorSpawnsUnlocked = true;
     } else if (currentWave.bossKind === 'crystallized') {
       scene.crystallizedOrbSpawnsUnlocked = true;
     }
@@ -8629,6 +8897,7 @@ function isPreciseShipOverlap(scene, objectA, objectB) {
   if (object.getData('kind') === 'redNeedle') return isRedNeedleOverlappingShip(scene, object);
   if (object.getData('kind') === 'redNeedleLaser') return isRedNeedleLaserOverlappingShip(scene, object);
   if (object.getData('kind') === 'damageBooster') return isDamageBoosterOverlappingShip(scene, object);
+  if (isScissorKind(object.getData('kind'))) return isScissorOverlappingShip(scene, object);
   if (object.getData('kind') === 'replicator') {
     return isRectOverlappingShip(scene, object.x, object.y, REPLICATOR_HITBOX_WIDTH, REPLICATOR_HITBOX_HEIGHT);
   }
@@ -8656,6 +8925,16 @@ function isRedNeedleOverlappingShip(scene, needle, scale = needle.scaleX || 1) {
 
 function isDamageBoosterOverlappingShip(scene, enemy) {
   return isRectOverlappingShip(scene, enemy.x, enemy.y, RED_ENEMY_HITBOX_WIDTH, RED_ENEMY_HITBOX_HEIGHT);
+}
+
+function isScissorOverlappingShip(scene, enemy) {
+  return isRectOverlappingShip(
+    scene,
+    enemy.x,
+    enemy.y,
+    isScissorHalfKind(enemy.getData('kind')) ? SCISSOR_HALF_HITBOX_WIDTH : SCISSOR_HITBOX_WIDTH,
+    isScissorHalfKind(enemy.getData('kind')) ? SCISSOR_HALF_HITBOX_HEIGHT : SCISSOR_HITBOX_HEIGHT
+  );
 }
 
 function isGiroDroneOverlappingShip(scene, giroDrone) {
@@ -8739,6 +9018,8 @@ function getObjectCollisionRadius(object) {
   if (kind === 'redNeedle') return RED_NEEDLE_WIDTH / 2;
   if (kind === 'redNeedleLaser') return RED_NEEDLE_LASER_WIDTH / 2;
   if (kind === 'damageBooster') return RED_ENEMY_SHIELD_RADIUS;
+  if (kind === 'scissor') return SCISSOR_HITBOX_HEIGHT / 2;
+  if (isScissorHalfKind(kind)) return SCISSOR_HALF_HITBOX_HEIGHT / 2;
   if (kind === 'replicator') return REPLICATOR_HITBOX_WIDTH / 2;
   if (kind === 'spikeDrone') return object.getData('collisionRadius') || SPIKE_DRONE_FOLDED_RADIUS;
   if (kind === 'giroDrone') return GIRODRONE_ORBIT_RADIUS + GIRODRONE_SATELLITE_RADIUS;
@@ -8821,7 +9102,7 @@ function spawnFallingKind(scene, kind, forcedX = null) {
   const isBooster = isBoosterKind(kind);
   const x = forcedX !== null ? forcedX : isAsteroidKind(kind)
     ? findAsteroidSpawnX(scene)
-    : kind === 'damageBooster'
+    : kind === 'damageBooster' || kind === 'scissor'
     ? findRedWaveEnemySpawnX(scene)
     : kind === 'replicator' && scene.activeRedWave && scene.activeRedWave.bossKind === 'replicators'
       ? findReplicatorWaveSpawnX(scene)
@@ -8831,7 +9112,13 @@ function spawnFallingKind(scene, kind, forcedX = null) {
       ? findBoosterSpawnX(scene)
       : findSpawnX(scene);
   const texture = getTextureForKind(kind);
-  const spawnY = kind === 'bigAsteroid' ? -54 : kind === 'replicator' ? -SHIP_HEIGHT : -20;
+  const spawnY = kind === 'bigAsteroid'
+    ? -54
+    : kind === 'replicator'
+      ? -SHIP_HEIGHT
+      : kind === 'scissor'
+        ? -SCISSOR_TEXTURE_HEIGHT / 2
+        : -20;
 
   // Crear desde el grupo para evitar conflictos
   const ball = scene.balls.create(x, spawnY, texture);
@@ -8856,8 +9143,12 @@ function spawnFallingKind(scene, kind, forcedX = null) {
     attachEnergyOrbOverlay(scene, ball, getEnergyOrbWispPalette(kind, getEnergyOrbColor(ball)));
   } else if (isAsteroidKind(kind)) {
     ball.setAngularVelocity(Phaser.Math.Between(-110, 110));
-  } else if (kind === 'damageBooster') {
+  } else if (kind === 'damageBooster' || kind === 'scissor') {
     setupRedEnemySway(ball);
+    if (kind === 'scissor') {
+      ball.setData('displayName', 'Escisora');
+      ball.setData('splitY', getGameHeight(scene) * SCISSOR_SPLIT_Y_RATIO);
+    }
   } else if (kind === 'replicator') {
     setupReplicator(scene, ball);
   } else if (kind === 'spikeDrone') {
@@ -8942,6 +9233,97 @@ function spawnRedNeedleLaser(scene, x, y) {
   laser.body.setVelocityX(0);
   laser.body.setVelocityY(RED_NEEDLE_LASER_SPEED);
   playRedNeedleShotSound(scene);
+}
+
+function updateScissors(scene) {
+  if (!scene.balls) return;
+
+  scene.balls.getChildren().forEach((scissor) => {
+    if (!scissor.active || !scissor.body) return;
+    const kind = scissor.getData('kind');
+
+    if (kind === 'scissor') {
+      scissor.body.setVelocityY(getFallingVelocity('scissor', scene, scissor));
+      if (scissor.y >= (scissor.getData('splitY') || getGameHeight(scene) * SCISSOR_SPLIT_Y_RATIO)) {
+        splitScissor(scene, scissor);
+      }
+      return;
+    }
+
+    if (!isScissorHalfKind(kind)) return;
+    const horizontalVelocity = scissor.getData('horizontalVelocity') || (kind === 'scissorLeft' ? -SCISSOR_HALF_HORIZONTAL_SPEED : SCISSOR_HALF_HORIZONTAL_SPEED);
+    scissor.body.setVelocityX(horizontalVelocity);
+    scissor.body.setVelocityY(getFallingVelocity(kind, scene, scissor));
+    scissor.setRotation(0);
+
+    const margin = SCISSOR_HALF_TEXTURE_WIDTH;
+    if (
+      scissor.x < -margin ||
+      scissor.x > getGameWidth(scene) + margin ||
+      scissor.y > getGameHeight(scene) + SCISSOR_TEXTURE_HEIGHT
+    ) {
+      scissor.destroy();
+    }
+  });
+}
+
+function splitScissor(scene, scissor) {
+  if (!scissor || !scissor.active || scissor.getData('hasSplit')) return;
+
+  const x = scissor.x;
+  const y = scissor.y;
+  const velocityY = getFallingVelocity('scissor', scene, scissor);
+  scissor.setData('hasSplit', true);
+  createScissorHalf(scene, 'scissorLeft', x - SCISSOR_HALF_TEXTURE_WIDTH / 2, y, -SCISSOR_HALF_HORIZONTAL_SPEED, velocityY);
+  createScissorHalf(scene, 'scissorRight', x + SCISSOR_HALF_TEXTURE_WIDTH / 2, y, SCISSOR_HALF_HORIZONTAL_SPEED, velocityY);
+  emitScissorSplitBurst(scene, x, y);
+  scissor.destroy();
+}
+
+function createScissorHalf(scene, kind, x, y, velocityX, velocityY) {
+  const half = scene.balls.create(x, y, getTextureForKind(kind));
+  half.setData('kind', kind);
+  half.setData('displayName', 'Escisora');
+  half.setData('horizontalVelocity', velocityX);
+  half.setData('fallVelocity', velocityY);
+  half.setOrigin(0.5);
+  half.setDepth(FALLING_OBJECT_DEPTH);
+  half.setRotation(0);
+  setFallingObjectBody(half, kind);
+  half.body.setBounce(0, 0);
+  half.body.setAllowGravity(false);
+  half.body.setCollideWorldBounds(false);
+  half.body.setVelocityX(velocityX);
+  half.body.setVelocityY(velocityY);
+  return half;
+}
+
+function emitScissorSplitBurst(scene, x, y) {
+  for (let i = 0; i < 18; i += 1) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const particle = trackGameplayVisual(scene, scene.add.image(
+      x + Phaser.Math.Between(-3, 3),
+      y + Phaser.Math.Between(-20, 20),
+      'goldTrailParticle'
+    ));
+    particle
+      .setDepth(FX_DEPTH)
+      .setTint(i % 4 === 0 ? 0xffd7df : i % 3 === 0 ? 0xff8a9a : 0xff263c)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(Phaser.Math.FloatBetween(0.35, 0.75))
+      .setAlpha(0.92);
+
+    scene.tweens.add({
+      targets: particle,
+      x: particle.x + side * Phaser.Math.Between(12, 42),
+      y: particle.y + Phaser.Math.Between(-18, 18),
+      scale: 0.08,
+      alpha: 0,
+      duration: Phaser.Math.Between(120, 260),
+      ease: 'Sine.easeOut',
+      onComplete: () => particle.destroy(),
+    });
+  }
 }
 
 function setupRedEnemySway(enemy) {
@@ -9222,7 +9604,8 @@ function updateRedEnemySway(scene, time) {
   const min = 34;
   const max = Math.max(min, getGameWidth(scene) - 34);
   scene.balls.getChildren().forEach((enemy) => {
-    if (!enemy.active || enemy.getData('kind') !== 'damageBooster') return;
+    const kind = enemy.getData('kind');
+    if (!enemy.active || (kind !== 'damageBooster' && kind !== 'scissor')) return;
     if (!enemy.body) return;
 
     const phase = enemy.getData('swayPhase') || 0;
@@ -9237,7 +9620,7 @@ function updateRedEnemySway(scene, time) {
     }
 
     enemy.body.setVelocityX(velocityX);
-    enemy.body.setVelocityY(getFallingVelocity('damageBooster', scene, enemy));
+    enemy.body.setVelocityY(getFallingVelocity(kind, scene, enemy));
   });
 }
 
@@ -9596,6 +9979,16 @@ function setFallingObjectBody(object, kind) {
     return;
   }
 
+  if (kind === 'scissor') {
+    object.body.setSize(SCISSOR_HITBOX_WIDTH, SCISSOR_HITBOX_HEIGHT, true);
+    return;
+  }
+
+  if (isScissorHalfKind(kind)) {
+    object.body.setSize(SCISSOR_HALF_HITBOX_WIDTH, SCISSOR_HALF_HITBOX_HEIGHT, true);
+    return;
+  }
+
   if (kind === 'spikeDrone') {
     const radius = object.getData('collisionRadius') || SPIKE_DRONE_FOLDED_RADIUS;
     const offset = SPIKE_DRONE_TEXTURE_SIZE / 2 - radius;
@@ -9660,12 +10053,13 @@ function getNextSpawnKind(scene) {
 
 function getNextTravelThreatKind(scene) {
   const isLevelBossActive = scene.activeBossWave && !scene.activeBossWave.isTravelEncounter;
-  if ((!scene.obreraSpawnsUnlocked && !scene.droneSpawnsUnlocked && !scene.giroDroneSpawnsUnlocked && !scene.redNeedleSpawnsUnlocked && !scene.replicatorSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || isLevelBossActive) return null;
+  if ((!scene.obreraSpawnsUnlocked && !scene.scissorSpawnsUnlocked && !scene.droneSpawnsUnlocked && !scene.giroDroneSpawnsUnlocked && !scene.redNeedleSpawnsUnlocked && !scene.replicatorSpawnsUnlocked) || scene.activeRedWave || scene.activeDroneWave || scene.activeAsteroidWave || scene.activePlasmaWave || isLevelBossActive) return null;
 
   if (!isSentinelActive(scene) && scene.replicatorSpawnsUnlocked && Math.random() < REPLICATOR_SPAWN_CHANCE) return 'replicator';
   if (scene.redNeedleSpawnsUnlocked && !hasActiveRedNeedle(scene) && Math.random() < RED_NEEDLE_SPAWN_CHANCE) return 'redNeedle';
   if (scene.giroDroneSpawnsUnlocked && Math.random() < GIRODRONE_SPAWN_CHANCE) return 'giroDrone';
   if (scene.droneSpawnsUnlocked && Math.random() < SPIKE_DRONE_SPAWN_CHANCE) return 'spikeDrone';
+  if (scene.scissorSpawnsUnlocked && Math.random() < SCISSOR_SPAWN_CHANCE) return 'scissor';
   if (scene.obreraSpawnsUnlocked && Math.random() < OBRERA_SPAWN_CHANCE) return 'damageBooster';
   return null;
 }
@@ -9756,6 +10150,9 @@ function getTextureForKind(kind) {
   if (kind === 'bigAsteroid') return 'bigAsteroid';
   if (isAsteroidKind(kind)) return 'asteroid';
   if (kind === 'damageBooster') return 'enemyShipSmall';
+  if (kind === 'scissor') return 'scissorShip';
+  if (kind === 'scissorLeft') return 'scissorShipLeft';
+  if (kind === 'scissorRight') return 'scissorShipRight';
   if (kind === 'spikeDrone') return 'spikeDrone';
   if (kind === 'giroDrone') return 'spikeDrone';
   if (kind === 'lifeBooster') return 'lifeBooster';
@@ -9767,7 +10164,7 @@ function getTextureForKind(kind) {
 }
 
 function isBoosterKind(kind) {
-  return kind === 'damageBooster' || kind === 'lifeBooster' || kind === 'scoreBooster' || kind === 'shieldBooster';
+  return kind === 'damageBooster' || kind === 'scissor' || isScissorHalfKind(kind) || kind === 'lifeBooster' || kind === 'scoreBooster' || kind === 'shieldBooster';
 }
 
 function isHelpfulBoosterKind(kind) {
@@ -9786,8 +10183,16 @@ function isAsteroidKind(kind) {
   return kind === 'asteroid' || kind === 'bigAsteroid';
 }
 
+function isScissorHalfKind(kind) {
+  return kind === 'scissorLeft' || kind === 'scissorRight';
+}
+
+function isScissorKind(kind) {
+  return kind === 'scissor' || isScissorHalfKind(kind);
+}
+
 function isShieldBlockedKind(kind) {
-  return kind === 'damageBooster' || kind === 'replicator' || kind === 'spikeDrone' || kind === 'giroDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || kind === 'crystallizedOrb' || isAsteroidKind(kind);
+  return kind === 'damageBooster' || isScissorKind(kind) || kind === 'replicator' || kind === 'spikeDrone' || kind === 'giroDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || kind === 'crystallizedOrb' || isAsteroidKind(kind);
 }
 
 function isHostileContactKind(kind) {
@@ -9833,14 +10238,15 @@ function wrapAsteroidHorizontally(scene, asteroid) {
 }
 
 function findRedWaveEnemySpawnX(scene) {
-  const min = 34;
-  const max = Math.max(min, getGameWidth(scene) - 34);
+  const margin = 34;
+  const min = margin;
+  const max = Math.max(min, getGameWidth(scene) - margin);
   const center = getGameWidth(scene) / 2;
   const recentEnemies = scene.balls
     .getChildren()
     .filter((ball) => (
       ball.active &&
-      ball.getData('kind') === 'damageBooster' &&
+      (ball.getData('kind') === 'damageBooster' || ball.getData('kind') === 'scissor') &&
       ball.y < RED_WAVE_RECENT_ENEMY_HEIGHT
     ));
 
@@ -9974,7 +10380,7 @@ function getFallingVelocity(kind, scene, object = null) {
     return Math.round(BASE_GRAVITY * SPIKE_DRONE_GRAVITY_RATIO);
   }
 
-  if (kind === 'damageBooster' && scene.activeRedWave) {
+  if ((kind === 'damageBooster' || isScissorKind(kind)) && scene.activeRedWave) {
     return Math.round(currentGravity * RED_WAVE_ENEMY_GRAVITY_RATIO);
   }
 
@@ -9993,6 +10399,10 @@ function getHorizontalVelocity(kind, scene, object = null) {
   }
 
   if (kind === 'redNeedleLaser') return 0;
+
+  if (isScissorHalfKind(kind)) {
+    return object && object.getData('horizontalVelocity') ? object.getData('horizontalVelocity') : (kind === 'scissorLeft' ? -SCISSOR_HALF_HORIZONTAL_SPEED : SCISSOR_HALF_HORIZONTAL_SPEED);
+  }
 
   if (!isAsteroidKind(kind)) return 0;
 
@@ -10015,6 +10425,7 @@ function getCurrentSpawnDelay(scene) {
   if (scene.activeRedWave) {
     if (scene.activeRedWave.bossKind === 'replicators') return REPLICATOR_WAVE_SPAWN_DELAY;
     if (scene.activeRedWave.bossKind === 'crystallized') return CRYSTALLIZED_WAVE_SPAWN_DELAY;
+    if (scene.activeRedWave.bossKind === 'scissors') return SCISSOR_WAVE_SPAWN_DELAY;
     return RED_WAVE_SPAWN_DELAY;
   }
   return currentSpawnDelay;
@@ -10734,6 +11145,7 @@ function getAbsorbParticleTint(kind, energyOrbColor = 'gold') {
   if (isAsteroidKind(kind)) return 0xaeb7c8;
   if (kind === 'contaminatedOrb') return 0x0f7f37;
   if (kind === 'damageBooster') return 0xff3b4f;
+  if (isScissorKind(kind)) return 0xff3b4f;
   if (kind === 'spikeDrone') return 0xff3045;
   if (kind === 'giroDrone') return 0xff3045;
   if (kind === 'redNeedle') return 0xff263c;

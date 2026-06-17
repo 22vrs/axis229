@@ -35,6 +35,7 @@ body {
   touch-action: none;
   user-select: none;
   background: #000;
+  opacity: 1;
   --ui-scale: 1;
   --ui-radius-panel: 8px;
   --ui-radius-control: 7px;
@@ -43,6 +44,10 @@ body {
   --glass-panel-strong: rgba(8, 38, 82, 0.58);
   --glass-control: rgba(8, 45, 94, 0.44);
   --glass-line: rgba(236, 247, 255, 0.12);
+}
+
+#game-container.is-ready {
+  opacity: 1;
 }
 
 canvas {
