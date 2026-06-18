@@ -72,6 +72,7 @@ function getAbsorbParticleTint(kind, energyOrbColor = 'gold') {
   if (kind === 'giroDrone') return 0xff3045;
   if (kind === 'redNeedle') return 0xff263c;
   if (kind === 'redNeedleLaser') return 0xff263c;
+  if (kind === 'register') return 0x76ffe8;
   if (kind === 'lifeBooster') return 0x4dff88;
   if (kind === 'scoreBooster') return 0x9b5cff;
   if (kind === 'shieldBooster') return 0x4da3ff;

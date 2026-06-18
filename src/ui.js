@@ -95,19 +95,12 @@ function createGameOver(scene) {
   const topRankingList = document.getElementById('gameover-ranking-list');
   const rankingBlock = topRankingList ? topRankingList.closest('.ranking-block') : null;
   const reviveButton = document.getElementById('revive-button');
-  const retryButton = document.getElementById('retry-button');
   const menuButton = document.getElementById('menu-button');
 
   if (scoreForm) {
     scoreForm.addEventListener('submit', (event) => {
       event.preventDefault();
       savePendingScore(scene);
-    });
-  }
-  if (retryButton) {
-    retryButton.addEventListener('click', () => {
-      playButtonSound(scene);
-      startGame.call(scene, { mode: currentGameMode });
     });
   }
   if (reviveButton) {
@@ -136,7 +129,6 @@ function createGameOver(scene) {
   overlay.topRankingList = topRankingList;
   overlay.rankingBlock = rankingBlock;
   overlay.reviveButton = reviveButton;
-  overlay.retryButton = retryButton;
   return overlay;
 }
 
@@ -159,6 +151,7 @@ function setOnlyOverlayVisible(scene, visibleOverlay) {
     scene.gameOverContainer,
     scene.rankingContainer,
     scene.pauseOverlay,
+    scene.missionsOverlay,
     scene.optionsOverlay,
     scene.upgradeOverlay,
     scene.echoTutorialOverlay,
@@ -173,6 +166,7 @@ function showOverlayScreen(scene, screenName) {
     gameover: scene.gameOverContainer,
     ranking: scene.rankingContainer,
     pause: scene.pauseOverlay,
+    missions: scene.missionsOverlay,
     options: scene.optionsOverlay,
     upgrade: scene.upgradeOverlay,
     tutorial: scene.echoTutorialOverlay,
@@ -190,6 +184,7 @@ function setOverlayRootInteractive(isInteractive) {
 
 function getCurrentOverlayScreen(scene) {
   if (scene && scene.optionsOverlay && scene.optionsOverlay.element && scene.optionsOverlay.element.classList.contains('is-visible')) return 'options';
+  if (scene && scene.missionsOverlay && scene.missionsOverlay.element && scene.missionsOverlay.element.classList.contains('is-visible')) return 'missions';
   if (scene && scene.pauseOverlay && scene.pauseOverlay.element && scene.pauseOverlay.element.classList.contains('is-visible')) return 'pause';
   if (scene && scene.rankingContainer && scene.rankingContainer.element && scene.rankingContainer.element.classList.contains('is-visible')) return 'ranking';
   if (scene && scene.gameOverContainer && scene.gameOverContainer.element && scene.gameOverContainer.element.classList.contains('is-visible')) return 'gameover';
@@ -207,6 +202,11 @@ function createPauseOverlay(scene) {
     if (state !== 'paused') return;
     playButtonSound(scene);
     showFrozenPauseMenu(scene);
+  });
+  bindSingleClick('missions-settings-button', () => {
+    if (state !== 'paused') return;
+    playButtonSound(scene);
+    showMissionsOverlay(scene);
   });
   bindScreenClick('pause', 'pause-back-button', () => {
     playButtonSound(scene);
@@ -264,6 +264,187 @@ function hideFrozenPauseMenu(scene) {
   prepareControlPauseResume(scene);
   showOverlayScreen(scene, null);
   setPauseSettingsVisible(true);
+}
+
+function createMissionsOverlay(scene) {
+  const overlay = createDomOverlay('missions-overlay', false);
+  overlay.scene = scene;
+  overlay.list = document.getElementById('missions-list');
+  overlay.summary = document.getElementById('missions-register-summary');
+  overlay.subtitle = document.getElementById('missions-subtitle');
+  overlay.openCategory = null;
+  bindScreenClick('missions', 'missions-back-button', () => {
+    playButtonSound(scene);
+    hideMissionsOverlay(scene);
+  });
+  renderMissionsOverlay(overlay);
+  return overlay;
+}
+
+function showMissionsOverlay(scene) {
+  if (!scene || state !== 'paused') return;
+  if (scene.pauseOverlay && scene.pauseOverlay.element) {
+    scene.pauseOverlay.element.classList.add('is-frozen-pause-menu');
+  }
+  setXyControlActive(scene, false);
+  setXyControlVisible(scene, false);
+  setPauseSettingsVisible(false);
+  renderMissionsOverlay(scene.missionsOverlay);
+  showOverlayScreen(scene, 'missions');
+}
+
+function hideMissionsOverlay(scene) {
+  if (!scene || state !== 'paused') return;
+  prepareControlPauseResume(scene);
+  showOverlayScreen(scene, null);
+  setPauseSettingsVisible(true);
+}
+
+function renderMissionsOverlay(overlay) {
+  if (!overlay || !overlay.list) return;
+  const scene = overlay.scene;
+  const completedMissions = scene && scene.completedRegisterMissions ? scene.completedRegisterMissions : {};
+  renderMissionsSubtitle(overlay);
+  overlay.list.replaceChildren();
+  getMissionCategories().forEach((category) => {
+    const categoryMissions = getRegisterMissions().filter((mission) => mission.category === category.id);
+    const completedCount = categoryMissions.filter((mission) => completedMissions[mission.id]).length;
+    const isOpen = overlay.openCategory === category.id;
+
+    const button = document.createElement('button');
+    button.className = 'mission-category-button' + (isOpen ? ' is-open' : '');
+    button.type = 'button';
+    button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+
+    const label = document.createElement('span');
+    label.className = 'mission-category-label';
+    label.textContent = category.label;
+
+    const meta = document.createElement('span');
+    meta.className = 'mission-category-meta';
+    meta.textContent = categoryMissions.length ? completedCount + '/' + categoryMissions.length : '0/0';
+
+    button.append(label, meta);
+    button.addEventListener('click', () => {
+      overlay.openCategory = isOpen ? null : category.id;
+      playButtonSound(scene);
+      renderMissionsOverlay(overlay);
+    });
+    overlay.list.append(button);
+
+    if (!isOpen) return;
+    const group = document.createElement('div');
+    group.className = 'mission-category-group';
+
+    if (!categoryMissions.length) {
+      const empty = document.createElement('div');
+      empty.className = 'mission-empty-row';
+      empty.textContent = 'Pendiente';
+      group.append(empty);
+    } else {
+      categoryMissions.forEach((mission) => {
+        group.append(createMissionRow(mission, Boolean(completedMissions[mission.id]), getMissionProgress(scene, mission)));
+      });
+    }
+
+    overlay.list.append(group);
+  });
+  renderMissionsRegisterSummary(overlay);
+}
+
+function getMissionCategories() {
+  return [
+    { id: 'bosses', label: 'Jefes' },
+    { id: 'enemies', label: 'Enemigos' },
+    { id: 'upgrades', label: 'Mejoras' },
+    { id: 'levels', label: 'Niveles' },
+    { id: 'streaks', label: 'Rachas' },
+  ];
+}
+
+function getMissionProgress(scene, mission) {
+  if (!mission || !mission.goal) return 0;
+  if (scene && scene.completedRegisterMissions && scene.completedRegisterMissions[mission.id]) return mission.goal;
+  return scene && scene.registerMissionProgress ? scene.registerMissionProgress[mission.id] || 0 : 0;
+}
+
+function createMissionRow(mission, isCompleted, progress = 0) {
+  const row = document.createElement('div');
+  row.className = 'mission-row ' + (isCompleted ? 'is-completed' : 'is-locked');
+  row.classList.toggle('has-progress', mission.category === 'enemies' && Boolean(mission.goal));
+
+  const name = document.createElement('span');
+  name.className = 'mission-name';
+  name.textContent = mission.name;
+
+  const reward = document.createElement('span');
+  reward.className = 'mission-reward';
+  const status = document.createElement('span');
+  status.className = 'mission-status';
+  status.textContent = isCompleted ? 'Completado' : 'Pendiente';
+  reward.append(status);
+  reward.append(createRegisterCostContent(mission.reward));
+
+  row.append(name, reward);
+  if (mission.category === 'enemies' && mission.goal) {
+    row.append(createMissionProgressBar(progress, mission.goal));
+  }
+  return row;
+}
+
+function createMissionProgressBar(progress, goal) {
+  const safeGoal = Math.max(1, goal || 1);
+  const safeProgress = Phaser.Math.Clamp(progress || 0, 0, safeGoal);
+  const progressWrap = document.createElement('div');
+  progressWrap.className = 'mission-progress';
+
+  const track = document.createElement('div');
+  track.className = 'mission-progress-track';
+
+  const fill = document.createElement('div');
+  fill.className = 'mission-progress-fill';
+  fill.style.width = (safeProgress / safeGoal * 100) + '%';
+
+  const label = document.createElement('span');
+  label.className = 'mission-progress-label';
+  label.textContent = safeProgress + '/' + safeGoal;
+
+  track.append(fill);
+  progressWrap.append(track, label);
+  return progressWrap;
+}
+
+function renderMissionsSubtitle(overlay) {
+  if (!overlay || !overlay.subtitle) return;
+  overlay.subtitle.replaceChildren();
+  overlay.subtitle.append(
+    document.createTextNode('Completa misiones para conseguir Registros '),
+    createRegisterInlineIcon(),
+    document.createTextNode('.'),
+    document.createElement('br'),
+    document.createTextNode('Si fallas podrás canjearlos para reaparecer en un punto de control'),
+    document.createTextNode('.')
+  );
+}
+
+function renderMissionsRegisterSummary(overlay) {
+  if (!overlay || !overlay.summary) return;
+  overlay.summary.replaceChildren();
+  overlay.summary.append(
+    createMissionRegisterSummaryLine('Registros actuales:', registers),
+    createMissionRegisterSummaryLine('Coste de próxima reaparición:', getBossReviveCost())
+  );
+}
+
+function createMissionRegisterSummaryLine(label, amount) {
+  const row = document.createElement('div');
+  row.className = 'missions-register-summary-line';
+
+  const labelElement = document.createElement('span');
+  labelElement.textContent = label;
+
+  row.append(labelElement, createRegisterCostContent(amount));
+  return row;
 }
 
 function showPausedUpgradeDetails(scene, upgradeKind) {

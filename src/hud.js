@@ -9,6 +9,8 @@ function initHud() {
     level: document.getElementById('hud-level'),
     score: document.getElementById('hud-score'),
     streak: document.getElementById('hud-streak'),
+    registers: document.getElementById('hud-registers'),
+    time: document.getElementById('hud-time'),
     progressText: document.getElementById('hud-progress-text'),
     progressFill: document.getElementById('hud-progress-fill'),
     lifeCount: document.getElementById('hud-life-count'),
@@ -95,6 +97,8 @@ function updateHud(scene = gameScene) {
   updatePlayerLevelText(scene);
   currentHud.score.textContent = isBossOnlyGameMode() ? getBossOnlyHudName(scene) : score;
   updateStreakText();
+  updateRegistersText();
+  updateGameplayTimeText();
   updateSpeedTexts(scene);
   updateUpgradeBar(scene);
   updateLivesText(scene);
@@ -118,6 +122,194 @@ function getBossOnlyHudName(scene) {
 
   const bossNumber = Math.max(0, (scene.bossOnlyBossNumber || 1) - 1);
   return createBossConfig(BOSS_ONLY_BOSS_KINDS[bossNumber % BOSS_ONLY_BOSS_KINDS.length]).name;
+}
+
+function updateRegistersText() {
+  const currentHud = initHud();
+  if (!currentHud.registers) return;
+  currentHud.registers.replaceChildren();
+  const value = document.createElement('span');
+  value.textContent = registers;
+  currentHud.registers.append(value, createRegisterHudIcon());
+}
+
+function updateGameplayTime(scene, delta) {
+  if (state !== 'playing' || !isDraggingShip) return;
+  const safeDelta = Number.isFinite(delta) ? Math.max(0, Math.min(delta, 100)) : 0;
+  if (safeDelta <= 0) return;
+  const previousSecond = Math.floor(gameplayTimeMs / 1000);
+  gameplayTimeMs += safeDelta;
+  const nextSecond = Math.floor(gameplayTimeMs / 1000);
+  if (nextSecond !== previousSecond) updateGameplayTimeText(scene);
+}
+
+function updateGameplayTimeText() {
+  const currentHud = initHud();
+  if (!currentHud.time) return;
+  currentHud.time.textContent = formatGameplayTime(gameplayTimeMs);
+}
+
+function formatGameplayTime(milliseconds) {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+}
+
+function createRegisterHudIcon() {
+  const icon = document.createElement('img');
+  icon.className = 'register-inline-icon hud-register-icon';
+  icon.src = REGISTER_IMAGE_PATH;
+  icon.alt = '';
+  icon.setAttribute('aria-hidden', 'true');
+  return icon;
+}
+
+function getRegisterMissions() {
+  return getBossRegisterMissions()
+    .concat(getEnemyRegisterMissions(), getUpgradeRegisterMissions(), getLevelRegisterMissions(), getStreakRegisterMissions());
+}
+
+function getBossRegisterMissions() {
+  return STORY_BOSS_KINDS.map((kind) => {
+    const bossConfig = createBossConfig(kind);
+    return {
+      id: kind,
+      category: 'bosses',
+      bossKind: kind,
+      name: 'Sobrevive a ' + bossConfig.name,
+      reward: 2,
+    };
+  });
+}
+
+function getEnemyRegisterMissions() {
+  return [
+    { id: 'enemy_obreras_10', category: 'enemies', target: 'obrera', name: 'Derrota a 10 Obreras', goal: 10, reward: 1 },
+    { id: 'enemy_escisoras_10', category: 'enemies', target: 'scissor', name: 'Derrota a 10 Escisoras', goal: 10, reward: 1 },
+    { id: 'enemy_drones_10', category: 'enemies', target: 'spikeDrone', name: 'Derrota a 10 Drones', goal: 10, reward: 1 },
+    { id: 'enemy_girodrones_10', category: 'enemies', target: 'giroDrone', name: 'Derrota a 10 Girodrones', goal: 10, reward: 1 },
+    { id: 'enemy_red_needles_10', category: 'enemies', target: 'redNeedle', name: 'Derrota a 10 Agujas Rojas', goal: 10, reward: 1 },
+    { id: 'enemy_asteroids_10', category: 'enemies', target: 'asteroid', name: 'Derrota a 10 Asteroides', goal: 10, reward: 1 },
+    { id: 'enemy_replicators_10', category: 'enemies', target: 'replicator', name: 'Derrota a 10 Replicadores', goal: 10, reward: 1 },
+    { id: 'enemy_plasma_gaps_10', category: 'enemies', target: 'plasmaGap', name: 'Atraviesa 10 Barras de Plasma', goal: 10, reward: 1 },
+    { id: 'enemy_travel_sentinels_10', category: 'enemies', target: 'travelSentinel', name: 'Sobrevive a 10 Centinelas', goal: 10, reward: 1 },
+    { id: 'enemy_crystallized_orbs_10', category: 'enemies', target: 'crystallizedOrb', name: 'Recoge 10 Orbes Cristalizados', goal: 10, reward: 1 },
+  ];
+}
+
+function getUpgradeRegisterMissions() {
+  return [
+    { id: 'upgrade_unlock_energy_refiner', category: 'upgrades', target: 'upgradeUnlock:energyRefiner', name: 'Desbloquea Refinador de energía', reward: 1 },
+    { id: 'upgrade_unlock_energy_purifier', category: 'upgrades', target: 'upgradeUnlock:energyPurifier', name: 'Desbloquea Purificador de energía', reward: 1 },
+    { id: 'upgrade_unlock_score_booster', category: 'upgrades', target: 'upgradeUnlock:scoreBooster', name: 'Desbloquea Catalizador de energía', reward: 1 },
+    { id: 'upgrade_unlock_energy_resonance', category: 'upgrades', target: 'upgradeUnlock:energyResonance', name: 'Desbloquea Resonancia energética', reward: 1 },
+    { id: 'upgrade_unlock_shield_booster', category: 'upgrades', target: 'upgradeUnlock:shieldBooster', name: 'Desbloquea Barrera protectora', reward: 1 },
+    { id: 'upgrade_unlock_echo_help', category: 'upgrades', target: 'upgradeUnlock:echoHelp', name: 'Desbloquea Ayuda de Echo', reward: 1 },
+    { id: 'upgrade_unlock_life_booster', category: 'upgrades', target: 'upgradeUnlock:lifeBooster', name: 'Desbloquea Kit de reparación', reward: 1 },
+    { id: 'upgrade_unlock_vital_expander', category: 'upgrades', target: 'upgradeUnlock:vitalExpander', name: 'Desbloquea Expansor vital', reward: 1 },
+    { id: 'upgrade_max_energy_refiner', category: 'upgrades', target: 'upgradeMax:energyRefiner', name: 'Maximiza Refinador de energía', reward: 2 },
+    { id: 'upgrade_max_score_booster', category: 'upgrades', target: 'upgradeMax:scoreBooster', name: 'Maximiza Catalizador de energía', reward: 2 },
+    { id: 'upgrade_max_shield_booster', category: 'upgrades', target: 'upgradeMax:shieldBooster', name: 'Maximiza Barrera protectora', reward: 2 },
+    { id: 'upgrade_max_life_booster', category: 'upgrades', target: 'upgradeMax:lifeBooster', name: 'Maximiza Kit de reparación', reward: 2 },
+  ];
+}
+
+function getLevelRegisterMissions() {
+  return [
+    { id: 'level_5', category: 'levels', level: 5, name: 'Alcanza el nivel 5', reward: 1 },
+    { id: 'level_10', category: 'levels', level: 10, name: 'Alcanza el nivel 10', reward: 1 },
+    { id: 'level_15', category: 'levels', level: 15, name: 'Alcanza el nivel 15', reward: 1 },
+    { id: 'level_20', category: 'levels', level: 20, name: 'Alcanza el nivel 20', reward: 1 },
+    { id: 'level_25', category: 'levels', level: 25, name: 'Alcanza el nivel 25', reward: 1 },
+    { id: 'level_30', category: 'levels', level: 30, name: 'Alcanza el nivel 30', reward: 1 },
+    { id: 'level_35', category: 'levels', level: 35, name: 'Alcanza el nivel 35', reward: 1 },
+    { id: 'level_40', category: 'levels', level: 40, name: 'Alcanza el nivel 40', reward: 1 },
+    { id: 'level_45', category: 'levels', level: 45, name: 'Alcanza el nivel 45', reward: 1 },
+    { id: 'level_40_repeat', category: 'levels', level: 40, name: 'Alcanza el nivel 40', reward: 1 },
+  ];
+}
+
+function getStreakRegisterMissions() {
+  return [
+    { id: 'streak_50', category: 'streaks', streak: 50, name: 'Racha de 50', reward: 1 },
+    { id: 'streak_100', category: 'streaks', streak: 100, name: 'Racha de 100', reward: 1 },
+    { id: 'streak_150', category: 'streaks', streak: 150, name: 'Racha de 150', reward: 1 },
+    { id: 'streak_200', category: 'streaks', streak: 200, name: 'Racha de 200', reward: 1 },
+    { id: 'streak_250', category: 'streaks', streak: 250, name: 'Racha de 250', reward: 1 },
+    { id: 'streak_300', category: 'streaks', streak: 300, name: 'Racha de 300', reward: 1 },
+    { id: 'streak_350', category: 'streaks', streak: 350, name: 'Racha de 350', reward: 1 },
+    { id: 'streak_400', category: 'streaks', streak: 400, name: 'Racha de 400', reward: 1 },
+    { id: 'streak_450', category: 'streaks', streak: 450, name: 'Racha de 450', reward: 1 },
+    { id: 'streak_500', category: 'streaks', streak: 500, name: 'Racha de 500', reward: 1 },
+  ];
+}
+
+function getRegisterMissionByBossKind(bossKind) {
+  return getRegisterMissions().find((mission) => mission.bossKind === bossKind) || null;
+}
+
+function getRegisterMissionByTarget(target) {
+  return getRegisterMissions().find((mission) => mission.target === target) || null;
+}
+
+function advanceRegisterMissionProgress(scene, target, amount = 1) {
+  if (!scene || !target || amount <= 0) return;
+  const mission = getRegisterMissionByTarget(target);
+  if (!mission) return;
+  if (!scene.completedRegisterMissions) scene.completedRegisterMissions = {};
+  if (scene.completedRegisterMissions[mission.id]) return;
+  if (!scene.registerMissionProgress) scene.registerMissionProgress = {};
+
+  const currentProgress = scene.registerMissionProgress[mission.id] || 0;
+  const nextProgress = Math.min(mission.goal || 1, currentProgress + amount);
+  scene.registerMissionProgress[mission.id] = nextProgress;
+  if (nextProgress < (mission.goal || 1)) return;
+
+  scene.completedRegisterMissions[mission.id] = true;
+  spawnRegisterReward(scene, mission);
+}
+
+function completeRegisterMissionByTarget(scene, target) {
+  if (!scene || !target) return;
+  const mission = getRegisterMissionByTarget(target);
+  if (!mission) return;
+  if (!scene.completedRegisterMissions) scene.completedRegisterMissions = {};
+  if (scene.completedRegisterMissions[mission.id]) return;
+
+  scene.completedRegisterMissions[mission.id] = true;
+  spawnRegisterReward(scene, mission);
+}
+
+function completeRegisterMission(scene, mission) {
+  if (!scene || !mission) return;
+  if (!scene.completedRegisterMissions) scene.completedRegisterMissions = {};
+  if (scene.completedRegisterMissions[mission.id]) return;
+
+  scene.completedRegisterMissions[mission.id] = true;
+  spawnRegisterReward(scene, mission);
+}
+
+function recordUpgradeRegisterMissions(scene, upgradeKind, previousLevel, nextLevel) {
+  if (!scene || !upgradeKind) return;
+  if (previousLevel <= 0 && nextLevel > 0) {
+    completeRegisterMissionByTarget(scene, 'upgradeUnlock:' + upgradeKind);
+  }
+  if (previousLevel < MAX_UPGRADE_LEVEL && nextLevel >= MAX_UPGRADE_LEVEL) {
+    completeRegisterMissionByTarget(scene, 'upgradeMax:' + upgradeKind);
+  }
+}
+
+function recordLevelRegisterMissions(scene, reachedLevel) {
+  getLevelRegisterMissions().forEach((mission) => {
+    if (reachedLevel >= mission.level) completeRegisterMission(scene, mission);
+  });
+}
+
+function recordStreakRegisterMissions(scene, reachedStreak) {
+  getStreakRegisterMissions().forEach((mission) => {
+    if (reachedStreak >= mission.streak) completeRegisterMission(scene, mission);
+  });
 }
 
 function setHudBoosterVisible(visible, color = '#76ffe8', label = null) {

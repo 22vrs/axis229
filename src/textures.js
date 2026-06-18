@@ -25,6 +25,77 @@ function createEnergyBallTexture(scene, ballKey, colors) {
   ballGraphics.destroy();
 }
 
+function createRegisterTexture(scene) {
+  if (!scene || !scene.make || !scene.textures) return;
+  if (scene.textures.exists('register')) scene.textures.remove('register');
+
+  const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+  const pinColor = 0x77dfff;
+  const glowColor = 0x76ffe8;
+
+  graphics.fillStyle(glowColor, 0.16);
+  graphics.fillRoundedRect(10, 10, 52, 52, 10);
+
+  graphics.fillStyle(pinColor, 0.9);
+  [19, 29, 39, 49].forEach((y) => {
+    graphics.fillRoundedRect(7, y, 10, 4, 1.5);
+    graphics.fillRoundedRect(55, y, 10, 4, 1.5);
+  });
+  [19, 29, 39, 49].forEach((x) => {
+    graphics.fillRoundedRect(x, 7, 4, 10, 1.5);
+    graphics.fillRoundedRect(x, 55, 4, 10, 1.5);
+  });
+
+  graphics.fillStyle(0x071827, 1);
+  graphics.lineStyle(3, glowColor, 0.95);
+  graphics.fillRoundedRect(14, 14, 44, 44, 9);
+  graphics.strokeRoundedRect(14, 14, 44, 44, 9);
+
+  graphics.fillStyle(0x176a94, 1);
+  graphics.fillRoundedRect(18, 18, 36, 36, 7);
+  graphics.fillStyle(0x2ddcff, 0.34);
+  graphics.fillRoundedRect(20, 20, 32, 9, 5);
+  graphics.fillStyle(0x0b6ea6, 0.82);
+  graphics.fillRoundedRect(21, 29, 30, 23, 6);
+
+  graphics.lineStyle(2, 0xd7feff, 0.86);
+  graphics.beginPath();
+  graphics.moveTo(25, 31);
+  graphics.lineTo(33, 31);
+  graphics.lineTo(33, 26);
+  graphics.moveTo(25, 43);
+  graphics.lineTo(33, 43);
+  graphics.lineTo(33, 48);
+  graphics.moveTo(47, 31);
+  graphics.lineTo(39, 31);
+  graphics.lineTo(39, 26);
+  graphics.moveTo(47, 43);
+  graphics.lineTo(39, 43);
+  graphics.lineTo(39, 48);
+  graphics.moveTo(29, 36);
+  graphics.lineTo(43, 36);
+  graphics.strokePath();
+
+  graphics.fillStyle(0x7df9ff, 0.18);
+  graphics.fillCircle(36, 36, 16);
+  graphics.fillStyle(0x053a5c, 1);
+  graphics.lineStyle(2, 0xb9fbff, 0.9);
+  graphics.fillRoundedRect(25, 25, 22, 22, 5);
+  graphics.strokeRoundedRect(25, 25, 22, 22, 5);
+  graphics.fillStyle(0x21d8ff, 1);
+  graphics.fillRoundedRect(29, 29, 14, 14, 3);
+  graphics.fillStyle(0xecfeff, 1);
+  graphics.fillCircle(34, 34, 3);
+  graphics.lineStyle(2, glowColor, 0.7);
+  graphics.beginPath();
+  graphics.moveTo(31, 44);
+  graphics.lineTo(41, 44);
+  graphics.strokePath();
+
+  graphics.generateTexture('register', 72, 72);
+  graphics.destroy();
+}
+
 function createCrystallizedOrbTexture(scene) {
   createEnergyBallTexture(scene, 'crystallizedBall', {
     outer: 0xff9f2a,

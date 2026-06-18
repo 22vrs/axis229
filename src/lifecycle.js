@@ -42,6 +42,7 @@ function create() {
     core: 0xffe0f4,
     ring: 0xffa9dd,
   });
+  createRegisterTexture(this);
   const particleGraphics = this.make.graphics({ x: 0, y: 0, add: false });
   particleGraphics.fillStyle(0xffd76a, 1);
   particleGraphics.fillCircle(3, 3, 3);
@@ -211,6 +212,7 @@ function create() {
   );
 
   this.pauseOverlay = createPauseOverlay(this);
+  this.missionsOverlay = createMissionsOverlay(this);
   this.upgradeOverlay = createUpgradeOverlay(this);
   this.optionsOverlay = createOptionsOverlay(this);
   this.echoTutorialOverlay = createEchoTutorialOverlay(this);

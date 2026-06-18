@@ -160,6 +160,7 @@ function activateAsteroidWave(scene, bossConfig = createBossConfig('asteroid')) 
     endsAt: null,
     duration: bossConfig.duration || ASTEROID_WAVE_DURATION,
     isSpawningAsteroids: false,
+    bossKind: 'asteroid',
     hasStarted: false,
     hasShownEchoWarning: false,
     isDraining: false,
@@ -189,6 +190,7 @@ function activatePlasmaWave(scene, bossConfig = createBossConfig('plasma')) {
     hasStarted: false,
     hasShownEchoWarning: false,
     isSpawningPlasma: false,
+    bossKind: 'plasma',
     isDraining: false,
     bossName: bossConfig.name || 'Marea de Plasma',
   };
@@ -1431,6 +1433,7 @@ function endWaveAfterPause(scene, waveKind) {
   hideWaveBar(scene);
 
   if (waveKind === 'red') {
+    completeRegisterMissionForWave(scene, currentWave);
     if (currentWave.bossKind === 'replicators') {
       scene.replicatorSpawnsUnlocked = true;
     } else if (currentWave.bossKind === 'red') {
@@ -1442,6 +1445,7 @@ function endWaveAfterPause(scene, waveKind) {
     }
     scene.activeRedWave = null;
   } else if (waveKind === 'drones') {
+    completeRegisterMissionForWave(scene, currentWave);
     if (currentWave.bossKind === 'girodrones') {
       scene.giroDroneSpawnsUnlocked = true;
     } else {
@@ -1449,17 +1453,21 @@ function endWaveAfterPause(scene, waveKind) {
     }
     scene.activeDroneWave = null;
   } else if (waveKind === 'asteroid') {
+    completeRegisterMissionForWave(scene, currentWave);
     scene.asteroidSpawnsUnlocked = true;
     scene.activeAsteroidWave = null;
   } else if (waveKind === 'plasma') {
+    completeRegisterMissionForWave(scene, currentWave);
     scene.plasmaSpawnsUnlocked = true;
     scene.activePlasmaWave = null;
   } else if (waveKind === 'boss') {
     if (currentWave.isTravelEncounter) {
+      advanceRegisterMissionProgress(scene, 'travelSentinel');
       resetBossWave(scene);
       if (state === 'playing') scheduleNextSpawn(scene);
       return;
     }
+    completeRegisterMissionForWave(scene, currentWave);
     if (currentWave.kind === 'redNeedleBoss') {
       scene.redNeedleSpawnsUnlocked = true;
     }
@@ -1485,6 +1493,18 @@ function endWaveAfterPause(scene, waveKind) {
       });
     },
   });
+}
+
+function completeRegisterMissionForWave(scene, wave) {
+  if (!scene || !wave) return;
+  const bossKind = wave.bossKind || wave.kind;
+  const mission = getRegisterMissionByBossKind(bossKind);
+  if (!mission) return;
+  if (!scene.completedRegisterMissions) scene.completedRegisterMissions = {};
+  if (scene.completedRegisterMissions[mission.id]) return;
+
+  scene.completedRegisterMissions[mission.id] = true;
+  spawnRegisterReward(scene, mission);
 }
 
 function hasFallingObjects(scene) {
@@ -1565,6 +1585,7 @@ function updatePlasmaBars(scene, delta) {
   scene.plasmaBars.forEach((bar) => {
     if (!bar || !bar.active) return;
 
+    const previousY = bar.container.y;
     const minGapX = bar.gapHalf + 14;
     const maxGapX = width - bar.gapHalf - 14;
     bar.container.y += PLASMA_BAR_VERTICAL_SPEED * (delta / 1000);
@@ -1579,6 +1600,7 @@ function updatePlasmaBars(scene, delta) {
     }
 
     updatePlasmaBarGeometry(scene, bar);
+    maybeRecordPlasmaGapPass(scene, bar, previousY, shipHalfWidth);
     maybeDamageShipWithPlasma(scene, bar, shipHalfWidth, shipTop, shipBottom);
 
     if (bar.container.y > getGameHeight(scene) + bar.height + 24) {
@@ -1590,6 +1612,21 @@ function updatePlasmaBars(scene, delta) {
   if (scene.activePlasmaWave && scene.activePlasmaWave.isDraining && !hasFallingObjects(scene) && !hasActivePlasmaBars(scene) && !scene.waveResumeEvent) {
     endWaveAfterPause(scene, 'plasma');
   }
+}
+
+function maybeRecordPlasmaGapPass(scene, bar, previousY, shipHalfWidth) {
+  if (!scene || !bar || bar.registerMissionCounted) return;
+  if (!isNormalTravelMissionContext(scene) || isShieldActive(scene)) return;
+  if (previousY >= scene.ship.y || bar.container.y < scene.ship.y) return;
+
+  const shipLeft = scene.ship.x - shipHalfWidth;
+  const shipRight = scene.ship.x + shipHalfWidth;
+  const gapLeft = bar.gapX - bar.gapHalf;
+  const gapRight = bar.gapX + bar.gapHalf;
+  if (shipLeft < gapLeft || shipRight > gapRight) return;
+
+  bar.registerMissionCounted = true;
+  advanceRegisterMissionProgress(scene, 'plasmaGap');
 }
 
 function updatePlasmaBarGeometry(scene, bar) {

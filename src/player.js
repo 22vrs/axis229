@@ -175,6 +175,7 @@ function update(time, delta) {
   }
   if (state !== 'playing') return;
 
+  updateGameplayTime(this, delta);
   updateSpaceBackground(this, delta, time);
   updateShipPropulsion(this, delta);
   updateShipTilt(this);

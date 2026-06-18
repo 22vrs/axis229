@@ -61,6 +61,7 @@ function resetEnergyStreak() {
 function increaseEnergyStreak(scene) {
   energyStreak += 1;
   maxEnergyStreak = Math.max(maxEnergyStreak, energyStreak);
+  recordStreakRegisterMissions(scene, energyStreak);
   updateStreakText();
   if (energyStreak % ENERGY_STREAK_REWARD_TARGET !== 0) return;
   awardEnergyStreakReward(scene);
@@ -805,6 +806,7 @@ function advancePlayerLevel(scene) {
     shieldDefeatLevelBonus += 1;
   }
   nextUpgradeScore = getLevelRequirement(playerLevel);
+  recordLevelRegisterMissions(scene, playerLevel);
   queuePendingBossWave(scene, getBossConfigForLevel(completedLevel, scene));
   increaseDifficulty(scene);
   updatePlayerLevelText(scene);
@@ -945,6 +947,7 @@ function chooseUpgrade(scene, upgradeKind) {
   if (!upgradeKind) return;
   if (!canChooseUpgradeKind(upgradeKind)) return;
 
+  const previousUpgradeLevel = getUpgradeLevel(upgradeKind);
   if (upgradeKind === 'lifeBooster') {
     lifeBoosterLevel += 1;
     updateLivesText(scene);
@@ -966,6 +969,7 @@ function chooseUpgrade(scene, upgradeKind) {
     expandVitalCapacity(scene);
   }
 
+  recordUpgradeRegisterMissions(scene, upgradeKind, previousUpgradeLevel, getUpgradeLevel(upgradeKind));
   updateUpgradeBar(scene);
   updateUpgradeStatusIcons(scene);
   setShipTextureForCurrentState(scene);

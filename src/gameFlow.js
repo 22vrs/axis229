@@ -7,6 +7,7 @@ function setUiDepth(scene) {
     scene.gameOverContainer,
     scene.rankingContainer,
     scene.pauseOverlay,
+    scene.missionsOverlay,
     scene.optionsOverlay,
     scene.upgradeOverlay,
     scene.echoTutorialOverlay,
@@ -227,6 +228,11 @@ function beginGameplayAfterEchoTutorial(scene) {
     return;
   }
 
+  if (isInfiniteGameMode()) {
+    pauseBeforeFirstGameplaySpawn(scene);
+    return;
+  }
+
   // Primera bola inmediata, luego spawn periodico
   spawnBall(scene);
   scheduleNextSpawn(scene);
@@ -288,7 +294,7 @@ function endGame() {
     this.gameOverContainer.finalScore.setText('Modo Infinito - Puntuación: ' + score);
     prepareUnrankedGameOver(this);
   } else {
-    this.gameOverContainer.finalScore.setText('Modo X-Y - Puntuación: ' + score);
+    this.gameOverContainer.finalScore.setText('Puntuación: ' + score);
     prepareGameOverScore(this);
     loadRankingInto(this.gameOverContainer.topRankingList, null, 3);
   }
@@ -299,11 +305,11 @@ function canReviveFromBossCheckpoint() {
 }
 
 function getBossReviveCost() {
-  return (bossRevivesUsed + 1) * 50;
+  return BOSS_REVIVE_REGISTER_COST * (bossReviveRegisterPayments + 1);
 }
 
 function canAffordBossRevive() {
-  return canReviveFromBossCheckpoint() && energyStreak >= getBossReviveCost();
+  return canReviveFromBossCheckpoint() && registers >= getBossReviveCost();
 }
 
 function updateGameOverReviveButton(scene) {
@@ -311,19 +317,49 @@ function updateGameOverReviveButton(scene) {
   if (!overlay) return;
 
   const reviveButton = overlay.reviveButton;
-  const retryButton = overlay.retryButton;
   const hasCheckpoint = canReviveFromBossCheckpoint();
   const canAfford = canAffordBossRevive();
 
   if (reviveButton) {
-    reviveButton.hidden = !hasCheckpoint || !canAfford;
-    reviveButton.textContent = 'Paga ' + getBossReviveCost() + ' puntos de racha para reaparecer en el último Jefe.';
+    reviveButton.hidden = !hasCheckpoint;
+    reviveButton.disabled = !canAfford;
+    reviveButton.classList.toggle('is-disabled', !canAfford);
+    reviveButton.classList.add('ui-button-stacked');
+    reviveButton.replaceChildren();
+    if (canAfford) {
+      const title = document.createElement('span');
+      title.className = 'revive-button-title';
+      title.textContent = 'REAPARECER';
+      reviveButton.append(title, createRegisterCostContent(getBossReviveCost(), 'revive-cost-main'));
+    } else {
+      const title = document.createElement('span');
+      title.className = 'revive-button-title';
+      title.textContent = 'REAPARECER';
+      const subtitle = document.createElement('small');
+      subtitle.textContent = 'No tienes suficientes registros';
+      reviveButton.append(title, subtitle);
+    }
   }
-  if (retryButton) {
-    retryButton.textContent = hasCheckpoint && !canAfford
-      ? 'No tienes suficientes puntos de racha. Comienzas desde el principio.'
-      : 'REINTENTAR';
-  }
+}
+
+function createRegisterCostContent(amount, className = '') {
+  const wrapper = document.createElement('span');
+  wrapper.className = className;
+
+  const value = document.createElement('span');
+  value.textContent = amount;
+
+  wrapper.append(value, createRegisterInlineIcon());
+  return wrapper;
+}
+
+function createRegisterInlineIcon() {
+  const icon = document.createElement('img');
+  icon.className = 'register-inline-icon';
+  icon.src = REGISTER_IMAGE_PATH;
+  icon.alt = '';
+  icon.setAttribute('aria-hidden', 'true');
+  return icon;
 }
 
 function saveBossReviveCheckpoint(scene, bossConfig) {
@@ -336,6 +372,7 @@ function saveBossReviveCheckpoint(scene, bossConfig) {
     ballsCaught,
     energyStreak,
     maxEnergyStreak,
+    registers,
     currentGravity,
     currentBoosterGravity,
     currentSpawnDelay,
@@ -371,6 +408,8 @@ function saveBossReviveCheckpoint(scene, bossConfig) {
     infiniteBossBag: scene.infiniteBossBag ? scene.infiniteBossBag.slice() : [],
     bossOnlyBossNumber: scene.bossOnlyBossNumber || 0,
     bossOnlyTypeRevealed: Boolean(scene.bossOnlyTypeRevealed),
+    completedRegisterMissions: Object.assign({}, scene.completedRegisterMissions || {}),
+    registerMissionProgress: Object.assign({}, scene.registerMissionProgress || {}),
   };
 }
 
@@ -382,7 +421,9 @@ function reviveFromBossCheckpoint() {
   if (!canAffordBossRevive()) return;
   const checkpoint = bossReviveCheckpoint;
   const reviveCost = getBossReviveCost();
-  const energyStreakAtDeath = energyStreak;
+  const registersAtDeath = registers;
+  const completedRegisterMissionsAtDeath = Object.assign({}, this.completedRegisterMissions || {});
+  const registerMissionProgressAtDeath = Object.assign({}, this.registerMissionProgress || {});
 
   cancelIntroSequence(this);
   clearEchoTutorialTimer(this);
@@ -418,8 +459,15 @@ function reviveFromBossCheckpoint() {
   clearGameplayVisuals(this);
   stopNonMusicAudio(this);
   showOverlayScreen(this, null);
-  restoreBossReviveCheckpoint(this, checkpoint, reviveCost, energyStreakAtDeath);
-  bossRevivesUsed += 1;
+  restoreBossReviveCheckpoint(
+    this,
+    checkpoint,
+    reviveCost,
+    registersAtDeath,
+    completedRegisterMissionsAtDeath,
+    registerMissionProgressAtDeath
+  );
+  bossReviveRegisterPayments += 1;
   hideEchoCompanion(this);
   setHudVisible(this, false);
   playBackgroundMusic(this);
@@ -427,11 +475,19 @@ function reviveFromBossCheckpoint() {
   startAxisActivationIntro(this, () => beginBossReviveEncounter(this, checkpoint));
 }
 
-function restoreBossReviveCheckpoint(scene, checkpoint, reviveCost = 0, paidEnergyStreak = checkpoint.energyStreak) {
+function restoreBossReviveCheckpoint(
+  scene,
+  checkpoint,
+  reviveCost = 0,
+  paidRegisters = checkpoint.registers,
+  completedRegisterMissionsAtDeath = {},
+  registerMissionProgressAtDeath = {}
+) {
   score = checkpoint.score;
   ballsCaught = checkpoint.ballsCaught;
-  energyStreak = Math.max(0, paidEnergyStreak - reviveCost);
-  maxEnergyStreak = Math.max(checkpoint.maxEnergyStreak, energyStreak);
+  energyStreak = checkpoint.energyStreak;
+  maxEnergyStreak = checkpoint.maxEnergyStreak;
+  registers = Math.max(0, (paidRegisters || 0) - reviveCost);
   currentGravity = checkpoint.currentGravity;
   currentBoosterGravity = checkpoint.currentBoosterGravity;
   currentSpawnDelay = checkpoint.currentSpawnDelay;
@@ -458,6 +514,15 @@ function restoreBossReviveCheckpoint(scene, checkpoint, reviveCost = 0, paidEner
   scene.infiniteBossBag = checkpoint.infiniteBossBag.slice();
   scene.bossOnlyBossNumber = checkpoint.bossOnlyBossNumber;
   scene.bossOnlyTypeRevealed = checkpoint.bossOnlyTypeRevealed;
+  scene.completedRegisterMissions = Object.assign(
+    {},
+    checkpoint.completedRegisterMissions || {},
+    completedRegisterMissionsAtDeath || {}
+  );
+  scene.registerMissionProgress = mergeRegisterMissionProgress(
+    checkpoint.registerMissionProgress || {},
+    registerMissionProgressAtDeath || {}
+  );
   scene.resumeSpawnDelay = null;
   scene.pendingEchoWaveWarningKind = null;
   scene.levelUpgradeSequenceActive = false;
@@ -466,6 +531,14 @@ function restoreBossReviveCheckpoint(scene, checkpoint, reviveCost = 0, paidEner
   if (scene.echoCompanion) scene.echoCompanion.clearTint();
   setEchoEyeAttacking(scene, false);
   updateHud(scene);
+}
+
+function mergeRegisterMissionProgress(baseProgress = {}, latestProgress = {}) {
+  const mergedProgress = Object.assign({}, baseProgress);
+  Object.keys(latestProgress).forEach((missionId) => {
+    mergedProgress[missionId] = Math.max(mergedProgress[missionId] || 0, latestProgress[missionId] || 0);
+  });
+  return mergedProgress;
 }
 
 function beginBossReviveEncounter(scene, checkpoint) {
@@ -530,9 +603,11 @@ function prepareUnrankedGameOver(scene, message = '') {
 
 function resetCounters() {
   bossReviveCheckpoint = null;
-  bossRevivesUsed = 0;
+  bossReviveRegisterPayments = 0;
   score = 0;
   ballsCaught = 0;
+  registers = 0;
+  gameplayTimeMs = 0;
   energyStreak = 0;
   maxEnergyStreak = 0;
   currentGravity = isBossOnlyGameMode() ? MAX_BALL_GRAVITY : BASE_GRAVITY;
@@ -581,9 +656,13 @@ function resetCounters() {
   this.bossOnlyBossNumber = 0;
   this.bossOnlyTypeRevealed = false;
   this.levelUpgradeSequenceActive = false;
+  this.completedRegisterMissions = {};
+  this.registerMissionProgress = {};
   resetBossWave(this);
   updatePlayerLevelText(this);
   updateStreakText();
+  updateRegistersText();
+  updateGameplayTimeText();
   updateSpeedTexts(this);
   updateUpgradeBar(this);
   updateUpgradeStatusIcons(this);

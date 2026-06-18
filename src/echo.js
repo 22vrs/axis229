@@ -338,7 +338,13 @@ function updateEchoAttacks(scene) {
 }
 
 function isEchoAttackableKind(kind) {
-  return kind === 'damageBooster' || isScissorKind(kind) || kind === 'spikeDrone' || kind === 'giroDrone' || isAsteroidKind(kind);
+  return kind === 'damageBooster' ||
+    isScissorKind(kind) ||
+    kind === 'spikeDrone' ||
+    kind === 'giroDrone' ||
+    kind === 'redNeedle' ||
+    kind === 'replicator' ||
+    isAsteroidKind(kind);
 }
 
 function isHostileInsideEchoAttackRadius(scene, hostile) {

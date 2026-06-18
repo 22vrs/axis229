@@ -186,6 +186,7 @@ function getObjectCollisionRadius(object) {
   if (kind === 'replicator') return REPLICATOR_HITBOX_WIDTH / 2;
   if (kind === 'spikeDrone') return object.getData('collisionRadius') || SPIKE_DRONE_FOLDED_RADIUS;
   if (kind === 'giroDrone') return GIRODRONE_ORBIT_RADIUS + GIRODRONE_SATELLITE_RADIUS;
+  if (kind === 'register') return REGISTER_COLLISION_RADIUS;
   if (kind === 'bigAsteroid') return 34;
   if (kind === 'asteroid') return 18;
   if (kind === 'crystallizedOrb') return CRYSTALLIZED_ORB_RADIUS;
@@ -271,6 +272,212 @@ function spawnForcedFallingKind(scene, kind, x = null) {
   if (kind === 'lifeBooster' && !canDropLifeBooster()) return null;
   if (!canSpawnFallingKindNow(scene, kind)) return null;
   return spawnFallingKind(scene, kind, x);
+}
+
+function spawnRegisterReward(scene, mission) {
+  if (!scene || !scene.balls || !mission) return [];
+
+  const rewardCount = Math.max(1, mission.reward || 1);
+  const spawnedRegisters = [];
+  for (let i = 0; i < rewardCount; i += 1) {
+    spawnedRegisters.push(createSingleRegisterReward(scene, mission, spawnedRegisters));
+  }
+
+  return spawnedRegisters;
+}
+
+function createSingleRegisterReward(scene, mission, spawnedRegisters = []) {
+  const position = getRandomRegisterPosition(scene, spawnedRegisters);
+  const register = scene.balls.create(position.x, position.y, 'register');
+  register.setData('kind', 'register');
+  register.setData('missionId', mission.id);
+  register.setData('registerReward', 1);
+  register.setOrigin(0.5);
+  register.setDepth(FALLING_OBJECT_DEPTH + 3);
+  setFallingObjectBody(register, 'register');
+  register.body.setAllowGravity(false);
+  register.body.setCollideWorldBounds(false);
+  register.body.setVelocity(0, 0);
+  register.setScale(0.62);
+  register.setAlpha(0);
+  register.setVisible(false);
+  register.setData('isMaterializing', true);
+  register.body.enable = false;
+
+  animateRegisterMaterialization(scene, register);
+
+  return register;
+}
+
+function animateRegisterMaterialization(scene, register) {
+  if (!scene || !register || !register.active) return;
+
+  const x = register.x;
+  const y = register.y;
+  const ring = scene.add.circle(x, y, 8, 0x76ffe8, 0)
+    .setDepth(FALLING_OBJECT_DEPTH + 2)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  ring.setStrokeStyle(2, 0x76ffe8, 0.95);
+
+  const flash = scene.add.circle(x, y, 5, 0xffffff, 0.8)
+    .setDepth(FALLING_OBJECT_DEPTH + 2)
+    .setBlendMode(Phaser.BlendModes.ADD);
+
+  scene.tweens.add({
+    targets: ring,
+    scale: 4.2,
+    alpha: 0,
+    duration: 460,
+    ease: 'Sine.easeOut',
+    onComplete: () => ring.destroy(),
+  });
+
+  scene.tweens.add({
+    targets: flash,
+    scale: 3.2,
+    alpha: 0,
+    duration: 320,
+    ease: 'Quad.easeOut',
+    onComplete: () => flash.destroy(),
+  });
+
+  for (let i = 0; i < 14; i += 1) {
+    const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    const distance = Phaser.Math.Between(18, 42);
+    const spark = scene.add.circle(x, y, Phaser.Math.FloatBetween(1.4, 2.6), i % 3 === 0 ? 0xffffff : 0x76ffe8, 0.92)
+      .setDepth(FALLING_OBJECT_DEPTH + 2)
+      .setBlendMode(Phaser.BlendModes.ADD);
+
+    scene.tweens.add({
+      targets: spark,
+      x: x + Math.cos(angle) * distance,
+      y: y + Math.sin(angle) * distance,
+      alpha: 0,
+      scale: 0.2,
+      duration: Phaser.Math.Between(260, 520),
+      ease: 'Quad.easeOut',
+      onComplete: () => spark.destroy(),
+    });
+  }
+
+  scene.time.delayedCall(330, () => revealMaterializedRegister(scene, register));
+}
+
+function revealMaterializedRegister(scene, register) {
+  if (!scene || !register || !register.active) return;
+
+  register.setVisible(true);
+  register.setData('isMaterializing', false);
+  if (register.body) register.body.enable = true;
+  scene.tweens.add({
+    targets: register,
+    alpha: 1,
+    scale: 0.72,
+    duration: 180,
+    ease: 'Back.easeOut',
+    onComplete: () => {
+      if (register && register.active) register.setScale(0.62);
+    },
+  });
+  scene.tweens.add({
+    targets: register,
+    y: register.y - 5,
+    duration: 920,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut',
+  });
+  animateRegisterHorizontalDrift(scene, register);
+}
+
+function animateRegisterHorizontalDrift(scene, register) {
+  if (!scene || !register || !register.active) return;
+
+  const bounds = getRegisterPlayableBounds(scene);
+  const homeX = register.getData('homeX') || register.x;
+  register.setData('homeX', homeX);
+  const driftRange = 10;
+  const targetX = Phaser.Math.Clamp(
+    homeX + Phaser.Math.Between(-driftRange, driftRange),
+    bounds.minX,
+    bounds.maxX
+  );
+
+  scene.tweens.add({
+    targets: register,
+    x: targetX,
+    duration: Phaser.Math.Between(640, 1180),
+    ease: 'Sine.easeInOut',
+    onComplete: () => animateRegisterHorizontalDrift(scene, register),
+  });
+}
+
+function getRandomRegisterPosition(scene, avoidObjects = []) {
+  const bounds = getRegisterPlayableBounds(scene);
+  const minDistance = getRegisterMinSpawnDistance(scene);
+  const minRegisterDistance = getRegisterMinSpawnDistanceBetweenRegisters(scene);
+  let bestPosition = null;
+  let bestDistance = -Infinity;
+
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    const position = getRandomPointInRegisterBounds(bounds);
+    const distance = getRegisterDistanceToShip(scene, position);
+    const registerDistance = getClosestRegisterDistance(position, avoidObjects);
+    if (distance >= minDistance && registerDistance >= minRegisterDistance) return position;
+    const score = distance + registerDistance * 0.45;
+    if (score > bestDistance) {
+      bestDistance = score;
+      bestPosition = position;
+    }
+  }
+
+  return bestPosition || getRandomPointInRegisterBounds(bounds);
+}
+
+function getRandomPointInRegisterBounds(bounds) {
+  return {
+    x: Phaser.Math.Between(Math.round(bounds.minX), Math.round(Math.max(bounds.minX, bounds.maxX))),
+    y: Phaser.Math.Between(Math.round(bounds.minY), Math.round(Math.max(bounds.minY, bounds.maxY))),
+  };
+}
+
+function getRegisterMinSpawnDistance(scene) {
+  if (!scene || !scene.ship) return REGISTER_MIN_SPAWN_DISTANCE_FROM_SHIP;
+  const maxPossible = Math.max(getGameWidth(scene), getXyShipBottomLimit(scene) - getXyShipTopLimit(scene)) * 0.42;
+  return Math.min(REGISTER_MIN_SPAWN_DISTANCE_FROM_SHIP, maxPossible);
+}
+
+function getRegisterDistanceToShip(scene, position) {
+  if (!scene || !scene.ship) return Infinity;
+  return Phaser.Math.Distance.Between(scene.ship.x, scene.ship.y, position.x, position.y);
+}
+
+function getRegisterMinSpawnDistanceBetweenRegisters(scene) {
+  const maxPossible = Math.min(getGameWidth(scene), getXyShipBottomLimit(scene) - getXyShipTopLimit(scene)) * 0.25;
+  return Math.min(REGISTER_MIN_SPAWN_DISTANCE_BETWEEN_REGISTERS, maxPossible);
+}
+
+function getClosestRegisterDistance(position, registersToAvoid) {
+  if (!registersToAvoid || !registersToAvoid.length) return Infinity;
+  return registersToAvoid.reduce((closest, register) => {
+    if (!register || !register.active) return closest;
+    return Math.min(closest, Phaser.Math.Distance.Between(position.x, position.y, register.x, register.y));
+  }, Infinity);
+}
+
+function getRegisterPlayableBounds(scene) {
+  const halfSize = REGISTER_COLLISION_RADIUS + 8;
+  const minX = Math.max(halfSize, SHIP_WIDTH / 2 - SHIP_WIDTH * SHIP_SIDE_HIDE_RATIO);
+  const maxX = Math.min(getGameWidth(scene) - halfSize, getGameWidth(scene) - minX);
+  const minY = Math.max(getXyShipTopLimit(scene) + halfSize, SHIP_HEIGHT / 2 + halfSize);
+  const maxY = Math.min(getXyShipBottomLimit(scene) - halfSize, getGameHeight(scene) - SHIP_HEIGHT / 2 - halfSize);
+
+  return {
+    minX,
+    maxX,
+    minY,
+    maxY,
+  };
 }
 
 function canSpawnFallingKindNow(scene, kind) {
@@ -1089,6 +1296,7 @@ function disableSpikeDrone(scene, drone) {
   drone.setAngularVelocity(0);
   playSpikeDroneDisableSound(scene);
   if (shouldReward) {
+    recordTravelEnemyDefeat(scene, drone);
     awardEnemyDefeatScore(scene, SPIKE_DRONE_DISABLE_SCORE, drone.x, drone.y, '#ffd84d');
   }
 }
@@ -1104,8 +1312,38 @@ function disableGiroDrone(scene, giroDrone) {
   updateGiroDroneVisuals(giroDrone, scene.time.now);
   playSpikeDroneDisableSound(scene);
   if (shouldReward) {
+    recordTravelEnemyDefeat(scene, giroDrone);
     awardEnemyDefeatScore(scene, GIRODRONE_DISABLE_SCORE, giroDrone.x, giroDrone.y, '#ffd84d');
   }
+}
+
+function recordTravelEnemyDefeat(scene, hostile) {
+  if (!scene || !hostile || !hostile.getData || !isNormalTravelMissionContext(scene)) return;
+
+  const target = getEnemyMissionTargetForKind(hostile.getData('kind'));
+  if (!target) return;
+  advanceRegisterMissionProgress(scene, target);
+}
+
+function getEnemyMissionTargetForKind(kind) {
+  if (kind === 'damageBooster') return 'obrera';
+  if (isScissorKind(kind)) return 'scissor';
+  if (kind === 'spikeDrone') return 'spikeDrone';
+  if (kind === 'giroDrone') return 'giroDrone';
+  if (kind === 'redNeedle') return 'redNeedle';
+  if (isAsteroidKind(kind)) return 'asteroid';
+  if (kind === 'replicator') return 'replicator';
+  return null;
+}
+
+function isNormalTravelMissionContext(scene) {
+  if (!scene) return false;
+  const levelBossActive = scene.activeBossWave && !scene.activeBossWave.isTravelEncounter;
+  return !scene.activeRedWave &&
+    !scene.activeDroneWave &&
+    !scene.activeAsteroidWave &&
+    !scene.activePlasmaWave &&
+    !levelBossActive;
 }
 
 function isSpikeDroneGreenState(stateName) {
@@ -1217,6 +1455,11 @@ function setFallingObjectBody(object, kind) {
 
   if (kind === 'crystallizedOrb') {
     object.body.setCircle(CRYSTALLIZED_ORB_RADIUS, 2, 2);
+    return;
+  }
+
+  if (kind === 'register') {
+    object.body.setCircle(REGISTER_COLLISION_RADIUS, 36 - REGISTER_COLLISION_RADIUS, 36 - REGISTER_COLLISION_RADIUS);
     return;
   }
 
@@ -1388,6 +1631,7 @@ function getTextureForKind(kind) {
   if (kind === 'shieldBooster') return 'shieldBooster';
   if (kind === 'contaminatedOrb') return 'contaminatedBall';
   if (kind === 'crystallizedOrb') return 'crystallizedOrb';
+  if (kind === 'register') return 'register';
   return 'goldBall';
 }
 
@@ -1623,6 +1867,7 @@ function getFallingVelocity(kind, scene, object = null) {
 
   if (kind === 'redNeedle') return 0;
   if (kind === 'redNeedleLaser') return RED_NEEDLE_LASER_SPEED;
+  if (kind === 'register') return 0;
   if (kind === 'replicator') {
     if (scene.activeRedWave && scene.activeRedWave.bossKind === 'replicators') {
       return getFallingVelocity('damageBooster', scene);
@@ -1653,6 +1898,7 @@ function getHorizontalVelocity(kind, scene, object = null) {
   }
 
   if (kind === 'redNeedleLaser') return 0;
+  if (kind === 'register') return 0;
 
   if (isScissorHalfKind(kind)) {
     return object && object.getData('horizontalVelocity') ? object.getData('horizontalVelocity') : (kind === 'scissorLeft' ? -SCISSOR_HALF_HORIZONTAL_SPEED : SCISSOR_HALF_HORIZONTAL_SPEED);
@@ -1759,6 +2005,8 @@ function catchBall(ball, scene) {
   } else if (kind === 'shieldBooster') {
     ball.destroy();
     activateShieldBooster(scene);
+  } else if (kind === 'register') {
+    collectRegister(scene, ball, x, y);
   } else {
     ball.destroy();
     const feedbackColor = energyOrbColor === 'pink' ? ENERGY_RESONANCE_COLOR : isPurpleEnergy ? '#d7a8ff' : '#ffd84d';
@@ -1838,10 +2086,23 @@ function areLineSegmentsIntersecting(firstStart, firstEnd, secondStart, secondEn
 }
 
 function collectEnergyOrb(scene, orb, x, y, energyOrbColor) {
+  const kind = orb && orb.getData ? orb.getData('kind') : null;
   orb.destroy();
+  if (kind === 'crystallizedOrb' && isNormalTravelMissionContext(scene)) {
+    advanceRegisterMissionProgress(scene, 'crystallizedOrb');
+  }
   const isPurpleEnergy = energyOrbColor !== 'gold';
   const feedbackColor = energyOrbColor === 'pink' ? ENERGY_RESONANCE_COLOR : isPurpleEnergy ? '#d7a8ff' : '#ffd84d';
   rewardEnergyOrbCatch(scene, x, y, feedbackColor);
+}
+
+function collectRegister(scene, registerObject, x, y) {
+  if (registerObject.getData('isMaterializing')) return;
+  const reward = Math.max(1, registerObject.getData('registerReward') || 1);
+  registerObject.destroy();
+  registers += reward;
+  updateRegistersText();
+  showPointPopup(scene, x, y, reward, '#76ffe8', '+' + reward + ' Registro');
 }
 
 function rewardEnergyOrbCatch(scene, x, y, feedbackColor, registerBoosterCatch = true) {
@@ -1879,6 +2140,7 @@ function handleHostileShipContact(scene, hostile, x, y, kind, energyOrbColor = '
 
 function destroyShieldBlockedHostile(scene, hostile) {
   if (!hostile || !hostile.active) return;
+  recordTravelEnemyDefeat(scene, hostile);
   if (scene && scene.tweens) scene.tweens.killTweensOf(hostile);
   hostile.destroy();
 }
