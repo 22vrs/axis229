@@ -20,6 +20,7 @@ function initHud() {
     booster: document.getElementById('hud-booster'),
     boosterLabel: document.getElementById('hud-booster-label'),
     boosterFill: document.getElementById('hud-booster-fill'),
+    missionPopup: document.getElementById('mission-complete-popup'),
     speed: document.getElementById('hud-speed'),
     boostSpeed: document.getElementById('hud-boost-speed'),
   };
@@ -76,6 +77,7 @@ function setPauseSettingsVisible(visible) {
   if (!currentHud.root) return;
   currentHud.root.classList.toggle('is-pause-settings-visible', Boolean(visible));
   setHudUpgradeChipsReadable(currentHud, visible);
+  setMissionCompletePopupReadable(currentHud, visible);
   if (currentHud.pauseSettingsButton) {
     currentHud.pauseSettingsButton.setAttribute('aria-hidden', visible ? 'false' : 'true');
   }
@@ -183,6 +185,13 @@ function getBossRegisterMissions() {
   });
 }
 
+function setMissionCompletePopupReadable(currentHud, readable) {
+  if (!currentHud || !currentHud.root) return;
+  currentHud.root.classList.toggle('is-mission-popup-readable', Boolean(readable));
+  if (!currentHud.missionPopup) return;
+  syncMissionCompletePopupStack(currentHud.missionPopup, readable);
+}
+
 function getEnemyRegisterMissions() {
   return [
     { id: 'enemy_obreras_10', category: 'enemies', target: 'obrera', name: 'Derrota a 10 Obreras', goal: 10, reward: 1 },
@@ -226,7 +235,7 @@ function getLevelRegisterMissions() {
     { id: 'level_35', category: 'levels', level: 35, name: 'Alcanza el nivel 35', reward: 1 },
     { id: 'level_40', category: 'levels', level: 40, name: 'Alcanza el nivel 40', reward: 1 },
     { id: 'level_45', category: 'levels', level: 45, name: 'Alcanza el nivel 45', reward: 1 },
-    { id: 'level_40_repeat', category: 'levels', level: 40, name: 'Alcanza el nivel 40', reward: 1 },
+    { id: 'level_50', category: 'levels', level: 50, name: 'Alcanza el nivel 50', reward: 1 },
   ];
 }
 
@@ -290,6 +299,105 @@ function completeRegisterMission(scene, mission) {
   spawnRegisterReward(scene, mission);
 }
 
+function showMissionCompletePopup(scene, mission) {
+  const currentHud = initHud();
+  if (!currentHud.missionPopup || !mission) return;
+  renderMissionCompletePopup(currentHud.missionPopup, mission, scene);
+}
+
+function resetMissionCompletePopups(scene) {
+  const currentHud = initHud();
+  if (scene) {
+    scene.missionCompletePopupStack = [];
+  }
+  if (!currentHud.missionPopup) return;
+  currentHud.missionPopup.replaceChildren();
+  currentHud.missionPopup.classList.remove('is-visible');
+  currentHud.missionPopup.setAttribute('aria-hidden', 'true');
+}
+
+function dismissMissionCompletePopup(scene) {
+  const currentHud = initHud();
+  if (!scene || !currentHud.missionPopup || state !== 'paused') return;
+  const stack = scene.missionCompletePopupStack || [];
+  const card = stack[stack.length - 1];
+  if (!card || card.classList.contains('is-dismissing')) return;
+
+  stack.pop();
+  card.classList.add('is-dismissing');
+  card.classList.remove('is-visible');
+  syncMissionCompletePopupStack(currentHud.missionPopup, state === 'paused', true);
+
+  scene.time.addEvent({
+    delay: 180,
+    callback: () => {
+      card.remove();
+      if (!stack.length) {
+        currentHud.missionPopup.classList.remove('is-visible');
+        currentHud.missionPopup.setAttribute('aria-hidden', 'true');
+      }
+      syncMissionCompletePopupStack(currentHud.missionPopup, state === 'paused');
+    },
+  });
+}
+
+function renderMissionCompletePopup(element, mission, scene) {
+  if (!scene.missionCompletePopupStack) scene.missionCompletePopupStack = [];
+  const card = document.createElement('div');
+  card.className = 'mission-complete-card';
+
+  const name = document.createElement('span');
+  name.className = 'mission-complete-name';
+  name.textContent = mission.name || 'Mision completada';
+
+  const status = document.createElement('span');
+  status.className = 'mission-complete-status';
+  status.textContent = 'COMPLETADO';
+
+  const reward = document.createElement('span');
+  reward.className = 'mission-complete-reward';
+  reward.append(document.createTextNode('+' + Math.max(1, mission.reward || 1) + ' '));
+  reward.append(createRegisterHudIcon());
+
+  const readButton = document.createElement('button');
+  readButton.className = 'mission-complete-read-button';
+  readButton.type = 'button';
+  readButton.textContent = 'LEÍDO';
+  readButton.disabled = state !== 'paused';
+  ['pointerdown', 'pointerup', 'click', 'touchstart', 'touchend'].forEach((eventName) => {
+    readButton.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (eventName === 'click') dismissMissionCompletePopup(scene);
+    });
+  });
+
+  card.append(name, status, reward, readButton);
+  element.append(card);
+  scene.missionCompletePopupStack.push(card);
+  element.setAttribute('aria-hidden', 'false');
+  element.classList.add('is-visible');
+  syncMissionCompletePopupStack(element, state === 'paused', true);
+  void card.offsetWidth;
+  card.classList.add('is-visible');
+  scene.time.addEvent({
+    delay: 180,
+    callback: () => syncMissionCompletePopupStack(element, state === 'paused'),
+  });
+}
+
+function syncMissionCompletePopupStack(element, readable, revealUnderneath = false) {
+  const cards = Array.from(element.querySelectorAll('.mission-complete-card'));
+  cards.forEach((card, index) => {
+    const isTop = index === cards.length - 1 && !card.classList.contains('is-dismissing');
+    card.style.zIndex = String(index + 1);
+    card.classList.toggle('is-underneath', !isTop);
+    card.classList.toggle('is-revealed-underneath', revealUnderneath && !isTop);
+    const button = card.querySelector('.mission-complete-read-button');
+    if (button) button.disabled = !readable || !isTop;
+  });
+}
+
 function recordUpgradeRegisterMissions(scene, upgradeKind, previousLevel, nextLevel) {
   if (!scene || !upgradeKind) return;
   if (previousLevel <= 0 && nextLevel > 0) {
@@ -333,7 +441,7 @@ function getBossConfigForLevel(level, scene = gameScene) {
 
   const bossKind = isInfiniteGameMode()
     ? getNextInfiniteBossKind(scene)
-    : STORY_BOSS_KINDS[bossIndex];
+    : STORY_BOSS_KINDS[bossIndex % STORY_BOSS_KINDS.length];
   if (!bossKind) return null;
   return createBossConfig(bossKind);
 }

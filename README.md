@@ -68,35 +68,55 @@ La partida comienza pausada sobre el control azul; el primer dialogo de jefe sol
 - Las mejoras base pueden subir hasta nivel `5`.
 - Algunas mejoras avanzadas tienen un solo nivel y se desbloquean al maximizar su mejora base.
 - Hay un jefe cada `3` niveles.
-- La gravedad base de los orbes es `220`.
-- La velocidad empieza en `1.00x`, llega a `2.00x` en nivel `4` y queda capada ahi.
-- El intervalo de aparicion empieza en `1500 ms` y baja hasta `600 ms`.
+- La gravedad base de referencia es `220`; la velocidad fija de los orbes es `374`.
+- La velocidad visible es fija: `2.00x` desde el inicio hasta el final.
+- El intervalo de aparicion normal es fijo: `760 ms`.
 - Al encadenar `50` orbes de energia sin recibir dano se concede una recompensa de racha.
 - La recompensa base de racha es de `50` puntos y crece con cada bloque de `50`.
 - Si puedes recibir kits de reparacion, una recompensa de racha tambien puede forzar la caida de un kit.
 
 ## Velocidad del juego
 
-La velocidad principal depende del nivel del jugador y se recalcula al subir de nivel:
+La velocidad principal ya no escala por nivel. Toda la partida usa directamente la velocidad que antes correspondia al `2.00x`:
 
-| Nivel | Multiplicador | Gravedad de orbes | BOOST | Intervalo normal |
-| ---: | ---: | ---: | ---: | ---: |
-| 1 | `1.00x` | `220` | `0.80x` | `1500 ms` |
-| 2 | `1.33x` | `293` | `1.06x` | `~995 ms` |
-| 3 | `1.67x` | `367` | `1.34x` | `~711 ms` |
-| 4+ | `2.00x` | `440` | `1.60x` | `600 ms` |
+| Velocidad visible | Gravedad de orbes | BOOST | Intervalo normal |
+| ---: | ---: | ---: | ---: |
+| `2.00x` | `374` | `1.36x` | `760 ms` |
 
 Como funciona:
 
-- La gravedad base es `220` y solo los orbes normales usan directamente la velocidad principal.
-- El multiplicador sube linealmente de `1.00x` a `2.00x` entre los niveles `1` y `4`; desde el nivel `4` queda en el maximo.
-- El intervalo de aparicion normal baja de `1500 ms` a `600 ms` usando una curva suavizada (`SPAWN_DELAY_EASING = 1.8`).
+- La gravedad base de referencia es `220`, pero la velocidad principal fija de la partida es `374`.
+- El HUD muestra siempre `VEL 2.00x`.
+- El intervalo de aparicion normal permanece en `760 ms`.
 - Los boosters y la mayoria de amenazas que caen usan el `80%` de la velocidad principal, con un cap tecnico de `1.80x`.
 - La fisica arcade usa el delta real de cada frame (`fixedStep: false`) para suavizar el movimiento de amenazas y objetos.
-- Al cambiar la velocidad, los objetos que ya estan cayendo actualizan su velocidad para adaptarse al nuevo ritmo.
 - Las oleadas y jefes usan intervalos base, por ejemplo Enjambre de Obreras cada `400 ms`, Enjambre de Escisoras cada `650 ms`, Drones cada `680 ms`, Girodrones cada `920 ms`, Asteroides cada `760 ms` y Plasma cada `2100 ms`.
 - Las oleadas de amenazas ajustan su intervalo si hace falta para mantener al menos `120 px` de separacion vertical aproximada, y no generan mas objetos si ya hay `6` amenazas activas o `2` amenazas acumuladas en la zona superior.
 - Drones, girodrones, asteroides y amenazas normales escalan con esa velocidad secundaria; lasers, barras de plasma y movimientos laterales especiales conservan valores propios.
+
+### Velocidades por elemento
+
+Las velocidades estan en pixeles por segundo y corresponden a la velocidad fija `VEL 2.00x`.
+
+| Elemento | Velocidad vertical | Velocidad horizontal | Nota |
+| --- | ---: | ---: | --- |
+| Orbes de energia normales | `374` | `0` | Usan directamente la velocidad principal. |
+| Boosters y amenazas normales de viaje | `299` | `0` | Usan el `80%` de la velocidad principal. |
+| Obreras en enjambre | `269` | hasta `24` | La oscilacion lateral se recalcula por frame. |
+| Escisoras antes de dividirse | `269` | `0` | Durante Enjambre de Escisoras. |
+| Mitades de Escisora | `269` | `94` hacia fuera | Heredan la velocidad vertical de la Escisora. |
+| Replicador de viaje | `168` | hasta `160` | Sigue a Axis con `70-120 ms` de retraso. |
+| Replicador en oleada | `224` | hasta `160` | En la oleada usa una velocidad propia mas lenta que la amenaza base. |
+| Drone de pinchos | `203` | `0` | Usa el `68%` de la velocidad secundaria. |
+| Girodron | `203` | `0` | El satelite orbita a velocidad propia. |
+| Asteroide de viaje | `269` | `135` | La direccion horizontal puede ser izquierda o derecha. |
+| Asteroide grande de viaje | `215` | `96` | Mas lento que el asteroide normal. |
+| Asteroide de oleada | `245` | `173` | Variante dentro del Cinturon de Asteroides. |
+| Asteroide grande de oleada | `215` | `96` | Misma velocidad que el grande de viaje. |
+| Aguja Roja | `0` | `118` | Cruza la pantalla lateralmente. |
+| Laser de Aguja Roja | `285` | `0` | No escala con el nivel. |
+| Barra de plasma | `152` | `42` para la brecha | No escala con el nivel. |
+| Registro | `0` | `0` | Aparece como recompensa fija. |
 
 ## Orbes
 
@@ -154,7 +174,7 @@ Casos especiales:
 | Resonancia energetica | `1` | Catalizador de energia nivel `5` | Tras recoger `3` orbes con el catalizador, activa Sincronia y sube el multiplicador a `3x`. |
 | Purificador de energia | `1` | Refinador de energia nivel `5` | Los orbes contaminados dejan de aparecer. |
 | Ayuda de Echo | `1` | Barrera protectora nivel `5` | Echo ataca amenazas cercanas con una probabilidad del `30%`. |
-| Expansor vital | `1` | Kit de reparacion nivel `5` | Aumenta la capacidad maxima en `+2` vidas y tambien cura `+2`. |
+| Expansor vital | `1` | Kit de reparacion nivel `5` | Aumenta la capacidad maxima en `+1` vida y tambien cura `+1`. |
 
 Los boosters temporales duran `10 s`.
 
@@ -230,7 +250,7 @@ Las probabilidades son por intento de aparicion dentro de su pool. Algunas solo 
 | Asteroide grande | `24%` de los asteroides de viaje | Si aparece asteroide. | Aproximadamente `2.4%` por intento total. |
 | Barra de plasma | `4%` | Tras vencer a Marea de Plasma. | No aparece durante jefes de nivel. |
 | Centinela viajero | `1.5%` | Tras vencer a Centinela. | Cooldown de `26000 ms`; no aparece con jefe, booster temporal, jefe pendiente ni plasma activo. Mientras ataca no aparecen Replicadores ni boosters morados. |
-| Replicador | `2%` | Tras vencer a Replicadores. | Copia invertida de Axis con estela corta y glitch RGB; imita el eje horizontal con `70-120 ms` de retraso y cae al `56%` de la velocidad actual. No aparece mientras hay un Centinela activo. |
+| Replicador | `2%` | Tras vencer a Replicadores. | Copia invertida de Axis con estela corta y glitch RGB; imita el eje horizontal con `70-120 ms` de retraso y cae al `45%` de la velocidad actual. No aparece mientras hay un Centinela activo. |
 | Orbe cristalizado | `5%` | Tras superar Tormenta Cristalizada. | La cara superior limpia se puede recoger. La costra inferior causa dano. Si se pierde, también se pierde una vida porque su energía sigue siendo válida. |
 
 ## Ranking
@@ -284,6 +304,8 @@ Si Supabase no esta disponible o no esta configurado, el juego muestra un aviso 
 | `assets/spike-drone-beep.mp3` | Aviso del drone. |
 | `assets/red-needle-shot.mp3` | Disparo de Aguja Roja. |
 | `assets/streak-success.mp3` | Recompensa de racha y Sincronia. |
+| `assets/register-pickup.mp3` | Recoger un Registro. |
+| `assets/register-spawn.mp3` | Aparicion/materializacion de un Registro. |
 | `assets/images/player-ship.svg` | Imagen de la nave. |
 
 ### Asset opcional
@@ -308,11 +330,14 @@ Se cargan desde `index.html`:
 | `GAME_HEIGHT` | `700` |
 | `INITIAL_HEART_CAPACITY` | `3` |
 | `BASE_GRAVITY` | `220` |
-| `INITIAL_SPAWN_DELAY` | `1500 ms` |
-| `MIN_SPAWN_DELAY` | `600 ms` |
-| `MAX_SPEED_MULTIPLIER` | `2` |
-| `SPEED_TARGET_LEVEL` | `4` |
+| `INITIAL_SPAWN_DELAY` | `760 ms` |
+| `MIN_SPAWN_DELAY` | `760 ms` |
+| `MAX_SPEED_MULTIPLIER` | `1.7` |
+| `DISPLAY_MAX_SPEED_MULTIPLIER` | `2` |
 | `BOOSTER_GRAVITY_RATIO` | `0.8` |
+| `TRAVEL_REPLICATOR_GRAVITY_RATIO` | `0.45` |
+| `WAVE_REPLICATOR_GRAVITY_RATIO` | `0.6` |
+| `REPLICATOR_FOLLOW_SPEED` | `160` |
 | `MAX_BOOSTER_SPEED_MULTIPLIER` | `1.8` |
 | `WAVE_MIN_VERTICAL_SPAWN_SPACING` | `120` |
 | `MAX_ACTIVE_HOSTILE_SPAWNS` | `6` |
@@ -322,11 +347,13 @@ Se cargan desde `index.html`:
 | `MAX_UPGRADE_LEVEL` | `5` |
 | `ENERGY_STREAK_REWARD_TARGET` | `50` |
 | `ENERGY_STREAK_REWARD_SCORE` | `50` |
+| `REGISTER_REWARD_SPAWN_DELAY` | `1000 ms` |
+| `REGISTER_REWARD_SPAWN_STAGGER` | `500 ms` |
 | `CONTAMINATED_ORB_CHANCE` | `0.2` |
 | `ENERGY_RESONANCE_REQUIRED_ORBS` | `3` |
 | `ECHO_ATTACK_CHANCE` | `0.3` |
 | `ECHO_ATTACK_DETECTION_RADIUS` | `128` |
-| `VITAL_EXPANDER_LIFE_BONUS` | `2` |
+| `VITAL_EXPANDER_LIFE_BONUS` | `1` |
 | `TIMED_BOOSTER_DURATION` | `10000 ms` |
 | `BOOSTER_CHANCE_PER_LEVEL` | `0.02` |
 | `BOSS_WAVE_ATTACKS` | `7` |

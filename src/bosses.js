@@ -339,6 +339,7 @@ function updateBossWave(scene) {
   }
 
   updateSentinelEyeTracking(scene);
+  updateBossLaserTracking(scene);
   updateBossElectricLaserEffects(scene);
   recoverStalledBossWave(scene, bossWave);
   if (scene.activeBossWave !== bossWave) return;
@@ -818,6 +819,49 @@ function showBossHorizontalLaserWarning(scene, laserY) {
   );
 }
 
+function updateBossLaserTracking(scene) {
+  if (!scene.ship || !scene.ship.active) return;
+
+  const frameDelta = scene.game && scene.game.loop ? scene.game.loop.delta : 16;
+  const delta = Phaser.Math.Clamp(frameDelta, 0, 50);
+
+  if (scene.bossLaser && scene.bossLaser.active) {
+    const nextX = moveValueToward(
+      scene.bossLaser.x,
+      Phaser.Math.Clamp(scene.ship.x, 46, getGameWidth(scene) - 46),
+      BOSS_LASER_TRACK_SPEED * delta / 1000
+    );
+    setBossVerticalLaserX(scene, nextX);
+  }
+
+  if (scene.bossHorizontalLaser && scene.bossHorizontalLaser.active) {
+    const nextY = moveValueToward(
+      scene.bossHorizontalLaser.y,
+      Phaser.Math.Clamp(scene.ship.y, getXyShipTopLimit(scene), getXyShipBottomLimit(scene)),
+      BOSS_HORIZONTAL_LASER_TRACK_SPEED * delta / 1000
+    );
+    setBossHorizontalLaserY(scene, nextY);
+  }
+}
+
+function moveValueToward(current, target, maxStep) {
+  const distance = target - current;
+  if (Math.abs(distance) <= maxStep) return target;
+  return current + Math.sign(distance) * maxStep;
+}
+
+function setBossVerticalLaserX(scene, x) {
+  if (scene.bossLaser) scene.bossLaser.x = x;
+  if (scene.bossLaserCore) scene.bossLaserCore.x = x;
+  if (scene.bossLaserEffect) scene.bossLaserEffect.centerX = x;
+}
+
+function setBossHorizontalLaserY(scene, y) {
+  if (scene.bossHorizontalLaser) scene.bossHorizontalLaser.y = y;
+  if (scene.bossHorizontalLaserCore) scene.bossHorizontalLaserCore.y = y;
+  if (scene.bossHorizontalLaserEffect) scene.bossHorizontalLaserEffect.centerY = y;
+}
+
 function createBossLaserWarningEffect(scene, centerX, centerY, length, horizontal = false) {
   scene.bossWarningParticles = scene.bossWarningParticles || [];
   scene.bossWarningAnimationEvents = scene.bossWarningAnimationEvents || [];
@@ -936,7 +980,7 @@ function createBossElectricLaserEffect(scene, centerX, centerY, length, horizont
   };
   scene.bossLaserEffects.push(effect);
   drawBossElectricLaserEffect(effect, scene.time.now);
-  return graphics;
+  return effect;
 }
 
 function updateBossElectricLaserEffects(scene) {
@@ -1047,7 +1091,7 @@ function fireBossLaser(scene, laserX, laserY) {
   scene.bossLaserCore = scene.add.rectangle(laserX, laserCenterY, 5, laserHeight, 0xffffff, 0.96)
     .setOrigin(0.5, 0.5)
     .setDepth(FX_DEPTH - 1);
-  createBossElectricLaserEffect(scene, laserX, laserCenterY, laserHeight);
+  scene.bossLaserEffect = createBossElectricLaserEffect(scene, laserX, laserCenterY, laserHeight);
   showBossHorizontalLaserWarning(scene, laserY);
   scene.bossHorizontalLaserEvent = scene.time.addEvent({
     delay: BOSS_LASER_WARN_DURATION,
@@ -1081,7 +1125,7 @@ function fireBossHorizontalLaser(scene, laserY) {
   scene.bossHorizontalLaserCore = scene.add.rectangle(laserCenterX, laserY, laserWidth, 5, 0xffffff, 0.96)
     .setOrigin(0.5, 0.5)
     .setDepth(FX_DEPTH - 1);
-  createBossElectricLaserEffect(scene, laserCenterX, laserY, laserWidth, true);
+  scene.bossHorizontalLaserEffect = createBossElectricLaserEffect(scene, laserCenterX, laserY, laserWidth, true);
   playBossLaserSound(scene);
 }
 
@@ -1510,7 +1554,11 @@ function completeRegisterMissionForWave(scene, wave) {
 function hasFallingObjects(scene) {
   return hasActivePlasmaBars(scene) || scene.balls
     .getChildren()
-    .some((ball) => ball.active && ball.y <= getGameHeight(scene) + 32);
+    .some((ball) => (
+      ball.active &&
+      ball.getData('kind') !== 'register' &&
+      ball.y <= getGameHeight(scene) + 32
+    ));
 }
 
 function hasActivePlasmaBars(scene) {
@@ -1780,6 +1828,8 @@ function clearBossLaser(scene) {
     });
     scene.bossLaserEffects = [];
   }
+  scene.bossLaserEffect = null;
+  scene.bossHorizontalLaserEffect = null;
   if (scene.bossLaser) {
     scene.bossLaser.destroy();
     scene.bossLaser = null;

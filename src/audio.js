@@ -61,6 +61,14 @@ function playStreakSuccessSound(scene) {
   playAudioFile(scene, 'streakSuccessAudio', STREAK_SUCCESS_SOUND_PATH, 0.58);
 }
 
+function playRegisterPickupSound(scene) {
+  playAudioFile(scene, 'registerPickupAudio', REGISTER_PICKUP_SOUND_PATH, 0.55);
+}
+
+function playRegisterSpawnSound(scene) {
+  playOverlappingAudioFile(scene, 'registerSpawnAudios', REGISTER_SPAWN_SOUND_PATH, 0.5);
+}
+
 function playBackgroundMusic(scene) {
   playGameplayMusic(scene);
 }
@@ -214,12 +222,13 @@ function applyAudioVolumes(scene) {
     'bossLaserAudio',
     'shieldBlockAudio',
     'streakSuccessAudio',
+    'registerPickupAudio',
   ].forEach((audioKey) => {
     const audio = scene[audioKey];
     if (audio) audio.volume = getSoundEffectVolume(audio.baseVolume || 1);
   });
 
-  ['spikeDroneAudios', 'spikeDroneDisableAudios', 'redNeedleShotAudios'].forEach((collectionKey) => {
+  ['spikeDroneAudios', 'spikeDroneDisableAudios', 'redNeedleShotAudios', 'registerSpawnAudios'].forEach((collectionKey) => {
     const collection = scene[collectionKey];
     if (!collection) return;
     collection.forEach((audio) => {
@@ -240,7 +249,7 @@ function stopBackgroundMusic(scene) {
 }
 
 function stopNonMusicAudio(scene) {
-  ['catchAudio', 'boosterAudio', 'badAudio', 'buttonAudio', 'levelUpAudio', 'redWaveAudio', 'bossLaserAudio', 'shieldBlockAudio', 'streakSuccessAudio'].forEach((audioKey) => {
+  ['catchAudio', 'boosterAudio', 'badAudio', 'buttonAudio', 'levelUpAudio', 'redWaveAudio', 'bossLaserAudio', 'shieldBlockAudio', 'streakSuccessAudio', 'registerPickupAudio'].forEach((audioKey) => {
     const audio = scene[audioKey];
     if (!audio) return;
     audio.pause();
@@ -266,6 +275,13 @@ function stopNonMusicAudio(scene) {
       audio.currentTime = 0;
     });
     scene.redNeedleShotAudios = [];
+  }
+  if (scene.registerSpawnAudios) {
+    scene.registerSpawnAudios.forEach((audio) => {
+      audio.pause();
+      audio.currentTime = 0;
+    });
+    scene.registerSpawnAudios = [];
   }
 }
 

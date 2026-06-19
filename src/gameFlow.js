@@ -610,9 +610,9 @@ function resetCounters() {
   gameplayTimeMs = 0;
   energyStreak = 0;
   maxEnergyStreak = 0;
-  currentGravity = isBossOnlyGameMode() ? MAX_BALL_GRAVITY : BASE_GRAVITY;
+  currentGravity = MAX_BALL_GRAVITY;
   currentBoosterGravity = getBoosterGravityForCurrentSpeed();
-  currentSpawnDelay = isBossOnlyGameMode() ? MIN_SPAWN_DELAY : INITIAL_SPAWN_DELAY;
+  currentSpawnDelay = INITIAL_SPAWN_DELAY;
   maxLives = INITIAL_HEART_CAPACITY;
   lives = maxLives;
   levelProgressScore = 0;
@@ -658,6 +658,7 @@ function resetCounters() {
   this.levelUpgradeSequenceActive = false;
   this.completedRegisterMissions = {};
   this.registerMissionProgress = {};
+  resetMissionCompletePopups(this);
   resetBossWave(this);
   updatePlayerLevelText(this);
   updateStreakText();
@@ -685,6 +686,7 @@ function clearGameplayVisuals(scene) {
   if (!scene) return;
 
   clearAllFallingObjects(scene);
+  clearRegisterRewardQueue(scene);
   clearPlasmaBars(scene);
   clearBossWarningParticles(scene);
   clearBossLaser(scene);

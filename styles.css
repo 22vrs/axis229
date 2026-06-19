@@ -217,9 +217,9 @@ a:focus-visible {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: 42px minmax(54px, 1fr) 48px 76px 68px;
+  grid-template-columns: 38px minmax(72px, 1fr) 58px 67px 58px;
   align-items: start;
-  gap: 8px;
+  gap: 6px;
 }
 
 .hud-stat {
@@ -258,7 +258,7 @@ a:focus-visible {
   display: block;
   margin-top: 4px;
   color: #ffffff;
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1;
   overflow: hidden;
@@ -286,24 +286,24 @@ a:focus-visible {
 .hud-registers .hud-value {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   max-width: 100%;
   color: #76ffe8;
-  font-size: 19px;
+  font-size: 16px;
   text-shadow: 0 0 12px rgba(118, 255, 232, 0.62);
 }
 
 .hud-time .hud-value {
   margin-top: 7px;
   color: #ecf7ff;
-  font-size: 19px;
+  font-size: 16px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
 }
 
 .hud-register-icon {
-  width: 17px;
-  height: 17px;
+  width: 15px;
+  height: 15px;
   vertical-align: -3px;
 }
 
@@ -433,25 +433,110 @@ a:focus-visible {
   align-content: flex-start;
 }
 
-.hud.is-boss-only .hud-progress-row,
 .hud.is-boss-only .hud-upgrades {
   display: none;
+}
+
+.hud.is-boss-only .hud-progress-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 70px 64px;
+  align-items: center;
+  gap: 9px;
+  margin-top: 9px;
+}
+
+.hud.is-boss-only .hud-progress-block {
+  display: none;
+}
+
+.hud.is-boss-only .hud-life {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.hud.is-boss-only .hud-life-head {
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+.hud.is-boss-only .hud-life-bar {
+  margin-top: 0;
+}
+
+.hud.is-boss-only .hud-life-cell {
+  height: 8px;
 }
 
 .hud.is-boss-only .hud-streak {
   display: none;
 }
 
+.hud.is-boss-only .hud-top-panel {
+  top: 16px;
+  padding: 9px 12px 10px;
+}
+
 .hud.is-boss-only .hud-main-row {
-  align-items: flex-start;
+  grid-template-columns: 44px minmax(0, 1fr) 70px 64px;
+  align-items: start;
+  gap: 9px;
+}
+
+.hud.is-boss-only .hud-stat {
+  min-width: 0;
+}
+
+.hud.is-boss-only .hud-level {
+  text-align: left;
 }
 
 .hud.is-boss-only .hud-score {
   min-width: 0;
 }
 
+.hud.is-boss-only .hud-label {
+  font-size: 9px;
+  line-height: 1;
+}
+
+.hud.is-boss-only .hud-value {
+  margin-top: 5px;
+}
+
+.hud.is-boss-only .hud-level .hud-value {
+  font-size: 17px;
+}
+
 .hud.is-boss-only .hud-score .hud-value {
-  font-size: 14px;
+  display: -webkit-box;
+  min-height: 30px;
+  color: #ffd84d;
+  font-family: "Rajdhani", "Orbitron", Arial, sans-serif;
+  font-size: 17px;
+  line-height: 0.95;
+  white-space: normal;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.hud.is-boss-only .hud-registers .hud-value,
+.hud.is-boss-only .hud-time .hud-value {
+  font-size: 17px;
+}
+
+.hud.is-boss-only .hud-registers .hud-value {
+  gap: 5px;
+}
+
+.hud.is-boss-only .hud-register-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .hud-upgrade-pair {
@@ -545,6 +630,160 @@ a:focus-visible {
   font-size: 9px;
   font-weight: 700;
   text-shadow: 0 0 8px rgba(74, 197, 255, 0.72);
+}
+
+.mission-complete-popup {
+  position: absolute;
+  bottom: 18px;
+  left: 16px;
+  right: 16px;
+  z-index: 3;
+  height: 82px;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.mission-complete-popup.is-visible {
+  opacity: 1;
+}
+
+.hud.is-mission-popup-readable .mission-complete-popup.is-visible {
+  pointer-events: auto;
+}
+
+.mission-complete-card {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 10px;
+  height: 82px;
+  padding: 8px 12px;
+  overflow: hidden;
+  border: 1px solid rgba(118, 255, 232, 0.54);
+  border-left-color: rgba(255, 216, 77, 0.86);
+  border-radius: var(--ui-radius-control);
+  background:
+    linear-gradient(90deg, rgba(118, 255, 232, 0.16), transparent 68%),
+    linear-gradient(135deg, rgba(34, 126, 182, 0.46), rgba(12, 61, 120, 0.38)),
+    rgba(5, 18, 38, 0.78);
+  box-shadow:
+    0 0 18px rgba(118, 255, 232, 0.18),
+    0 12px 32px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(236, 247, 255, 0.16),
+    inset 3px 0 0 rgba(255, 216, 77, 0.82);
+  backdrop-filter: blur(16px) saturate(1.25);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  opacity: 0;
+  transform: translateY(28px) scale(0.98);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.mission-complete-card.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.mission-complete-card.is-dismissing {
+  opacity: 0;
+  transform: translateY(34px) scale(0.98);
+}
+
+.mission-complete-card.is-underneath {
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.mission-complete-card.is-revealed-underneath {
+  visibility: visible;
+}
+
+.mission-complete-name {
+  min-width: 0;
+  color: #ffffff;
+  font-family: "Rajdhani", "Trebuchet MS", Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.02;
+  display: -webkit-box;
+  max-height: 31px;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  text-shadow: 0 0 10px rgba(74, 197, 255, 0.5);
+}
+
+.mission-complete-status {
+  justify-self: end;
+  min-width: 82px;
+  min-height: 24px;
+  padding: 5px 7px;
+  border: 1px solid rgba(255, 216, 77, 0.42);
+  border-radius: var(--ui-radius-small);
+  background: rgba(4, 12, 28, 0.36);
+  color: #ffd84d;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 0 10px rgba(255, 216, 77, 0.48);
+}
+
+.mission-complete-reward {
+  grid-column: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 5px;
+  color: #76ffe8;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(118, 255, 232, 0.54);
+}
+
+.mission-complete-reward .register-inline-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.mission-complete-read-button {
+  justify-self: end;
+  min-width: 82px;
+  min-height: 26px;
+  padding: 6px 10px;
+  border: 1px solid rgba(118, 255, 232, 0.54);
+  border-radius: var(--ui-radius-small);
+  background:
+    linear-gradient(180deg, rgba(118, 255, 232, 0.92), rgba(39, 183, 245, 0.78));
+  color: #061426;
+  font-family: "Orbitron", "Rajdhani", Arial, sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  box-shadow: 0 0 12px rgba(118, 255, 232, 0.28), inset 0 1px 0 rgba(236, 254, 255, 0.4);
+  cursor: pointer;
+}
+
+.mission-complete-read-button:disabled {
+  border-color: rgba(159, 178, 202, 0.22);
+  background: rgba(8, 31, 64, 0.42);
+  color: rgba(185, 205, 236, 0.52);
+  box-shadow: inset 0 0 10px rgba(74, 197, 255, 0.08);
+  cursor: default;
+}
+
+.mission-complete-read-button:not(:disabled):hover,
+.mission-complete-read-button:not(:disabled):focus-visible {
+  outline: none;
+  filter: brightness(1.12);
 }
 
 .hud-debug {

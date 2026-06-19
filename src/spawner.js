@@ -278,12 +278,80 @@ function spawnRegisterReward(scene, mission) {
   if (!scene || !scene.balls || !mission) return [];
 
   const rewardCount = Math.max(1, mission.reward || 1);
-  const spawnedRegisters = [];
+  if (!scene.registerRewardQueue) scene.registerRewardQueue = [];
   for (let i = 0; i < rewardCount; i += 1) {
-    spawnedRegisters.push(createSingleRegisterReward(scene, mission, spawnedRegisters));
+    scene.registerRewardQueue.push({
+      mission,
+      showPopup: i === 0,
+    });
   }
 
-  return spawnedRegisters;
+  scheduleRegisterRewardQueue(scene);
+  return [];
+}
+
+function canProcessRegisterRewardQueue() {
+  return state === 'playing' && isDraggingShip;
+}
+
+function scheduleRegisterRewardQueue(scene) {
+  if (!scene || !scene.time || scene.registerRewardSpawnEvent) return;
+  if (!scene.registerRewardQueue || !scene.registerRewardQueue.length) return;
+  if (!canProcessRegisterRewardQueue()) return;
+
+  const delay = scene.registerRewardHasStarted ? REGISTER_REWARD_SPAWN_STAGGER : REGISTER_REWARD_SPAWN_DELAY;
+  scene.registerRewardSpawnEvent = scene.time.delayedCall(delay, () => processRegisterRewardQueue(scene));
+}
+
+function processRegisterRewardQueue(scene) {
+  if (!scene) return;
+  scene.registerRewardSpawnEvent = null;
+  if (!canProcessRegisterRewardQueue()) return;
+  if (!scene.registerRewardQueue || !scene.registerRewardQueue.length) {
+    scene.registerRewardHasStarted = false;
+    return;
+  }
+  if (!scene.balls) {
+    scheduleRegisterRewardQueue(scene);
+    return;
+  }
+
+  const reward = scene.registerRewardQueue.shift();
+  const mission = reward && reward.mission ? reward.mission : reward;
+  const spawnedRegisters = getActiveRegisters(scene);
+  createSingleRegisterReward(scene, mission, spawnedRegisters);
+  if (reward && reward.showPopup) showMissionCompletePopup(scene, mission);
+  scene.registerRewardHasStarted = true;
+
+  if (scene.registerRewardQueue.length) {
+    scheduleRegisterRewardQueue(scene);
+  } else {
+    scene.registerRewardHasStarted = false;
+  }
+}
+
+function hasPendingRegisterRewards(scene) {
+  return Boolean(
+    scene &&
+    ((scene.registerRewardQueue && scene.registerRewardQueue.length) || scene.registerRewardSpawnEvent)
+  );
+}
+
+function clearRegisterRewardQueue(scene) {
+  if (!scene) return;
+  if (scene.registerRewardSpawnEvent) {
+    scene.registerRewardSpawnEvent.remove(false);
+    scene.registerRewardSpawnEvent = null;
+  }
+  scene.registerRewardQueue = [];
+  scene.registerRewardHasStarted = false;
+}
+
+function getActiveRegisters(scene) {
+  if (!scene || !scene.balls) return [];
+  return scene.balls.getChildren().filter((object) => (
+    object && object.active && object.getData && object.getData('kind') === 'register'
+  ));
 }
 
 function createSingleRegisterReward(scene, mission, spawnedRegisters = []) {
@@ -311,6 +379,8 @@ function createSingleRegisterReward(scene, mission, spawnedRegisters = []) {
 
 function animateRegisterMaterialization(scene, register) {
   if (!scene || !register || !register.active) return;
+
+  playRegisterSpawnSound(scene);
 
   const x = register.x;
   const y = register.y;
@@ -1789,23 +1859,12 @@ function getCaughtObject(scene, objectA, objectB) {
 }
 
 function increaseDifficulty(scene) {
-  const previousGravity = currentGravity;
-  currentGravity = Math.min(MAX_BALL_GRAVITY, Math.round(BASE_GRAVITY * getSpeedMultiplierForLevel(playerLevel)));
+  currentGravity = MAX_BALL_GRAVITY;
   currentBoosterGravity = getBoosterGravityForCurrentSpeed();
-
-  if (currentGravity > previousGravity) {
-    currentSpawnDelay = getSpawnDelayForGravity(currentGravity);
-  }
+  currentSpawnDelay = INITIAL_SPAWN_DELAY;
 
   updateSpeedTexts(scene);
   updateFallingObjectSpeeds(scene);
-}
-
-function getSpeedMultiplierForLevel(level) {
-  if (level <= 1) return 1;
-  if (level >= SPEED_TARGET_LEVEL) return MAX_SPEED_MULTIPLIER;
-  const progress = Phaser.Math.Clamp((level - 1) / (SPEED_TARGET_LEVEL - 1), 0, 1);
-  return 1 + progress * (MAX_SPEED_MULTIPLIER - 1);
 }
 
 function getBoosterGravityForCurrentSpeed() {
@@ -1813,7 +1872,7 @@ function getBoosterGravityForCurrentSpeed() {
 }
 
 function resetGameSpeed(scene) {
-  currentGravity = BASE_GRAVITY;
+  currentGravity = MAX_BALL_GRAVITY;
   currentBoosterGravity = getBoosterGravityForCurrentSpeed();
   currentSpawnDelay = INITIAL_SPAWN_DELAY;
   updateSpeedTexts(scene);
@@ -1821,11 +1880,20 @@ function resetGameSpeed(scene) {
 }
 
 function updateSpeedTexts(scene) {
-  const multiplier = (currentGravity / BASE_GRAVITY).toFixed(2);
+  const multiplier = getDisplaySpeedMultiplierForGravity(currentGravity).toFixed(2);
   const boosterMultiplier = (currentBoosterGravity / BASE_GRAVITY).toFixed(2);
   const currentHud = initHud();
   if (currentHud.speed) currentHud.speed.textContent = 'VEL ' + multiplier + 'x';
   if (currentHud.boostSpeed) currentHud.boostSpeed.textContent = 'BOOST ' + boosterMultiplier + 'x';
+}
+
+function getDisplaySpeedMultiplierForGravity(gravity) {
+  const rawMultiplier = gravity / BASE_GRAVITY;
+  const rawRange = MAX_SPEED_MULTIPLIER - 1;
+  const displayRange = DISPLAY_MAX_SPEED_MULTIPLIER - 1;
+  if (rawRange <= 0) return rawMultiplier;
+  const progress = Phaser.Math.Clamp((rawMultiplier - 1) / rawRange, 0, 1);
+  return 1 + progress * displayRange;
 }
 
 function updatePlayerLevelText(scene) {
@@ -1870,7 +1938,7 @@ function getFallingVelocity(kind, scene, object = null) {
   if (kind === 'register') return 0;
   if (kind === 'replicator') {
     if (scene.activeRedWave && scene.activeRedWave.bossKind === 'replicators') {
-      return getFallingVelocity('damageBooster', scene);
+      return Math.round(currentGravity * WAVE_REPLICATOR_GRAVITY_RATIO);
     }
     return Math.round(currentGravity * TRAVEL_REPLICATOR_GRAVITY_RATIO);
   }
@@ -1937,16 +2005,6 @@ function getWaveSpawnDelay(scene, baseDelay, kind) {
   const velocity = Math.max(1, Math.abs(getFallingVelocity(kind, scene)));
   const spacingDelay = Math.ceil((WAVE_MIN_VERTICAL_SPAWN_SPACING / velocity) * 1000);
   return Math.max(baseDelay, spacingDelay);
-}
-
-function getSpawnDelayForGravity(gravity) {
-  const speedProgress = Phaser.Math.Clamp(
-    (gravity - BASE_GRAVITY) / (MAX_BALL_GRAVITY - BASE_GRAVITY),
-    0,
-    1
-  );
-  const easedRemaining = Math.pow(1 - speedProgress, SPAWN_DELAY_EASING);
-  return Math.round(MIN_SPAWN_DELAY + (INITIAL_SPAWN_DELAY - MIN_SPAWN_DELAY) * easedRemaining);
 }
 
 function catchBall(ball, scene) {
@@ -2018,6 +2076,8 @@ function catchBall(ball, scene) {
   if (!hitFeedbackShown) {
     if (isHostileContactKind(kind) && kind !== 'crystallizedOrb' && !isPurifiedContaminatedOrb) {
       playBadSound(scene);
+    } else if (kind === 'register') {
+      playRegisterPickupSound(scene);
     } else if (isBoosterKind(kind)) {
       playBoosterSound(scene);
     } else {

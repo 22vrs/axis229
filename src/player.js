@@ -22,6 +22,7 @@ function canResumeFromShipPoint(scene, x, y) {
 function startDraggingShipAt(scene, x, y) {
   if (state !== 'playing') return;
   isDraggingShip = true;
+  scheduleRegisterRewardQueue(scene);
   scene.input.setDefaultCursor('grabbing');
   setXyControlActive(scene, true);
   setXyControlVisible(scene, false);
@@ -58,6 +59,7 @@ function bindPausedShipResumeFallback(scene) {
   const resumeFromEvent = (event) => {
     if (state !== 'paused') return;
     if (event.target && event.target.closest && event.target.closest('.ui-panel')) return;
+    if (event.target && event.target.closest && event.target.closest('.mission-complete-popup')) return;
     if (scene.optionsOverlay && scene.optionsOverlay.element && scene.optionsOverlay.element.classList.contains('is-visible')) return;
 
     const point = getGamePointFromClient(scene, event.clientX, event.clientY);
