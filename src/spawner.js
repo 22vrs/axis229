@@ -4,6 +4,10 @@
 function pauseFallingObjects(scene) {
   scene.balls.getChildren().forEach((ball) => {
     if (!ball.active) return;
+    if (ball.getData('kind') === 'troyano') {
+      pauseTroyanoObject(ball);
+      return;
+    }
     if (ball.getData('pausedAngularVelocity') === undefined) {
       ball.setData('pausedAngularVelocity', ball.body.angularVelocity || 0);
       ball.setAngularVelocity(0);
@@ -17,6 +21,7 @@ function resumeFallingObjects(scene) {
   scene.balls.getChildren().forEach((ball) => {
     if (!ball.active) return;
     const kind = ball.getData('kind');
+    if (kind === 'troyano' && resumeTroyanoObject(ball)) return;
     const pausedAngularVelocity = ball.getData('pausedAngularVelocity');
     if (pausedAngularVelocity !== undefined) {
       ball.setAngularVelocity(pausedAngularVelocity);
@@ -60,6 +65,7 @@ function isPreciseShipOverlap(scene, objectA, objectB) {
   if (object.getData('kind') === 'redNeedle') return isRedNeedleOverlappingShip(scene, object);
   if (object.getData('kind') === 'redNeedleLaser') return isRedNeedleLaserOverlappingShip(scene, object);
   if (object.getData('kind') === 'damageBooster') return isDamageBoosterOverlappingShip(scene, object);
+  if (object.getData('kind') === 'troyano') return getDistanceToShipHitbox(scene, object) <= getObjectCollisionRadius(object);
   if (isScissorKind(object.getData('kind'))) return isScissorOverlappingShip(scene, object);
   if (object.getData('kind') === 'replicator') {
     return isRectOverlappingShip(scene, object.x, object.y, REPLICATOR_HITBOX_WIDTH, REPLICATOR_HITBOX_HEIGHT);
@@ -187,6 +193,7 @@ function getObjectCollisionRadius(object) {
   if (kind === 'spikeDrone') return object.getData('collisionRadius') || SPIKE_DRONE_FOLDED_RADIUS;
   if (kind === 'giroDrone') return GIRODRONE_ORBIT_RADIUS + GIRODRONE_SATELLITE_RADIUS;
   if (kind === 'register') return REGISTER_COLLISION_RADIUS;
+  if (kind === 'troyano') return REGISTER_COLLISION_RADIUS;
   if (kind === 'bigAsteroid') return 34;
   if (kind === 'asteroid') return 18;
   if (kind === 'crystallizedOrb') return CRYSTALLIZED_ORB_RADIUS;
@@ -354,6 +361,13 @@ function getActiveRegisters(scene) {
   ));
 }
 
+function getActiveTroyanos(scene) {
+  if (!scene || !scene.balls) return [];
+  return scene.balls.getChildren().filter((object) => (
+    object && object.active && object.getData && object.getData('kind') === 'troyano'
+  ));
+}
+
 function getActiveMaterializedRegisters(scene) {
   return getActiveRegisters(scene).filter((registerObject) => !registerObject.getData('isMaterializing'));
 }
@@ -363,10 +377,20 @@ function recordActiveRegisterCount(scene) {
 }
 
 function createSingleRegisterReward(scene, mission, spawnedRegisters = []) {
+  if (scene && scene.troyanoSpawnsUnlocked && !(mission && mission.skipTroyanoLink)) {
+    return createTroyanoLinkedRegister(scene, mission, spawnedRegisters, { countForBoss: false });
+  }
+
   const position = getRandomRegisterPosition(scene, spawnedRegisters);
+  return createRegisterObject(scene, mission, position);
+}
+
+function createRegisterObject(scene, mission, position, options = {}) {
   const register = scene.balls.create(position.x, position.y, 'register');
   register.setData('kind', 'register');
-  register.setData('missionId', mission.id);
+  if (mission && mission.id) register.setData('missionId', mission.id);
+  if (options.linkId) register.setData('troyanoLinkId', options.linkId);
+  register.setData('countsForTroyanoBoss', Boolean(options.countForBoss));
   register.setData('registerReward', 1);
   register.setOrigin(0.5);
   register.setDepth(FALLING_OBJECT_DEPTH + 3);
@@ -385,17 +409,69 @@ function createSingleRegisterReward(scene, mission, spawnedRegisters = []) {
   return register;
 }
 
+function createTroyanoLinkedRegister(scene, mission, spawnedRegisters = [], options = {}) {
+  const avoidObjects = getTroyanoSpawnAvoidObjects(scene).concat(spawnedRegisters || []);
+  const troyanoPosition = getRandomRegisterPosition(scene, avoidObjects);
+  const troyano = createTroyano(scene, troyanoPosition);
+  const linkId = 'troyano-' + scene.time.now + '-' + Phaser.Math.Between(1000, 999999);
+  troyano.setData('troyanoLinkId', linkId);
+  troyano.setData('countsForTroyanoBoss', Boolean(options.countForBoss));
+
+  const registerPosition = getRandomRegisterPosition(scene, avoidObjects.concat(troyano));
+  troyano.setData('linkedRegisterPosition', registerPosition);
+
+  scene.time.delayedCall(TROYANO_REGISTER_DELAY, () => {
+    if (!scene || !scene.balls || state !== 'playing') return;
+    const register = createRegisterObject(scene, mission, registerPosition, {
+      linkId,
+      countForBoss: Boolean(options.countForBoss),
+    });
+    if (troyano && troyano.active) troyano.setData('linkedRegister', register);
+  });
+
+  return troyano;
+}
+
+function createTroyano(scene, position) {
+  const troyano = scene.balls.create(position.x, position.y, 'troyano');
+  troyano.setData('kind', 'troyano');
+  troyano.setData('displayName', 'Troyano');
+  troyano.setOrigin(0.5);
+  troyano.setDepth(FALLING_OBJECT_DEPTH + 4);
+  setFallingObjectBody(troyano, 'troyano');
+  troyano.body.setAllowGravity(false);
+  troyano.body.setCollideWorldBounds(false);
+  troyano.body.setVelocity(0, 0);
+  troyano.setScale(0.62);
+  troyano.setAlpha(0);
+  troyano.setVisible(false);
+  troyano.setData('isMaterializing', true);
+  troyano.body.enable = false;
+
+  animateRegisterMaterialization(scene, troyano);
+
+  return troyano;
+}
+
+function getTroyanoSpawnAvoidObjects(scene) {
+  if (!scene || !scene.balls) return [];
+  return scene.balls.getChildren().filter((object) => (
+    object && object.active && object.getData && (object.getData('kind') === 'register' || object.getData('kind') === 'troyano')
+  ));
+}
+
 function animateRegisterMaterialization(scene, register) {
   if (!scene || !register || !register.active) return;
 
   playRegisterSpawnSound(scene);
 
+  const materializationColor = register.getData('kind') === 'troyano' ? 0xff3045 : 0x76ffe8;
   const x = register.x;
   const y = register.y;
-  const ring = scene.add.circle(x, y, 8, 0x76ffe8, 0)
+  const ring = scene.add.circle(x, y, 8, materializationColor, 0)
     .setDepth(FALLING_OBJECT_DEPTH + 2)
     .setBlendMode(Phaser.BlendModes.ADD);
-  ring.setStrokeStyle(2, 0x76ffe8, 0.95);
+  ring.setStrokeStyle(2, materializationColor, 0.95);
 
   const flash = scene.add.circle(x, y, 5, 0xffffff, 0.8)
     .setDepth(FALLING_OBJECT_DEPTH + 2)
@@ -422,7 +498,7 @@ function animateRegisterMaterialization(scene, register) {
   for (let i = 0; i < 14; i += 1) {
     const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
     const distance = Phaser.Math.Between(18, 42);
-    const spark = scene.add.circle(x, y, Phaser.Math.FloatBetween(1.4, 2.6), i % 3 === 0 ? 0xffffff : 0x76ffe8, 0.92)
+    const spark = scene.add.circle(x, y, Phaser.Math.FloatBetween(1.4, 2.6), i % 3 === 0 ? 0xffffff : materializationColor, 0.92)
       .setDepth(FALLING_OBJECT_DEPTH + 2)
       .setBlendMode(Phaser.BlendModes.ADD);
 
@@ -444,6 +520,7 @@ function animateRegisterMaterialization(scene, register) {
 function revealMaterializedRegister(scene, register) {
   if (!scene || !register || !register.active) return;
 
+  const kind = register.getData('kind');
   register.setVisible(true);
   register.setData('isMaterializing', false);
   if (register.body) register.body.enable = true;
@@ -458,6 +535,8 @@ function revealMaterializedRegister(scene, register) {
       if (register && register.active) register.setScale(0.62);
     },
   });
+  if (kind !== 'register') return;
+
   scene.tweens.add({
     targets: register,
     y: register.y - 5,
@@ -667,6 +746,51 @@ function spawnRedNeedle(scene) {
   needle.body.setCollideWorldBounds(false);
   needle.body.setVelocityX(RED_NEEDLE_SPEED * direction);
   needle.body.setVelocityY(0);
+}
+
+function updateTroyanos(scene, delta) {
+  if (!scene || !scene.balls || !scene.ship) return;
+  const stepSeconds = Math.max(0, delta || 0) / 1000;
+  getActiveTroyanos(scene).forEach((troyano) => {
+    if (!troyano.body) return;
+    const distance = Phaser.Math.Distance.Between(troyano.x, troyano.y, scene.ship.x, scene.ship.y);
+    if (distance <= 1 || stepSeconds <= 0) {
+      troyano.body.setVelocity(0, 0);
+      return;
+    }
+    const velocityX = ((scene.ship.x - troyano.x) / distance) * TROYANO_SPEED;
+    const velocityY = ((scene.ship.y - troyano.y) / distance) * TROYANO_SPEED;
+    troyano.body.setVelocity(velocityX, velocityY);
+    troyano.setRotation(Math.atan2(velocityY, velocityX) + Math.PI / 2);
+  });
+}
+
+function pauseTroyanos(scene) {
+  getActiveTroyanos(scene).forEach((troyano) => pauseTroyanoObject(troyano));
+}
+
+function resumeTroyanos(scene) {
+  getActiveTroyanos(scene).forEach((troyano) => resumeTroyanoObject(troyano));
+}
+
+function pauseTroyanoObject(troyano) {
+  if (!troyano || !troyano.body) return;
+  if (troyano.getData('pausedTroyanoVelocityX') === undefined) {
+    troyano.setData('pausedTroyanoVelocityX', troyano.body.velocity.x || 0);
+    troyano.setData('pausedTroyanoVelocityY', troyano.body.velocity.y || 0);
+  }
+  troyano.body.setVelocity(0, 0);
+}
+
+function resumeTroyanoObject(troyano) {
+  if (!troyano || !troyano.body) return false;
+  const velocityX = troyano.getData('pausedTroyanoVelocityX');
+  const velocityY = troyano.getData('pausedTroyanoVelocityY');
+  if (velocityX === undefined || velocityY === undefined) return false;
+  troyano.body.setVelocity(velocityX, velocityY);
+  troyano.setData('pausedTroyanoVelocityX', undefined);
+  troyano.setData('pausedTroyanoVelocityY', undefined);
+  return true;
 }
 
 function updateRedNeedles(scene) {
@@ -1406,12 +1530,14 @@ function recordTravelEnemyDefeat(scene, hostile) {
 
 function getEnemyMissionTargetForKind(kind) {
   if (kind === 'damageBooster') return 'obrera';
+  if (kind === 'contaminatedOrb') return 'contaminatedOrb';
   if (isScissorKind(kind)) return 'scissor';
   if (kind === 'spikeDrone') return 'spikeDrone';
   if (kind === 'giroDrone') return 'giroDrone';
   if (kind === 'redNeedle') return 'redNeedle';
   if (isAsteroidKind(kind)) return 'asteroid';
   if (kind === 'replicator') return 'replicator';
+  if (kind === 'troyano') return 'troyano';
   return null;
 }
 
@@ -1538,6 +1664,11 @@ function setFallingObjectBody(object, kind) {
   }
 
   if (kind === 'register') {
+    object.body.setCircle(REGISTER_COLLISION_RADIUS, 36 - REGISTER_COLLISION_RADIUS, 36 - REGISTER_COLLISION_RADIUS);
+    return;
+  }
+
+  if (kind === 'troyano') {
     object.body.setCircle(REGISTER_COLLISION_RADIUS, 36 - REGISTER_COLLISION_RADIUS, 36 - REGISTER_COLLISION_RADIUS);
     return;
   }
@@ -1711,6 +1842,7 @@ function getTextureForKind(kind) {
   if (kind === 'contaminatedOrb') return 'contaminatedBall';
   if (kind === 'crystallizedOrb') return 'crystallizedOrb';
   if (kind === 'register') return 'register';
+  if (kind === 'troyano') return 'troyano';
   return 'goldBall';
 }
 
@@ -1743,11 +1875,11 @@ function isScissorKind(kind) {
 }
 
 function isShieldBlockedKind(kind) {
-  return kind === 'damageBooster' || isScissorKind(kind) || kind === 'replicator' || kind === 'spikeDrone' || kind === 'giroDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || kind === 'crystallizedOrb' || isAsteroidKind(kind);
+  return kind === 'damageBooster' || kind === 'contaminatedOrb' || isScissorKind(kind) || kind === 'replicator' || kind === 'spikeDrone' || kind === 'giroDrone' || kind === 'redNeedle' || kind === 'redNeedleLaser' || kind === 'troyano' || kind === 'crystallizedOrb' || isAsteroidKind(kind);
 }
 
 function isHostileContactKind(kind) {
-  return kind === 'contaminatedOrb' || isShieldBlockedKind(kind);
+  return isShieldBlockedKind(kind);
 }
 
 function findSpawnX(scene) {
@@ -1945,6 +2077,7 @@ function getFallingVelocity(kind, scene, object = null) {
   if (kind === 'redNeedle') return 0;
   if (kind === 'redNeedleLaser') return RED_NEEDLE_LASER_SPEED;
   if (kind === 'register') return 0;
+  if (kind === 'troyano') return 0;
   if (kind === 'replicator') {
     if (scene.activeRedWave && scene.activeRedWave.bossKind === 'replicators') {
       return Math.round(currentGravity * WAVE_REPLICATOR_GRAVITY_RATIO);
@@ -1976,6 +2109,7 @@ function getHorizontalVelocity(kind, scene, object = null) {
 
   if (kind === 'redNeedleLaser') return 0;
   if (kind === 'register') return 0;
+  if (kind === 'troyano') return 0;
 
   if (isScissorHalfKind(kind)) {
     return object && object.getData('horizontalVelocity') ? object.getData('horizontalVelocity') : (kind === 'scissorLeft' ? -SCISSOR_HALF_HORIZONTAL_SPEED : SCISSOR_HALF_HORIZONTAL_SPEED);
@@ -2168,10 +2302,23 @@ function collectEnergyOrb(scene, orb, x, y, energyOrbColor) {
 function collectRegister(scene, registerObject, x, y) {
   if (registerObject.getData('isMaterializing')) return;
   const reward = Math.max(1, registerObject.getData('registerReward') || 1);
+  const linkId = registerObject.getData('troyanoLinkId');
+  const countsForTroyanoBoss = registerObject.getData('countsForTroyanoBoss');
   registerObject.destroy();
+  if (linkId) destroyLinkedTroyano(scene, linkId, x, y);
   registers += reward;
   updateRegistersText();
   showPointPopup(scene, x, y, reward, '#76ffe8', '+' + reward + ' Registro');
+  if (countsForTroyanoBoss) recordTroyanoBossRegisterCollected(scene);
+}
+
+function destroyLinkedTroyano(scene, linkId, x, y) {
+  if (!linkId) return;
+  const troyano = getActiveTroyanos(scene).find((candidate) => candidate.getData('troyanoLinkId') === linkId);
+  if (!troyano) return;
+  showAbsorbEffect(scene, troyano.x, troyano.y, 'troyano', false);
+  if (scene && scene.tweens) scene.tweens.killTweensOf(troyano);
+  troyano.destroy();
 }
 
 function rewardEnergyOrbCatch(scene, x, y, feedbackColor, registerBoosterCatch = true) {
@@ -2194,8 +2341,13 @@ function handleHostileShipContact(scene, hostile, x, y, kind, energyOrbColor = '
   const absorbKind = isDangerousEnergyOrb ? 'ball' : kind;
   const absorbEnergyColor = kind === 'contaminatedOrb' ? 'gold' : energyOrbColor;
   showAbsorbEffect(scene, x, y, absorbKind, absorbEnergyColor);
-  if (!isShieldActive(scene) || kind === 'contaminatedOrb') {
-    takeDirectDamage(scene);
+  if (!isShieldActive(scene)) {
+    if (kind === 'troyano') {
+      takeTroyanoDamage(scene);
+      if (hostile && hostile.active) hostile.destroy();
+    } else {
+      takeDirectDamage(scene);
+    }
     if (isDangerousEnergyOrb && hostile && hostile.active) hostile.destroy();
     return;
   }
@@ -2205,6 +2357,15 @@ function handleHostileShipContact(scene, hostile, x, y, kind, energyOrbColor = '
   flashPlayerShip(scene);
   awardEnemyDefeatScore(scene, SHIELD_BLOCK_SCORE, x, y, '#4da3ff');
   destroyShieldBlockedHostile(scene, hostile);
+}
+
+function takeTroyanoDamage(scene) {
+  const tookDamage = takeDirectDamage(scene);
+  if (!tookDamage) return;
+  if (registers <= 0) return;
+  registers = Math.max(0, registers - 1);
+  updateRegistersText();
+  showPointPopup(scene, scene.ship.x, scene.ship.y - 34, 1, '#ff4f68', '-1 Registro');
 }
 
 function destroyShieldBlockedHostile(scene, hostile) {

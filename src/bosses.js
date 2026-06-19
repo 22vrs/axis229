@@ -289,6 +289,34 @@ function activateRedNeedleBossWave(scene, bossConfig = createBossConfig('redNeed
   scheduleWaveStart(scene, 'boss');
 }
 
+function activateTroyanoBossWave(scene, bossConfig = createBossConfig('troyanos')) {
+  resetTimedBoosters(scene);
+  playBackgroundMusic(scene);
+  scene.activeBossWave = {
+    kind: 'troyanos',
+    endsAt: null,
+    duration: bossConfig.duration || 0,
+    hasStarted: false,
+    hasShownEchoWarning: false,
+    spawnedRegisters: 0,
+    collectedRegisters: 0,
+    registersTotal: bossConfig.registers || TROYANO_BOSS_REGISTER_COUNT,
+    isSpawningTroyanos: false,
+    isRetreating: false,
+    bossName: bossConfig.name || 'Troyanos',
+    isTravelEncounter: false,
+  };
+
+  hideWaveBar(scene);
+
+  if (spawnEvent) {
+    spawnEvent.remove(false);
+    spawnEvent = null;
+  }
+
+  scheduleWaveStart(scene, 'boss');
+}
+
 function activateTravelSentinel(scene) {
   if (scene.activeBossWave || state !== 'playing') return;
 
@@ -320,6 +348,8 @@ function activateLevelBoss(scene, bossConfig) {
     activatePlasmaWave(scene, bossConfig);
   } else if (bossConfig.kind === 'redNeedleBoss') {
     activateRedNeedleBossWave(scene, bossConfig);
+  } else if (bossConfig.kind === 'troyanos') {
+    activateTroyanoBossWave(scene, bossConfig);
   } else if (bossConfig.kind === 'replicators') {
     activateReplicatorWave(scene, bossConfig);
   } else if (bossConfig.kind === 'crystallized') {
@@ -335,6 +365,11 @@ function updateBossWave(scene) {
 
   if (bossWave.kind === 'redNeedleBoss') {
     updateRedNeedleBossWave(scene, bossWave);
+    return;
+  }
+
+  if (bossWave.kind === 'troyanos') {
+    updateTroyanoBossWave(scene, bossWave);
     return;
   }
 
@@ -507,6 +542,11 @@ function startBossWave(scene) {
     return;
   }
 
+  if (bossWave.kind === 'troyanos') {
+    startTroyanoBossWave(scene, bossWave);
+    return;
+  }
+
   scene.waveStartEvent = null;
   bossWave.hasStarted = true;
   bossWave.endsAt = scene.time.now + bossWave.duration;
@@ -529,6 +569,71 @@ function startBossWave(scene) {
       scheduleBossAttack(scene, BOSS_ATTACK_GAP);
     },
   });
+}
+
+function startTroyanoBossWave(scene, bossWave) {
+  scene.waveStartEvent = null;
+  bossWave.hasStarted = true;
+  bossWave.endsAt = null;
+  bossWave.spawnedRegisters = 0;
+  bossWave.collectedRegisters = 0;
+  bossWave.isSpawningTroyanos = true;
+
+  hideWaveBar(scene);
+  setShipTextureForCurrentState(scene);
+  refreshShipSize(scene);
+  moveShipTo(scene, clampShipX(scene, scene.ship.x));
+  spawnNextTroyanoBossPair(scene);
+}
+
+function spawnNextTroyanoBossPair(scene) {
+  const bossWave = scene.activeBossWave;
+  if (!bossWave || bossWave.kind !== 'troyanos' || !bossWave.isSpawningTroyanos || state !== 'playing') return;
+
+  if (bossWave.spawnedRegisters >= bossWave.registersTotal) {
+    bossWave.isSpawningTroyanos = false;
+    stopBossEnemySpawns(scene);
+    return;
+  }
+
+  const troyano = createTroyanoLinkedRegister(
+    scene,
+    { id: 'bossTroyanos', skipTroyanoLink: true },
+    [],
+    { countForBoss: true }
+  );
+  if (troyano) bossWave.spawnedRegisters += 1;
+
+  if (bossWave.spawnedRegisters < bossWave.registersTotal) {
+    scene.bossEnemySpawnEvent = scene.time.addEvent({
+      delay: TROYANO_BOSS_SPAWN_DELAY,
+      callback: () => {
+        scene.bossEnemySpawnEvent = null;
+        spawnNextTroyanoBossPair(scene);
+      },
+    });
+  } else {
+    bossWave.isSpawningTroyanos = false;
+  }
+}
+
+function recordTroyanoBossRegisterCollected(scene) {
+  const bossWave = scene && scene.activeBossWave;
+  if (!bossWave || bossWave.kind !== 'troyanos') return;
+  bossWave.collectedRegisters = Math.min(
+    bossWave.registersTotal,
+    (bossWave.collectedRegisters || 0) + 1
+  );
+}
+
+function updateTroyanoBossWave(scene, bossWave) {
+  if (bossWave.isRetreating) return;
+  if ((bossWave.collectedRegisters || 0) < bossWave.registersTotal) return;
+  if (getActiveTroyanos(scene).length > 0) return;
+
+  bossWave.isRetreating = true;
+  stopBossEnemySpawns(scene);
+  endWaveAfterPause(scene, 'boss');
 }
 
 function startRedNeedleBossWave(scene, bossWave) {
@@ -1266,6 +1371,16 @@ function startWaveCountdown(scene, waveKind) {
   if (
     waveKind === 'boss' &&
     scene.activeBossWave &&
+    scene.activeBossWave.kind === 'troyanos' &&
+    !scene.activeBossWave.hasShownEchoWarning
+  ) {
+    scene.activeBossWave.hasShownEchoWarning = true;
+    startEchoDialog(scene, ECHO_TROYANO_WARNING_LINES, () => pauseBeforeEchoWaveWarning(scene, waveKind));
+    return;
+  }
+  if (
+    waveKind === 'boss' &&
+    scene.activeBossWave &&
     scene.activeBossWave.kind === 'redNeedleBoss' &&
     !scene.activeBossWave.hasShownEchoWarning
   ) {
@@ -1512,6 +1627,9 @@ function endWaveAfterPause(scene, waveKind) {
       return;
     }
     completeRegisterMissionForWave(scene, currentWave);
+    if (currentWave.kind === 'troyanos') {
+      scene.troyanoSpawnsUnlocked = true;
+    }
     if (currentWave.kind === 'redNeedleBoss') {
       scene.redNeedleSpawnsUnlocked = true;
     }

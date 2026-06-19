@@ -339,11 +339,13 @@ function updateEchoAttacks(scene) {
 
 function isEchoAttackableKind(kind) {
   return kind === 'damageBooster' ||
+    kind === 'contaminatedOrb' ||
     isScissorKind(kind) ||
     kind === 'spikeDrone' ||
     kind === 'giroDrone' ||
     kind === 'redNeedle' ||
     kind === 'replicator' ||
+    kind === 'troyano' ||
     isAsteroidKind(kind);
 }
 

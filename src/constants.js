@@ -22,6 +22,10 @@ const REGISTER_REWARD_SPAWN_DELAY = 1000;
 const REGISTER_REWARD_SPAWN_STAGGER = 500;
 const REGISTER_MIN_SPAWN_DISTANCE_FROM_SHIP = 150;
 const REGISTER_MIN_SPAWN_DISTANCE_BETWEEN_REGISTERS = 74;
+const TROYANO_REGISTER_DELAY = 500;
+const TROYANO_BOSS_REGISTER_COUNT = 10;
+const TROYANO_BOSS_SPAWN_DELAY = 900;
+const TROYANO_SPEED = 42;
 const BOSS_REVIVE_REGISTER_COST = 10;
 const MENU_MUSIC_PATH = 'assets/menu-music.mp3';
 const GAMEPLAY_MUSIC_PATH = 'assets/game-music.mp3';
@@ -410,6 +414,14 @@ const ECHO_PLASMA_WAVE_WARNING_LINES = [
   "Cruza únicamente a través de ella.",
   "El contacto directo con el plasma provocará daños graves.",
 ];
+const ECHO_TROYANO_WARNING_LINES = [
+  "Atenci\u00f3n, Axis. Troyanos detectados.",
+  "Imitan la firma visual de los Registros, pero intentan interceptarte antes de que puedas recuperarlos.",
+  "Cada Troyano est\u00e1 vinculado a un Registro concreto.",
+  "Si recoges un Troyano, perder\u00e1s 1 vida y 1 Registro.",
+  "Recoge el Registro vinculado para purgarlo. Tambi\u00e9n puede destruirse sin afectar al Registro.",
+  "Mant\u00e9n distancia hasta identificar el objetivo correcto.",
+];
 let streakGradientTextureId = 0;
 let pointPopupTextureId = 0;
 const ASTEROID_WAVE_BIG_ASTEROID_CHANCE = 0.16;
@@ -421,7 +433,7 @@ const ASTEROID_WAVE_GRAVITY_RATIO = 0.82;
 const ASTEROID_WAVE_HORIZONTAL_SPEED_RATIO = 0.58;
 const ASTEROID_WRAP_MARGIN = 28;
 const UPGRADE_POINTS_REQUIRED = 10;
-const STORY_BOSS_KINDS = ['red', 'asteroid', 'scissors', 'redNeedleBoss', 'boss', 'drones', 'plasma', 'girodrones', 'replicators', 'crystallized'];
+const STORY_BOSS_KINDS = ['red', 'asteroid', 'scissors', 'redNeedleBoss', 'boss', 'drones', 'plasma', 'girodrones', 'replicators', 'crystallized', 'troyanos'];
 const BOSS_ONLY_BOSS_KINDS = STORY_BOSS_KINDS.slice();
 const SHIELD_BLOCK_SCORE = 10;
 const SPIKE_DRONE_DISABLE_SCORE = 5;

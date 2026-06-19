@@ -212,6 +212,7 @@ function setMissionCompletePopupReadable(currentHud, readable) {
 
 function getEnemyRegisterMissions() {
   return [
+    { id: 'enemy_contaminated_orbs_10', category: 'enemies', target: 'contaminatedOrb', name: 'Derrota a 10 Orbes Contaminados', goal: 10, reward: 1 },
     { id: 'enemy_obreras_10', category: 'enemies', target: 'obrera', name: 'Derrota a 10 Obreras', goal: 10, reward: 1 },
     { id: 'enemy_escisoras_10', category: 'enemies', target: 'scissor', name: 'Derrota a 10 Escisoras', goal: 10, reward: 1 },
     { id: 'enemy_drones_10', category: 'enemies', target: 'spikeDrone', name: 'Derrota a 10 Drones', goal: 10, reward: 1 },
@@ -222,6 +223,7 @@ function getEnemyRegisterMissions() {
     { id: 'enemy_plasma_gaps_10', category: 'enemies', target: 'plasmaGap', name: 'Atraviesa 10 Barras de Plasma', goal: 10, reward: 1 },
     { id: 'enemy_travel_sentinels_10', category: 'enemies', target: 'travelSentinel', name: 'Sobrevive a 10 Centinelas', goal: 10, reward: 1 },
     { id: 'enemy_crystallized_orbs_10', category: 'enemies', target: 'crystallizedOrb', name: 'Recoge 10 Orbes Cristalizados', goal: 10, reward: 1 },
+    { id: 'enemy_troyanos_10', category: 'enemies', target: 'troyano', name: 'Derrota a 10 Troyanos', goal: 10, reward: 1 },
   ];
 }
 
@@ -410,12 +412,35 @@ function renderMissionCompletePopup(element, mission, scene) {
   readButton.type = 'button';
   readButton.textContent = 'LEÍDO';
   readButton.disabled = state !== 'paused';
-  ['pointerdown', 'pointerup', 'click', 'touchstart', 'touchend'].forEach((eventName) => {
-    readButton.addEventListener(eventName, (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (eventName === 'click') dismissMissionCompletePopup(scene);
-    });
+  let readButtonHandled = false;
+  const guardReadButtonEvent = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  const handleReadButtonActivate = (event) => {
+    guardReadButtonEvent(event);
+    if (readButton.disabled || readButtonHandled) return;
+    readButtonHandled = true;
+    dismissMissionCompletePopup(scene);
+  };
+
+  ['pointerdown', 'touchstart'].forEach((eventName) => {
+    readButton.addEventListener(eventName, guardReadButtonEvent, { passive: false });
+  });
+  readButton.addEventListener('pointerup', handleReadButtonActivate, { passive: false });
+  readButton.addEventListener('touchend', (event) => {
+    if (window.PointerEvent) {
+      guardReadButtonEvent(event);
+      return;
+    }
+    handleReadButtonActivate(event);
+  }, { passive: false });
+  readButton.addEventListener('click', (event) => {
+    if (window.PointerEvent && event.detail !== 0) {
+      guardReadButtonEvent(event);
+      return;
+    }
+    handleReadButtonActivate(event);
   });
 
   card.append(name, status, reward, readButton);
@@ -494,6 +519,10 @@ function getBossConfigForLevel(level, scene = gameScene) {
 
 function getNextInfiniteBossKind(scene) {
   if (!scene) return getShuffledBossKinds()[0];
+  if (!scene.hasUsedInfiniteFirstTroyanoBoss) {
+    scene.hasUsedInfiniteFirstTroyanoBoss = true;
+    return 'troyanos';
+  }
   if (!scene.infiniteBossBag || !scene.infiniteBossBag.length) {
     scene.infiniteBossBag = getShuffledBossKinds();
   }
@@ -512,6 +541,13 @@ function getShuffledBossKinds() {
 }
 
 function createBossConfig(kind) {
+  if (kind === 'troyanos') {
+    return {
+      kind: 'troyanos',
+      name: 'Troyanos',
+      registers: TROYANO_BOSS_REGISTER_COUNT,
+    };
+  }
   if (kind === 'red') {
     return {
       kind: 'red',

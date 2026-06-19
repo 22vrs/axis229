@@ -26,12 +26,42 @@ function createEnergyBallTexture(scene, ballKey, colors) {
 }
 
 function createRegisterTexture(scene) {
+  createChipRegisterTexture(scene, 'register', {
+    pin: 0x77dfff,
+    glow: 0x76ffe8,
+    outerDark: 0x071827,
+    plate: 0x176a94,
+    shine: 0x2ddcff,
+    lower: 0x0b6ea6,
+    line: 0xd7feff,
+    centerDark: 0x053a5c,
+    center: 0x21d8ff,
+    core: 0xecfeff,
+  });
+}
+
+function createTroyanoTexture(scene) {
+  createChipRegisterTexture(scene, 'troyano', {
+    pin: 0xff7888,
+    glow: 0xff3045,
+    outerDark: 0x26060d,
+    plate: 0x9c152a,
+    shine: 0xff5b6f,
+    lower: 0x7d0f22,
+    line: 0xffd7de,
+    centerDark: 0x5f0715,
+    center: 0xff263c,
+    core: 0xffeef1,
+  });
+}
+
+function createChipRegisterTexture(scene, key, colors) {
   if (!scene || !scene.make || !scene.textures) return;
-  if (scene.textures.exists('register')) scene.textures.remove('register');
+  if (scene.textures.exists(key)) scene.textures.remove(key);
 
   const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
-  const pinColor = 0x77dfff;
-  const glowColor = 0x76ffe8;
+  const pinColor = colors.pin;
+  const glowColor = colors.glow;
 
   graphics.fillStyle(glowColor, 0.16);
   graphics.fillRoundedRect(10, 10, 52, 52, 10);
@@ -46,19 +76,19 @@ function createRegisterTexture(scene) {
     graphics.fillRoundedRect(x, 55, 4, 10, 1.5);
   });
 
-  graphics.fillStyle(0x071827, 1);
+  graphics.fillStyle(colors.outerDark, 1);
   graphics.lineStyle(3, glowColor, 0.95);
   graphics.fillRoundedRect(14, 14, 44, 44, 9);
   graphics.strokeRoundedRect(14, 14, 44, 44, 9);
 
-  graphics.fillStyle(0x176a94, 1);
+  graphics.fillStyle(colors.plate, 1);
   graphics.fillRoundedRect(18, 18, 36, 36, 7);
-  graphics.fillStyle(0x2ddcff, 0.34);
+  graphics.fillStyle(colors.shine, 0.34);
   graphics.fillRoundedRect(20, 20, 32, 9, 5);
-  graphics.fillStyle(0x0b6ea6, 0.82);
+  graphics.fillStyle(colors.lower, 0.82);
   graphics.fillRoundedRect(21, 29, 30, 23, 6);
 
-  graphics.lineStyle(2, 0xd7feff, 0.86);
+  graphics.lineStyle(2, colors.line, 0.86);
   graphics.beginPath();
   graphics.moveTo(25, 31);
   graphics.lineTo(33, 31);
@@ -76,15 +106,15 @@ function createRegisterTexture(scene) {
   graphics.lineTo(43, 36);
   graphics.strokePath();
 
-  graphics.fillStyle(0x7df9ff, 0.18);
+  graphics.fillStyle(glowColor, 0.18);
   graphics.fillCircle(36, 36, 16);
-  graphics.fillStyle(0x053a5c, 1);
-  graphics.lineStyle(2, 0xb9fbff, 0.9);
+  graphics.fillStyle(colors.centerDark, 1);
+  graphics.lineStyle(2, colors.line, 0.9);
   graphics.fillRoundedRect(25, 25, 22, 22, 5);
   graphics.strokeRoundedRect(25, 25, 22, 22, 5);
-  graphics.fillStyle(0x21d8ff, 1);
+  graphics.fillStyle(colors.center, 1);
   graphics.fillRoundedRect(29, 29, 14, 14, 3);
-  graphics.fillStyle(0xecfeff, 1);
+  graphics.fillStyle(colors.core, 1);
   graphics.fillCircle(34, 34, 3);
   graphics.lineStyle(2, glowColor, 0.7);
   graphics.beginPath();
@@ -92,7 +122,7 @@ function createRegisterTexture(scene) {
   graphics.lineTo(41, 44);
   graphics.strokePath();
 
-  graphics.generateTexture('register', 72, 72);
+  graphics.generateTexture(key, 72, 72);
   graphics.destroy();
 }
 

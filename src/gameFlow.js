@@ -402,10 +402,12 @@ function saveBossReviveCheckpoint(scene, bossConfig) {
       redNeedleSpawnsUnlocked: Boolean(scene.redNeedleSpawnsUnlocked),
       replicatorSpawnsUnlocked: Boolean(scene.replicatorSpawnsUnlocked),
       crystallizedOrbSpawnsUnlocked: Boolean(scene.crystallizedOrbSpawnsUnlocked),
+      troyanoSpawnsUnlocked: Boolean(scene.troyanoSpawnsUnlocked),
       travelSentinelUnlocked: Boolean(scene.travelSentinelUnlocked),
       nextTravelSentinelEligibleAt: scene.nextTravelSentinelEligibleAt || 0,
     },
     infiniteBossBag: scene.infiniteBossBag ? scene.infiniteBossBag.slice() : [],
+    hasUsedInfiniteFirstTroyanoBoss: Boolean(scene.hasUsedInfiniteFirstTroyanoBoss),
     bossOnlyBossNumber: scene.bossOnlyBossNumber || 0,
     bossOnlyTypeRevealed: Boolean(scene.bossOnlyTypeRevealed),
     completedRegisterMissions: Object.assign({}, scene.completedRegisterMissions || {}),
@@ -512,6 +514,7 @@ function restoreBossReviveCheckpoint(
   scene.pendingBossWave = null;
   scene.pendingBossWaves = [];
   scene.infiniteBossBag = checkpoint.infiniteBossBag.slice();
+  scene.hasUsedInfiniteFirstTroyanoBoss = Boolean(checkpoint.hasUsedInfiniteFirstTroyanoBoss);
   scene.bossOnlyBossNumber = checkpoint.bossOnlyBossNumber;
   scene.bossOnlyTypeRevealed = checkpoint.bossOnlyTypeRevealed;
   scene.completedRegisterMissions = Object.assign(
@@ -567,6 +570,7 @@ function beginBossReviveEncounter(scene, checkpoint) {
 
 function getWaveKindForBossConfig(bossConfig) {
   if (!bossConfig) return 'boss';
+  if (bossConfig.kind === 'troyanos') return 'boss';
   if (bossConfig.kind === 'red' || bossConfig.kind === 'scissors' || bossConfig.kind === 'replicators' || bossConfig.kind === 'crystallized') return 'red';
   if (bossConfig.kind === 'drones' || bossConfig.kind === 'girodrones') return 'drones';
   if (bossConfig.kind === 'asteroid') return 'asteroid';
@@ -584,6 +588,7 @@ function enableInfiniteModeThreats(scene) {
   scene.redNeedleSpawnsUnlocked = true;
   scene.replicatorSpawnsUnlocked = true;
   scene.crystallizedOrbSpawnsUnlocked = true;
+  scene.troyanoSpawnsUnlocked = true;
   scene.travelSentinelUnlocked = true;
   scene.nextTravelSentinelEligibleAt = 0;
 }
@@ -651,12 +656,14 @@ function resetCounters() {
   this.redNeedleSpawnsUnlocked = false;
   this.replicatorSpawnsUnlocked = false;
   this.crystallizedOrbSpawnsUnlocked = false;
+  this.troyanoSpawnsUnlocked = false;
   this.replicatorShipHistory = [];
   this.travelSentinelUnlocked = false;
   this.nextTravelSentinelEligibleAt = 0;
   this.pendingBossWave = null;
   this.pendingBossWaves = [];
   this.infiniteBossBag = [];
+  this.hasUsedInfiniteFirstTroyanoBoss = false;
   this.bossOnlyBossNumber = 0;
   this.bossOnlyTypeRevealed = false;
   this.levelUpgradeSequenceActive = false;

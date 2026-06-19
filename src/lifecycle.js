@@ -43,6 +43,7 @@ function create() {
     ring: 0xffa9dd,
   });
   createRegisterTexture(this);
+  createTroyanoTexture(this);
   const particleGraphics = this.make.graphics({ x: 0, y: 0, add: false });
   particleGraphics.fillStyle(0xffd76a, 1);
   particleGraphics.fillCircle(3, 3, 3);

@@ -187,6 +187,7 @@ function update(time, delta) {
   updateEchoCompanion(this, delta);
   updateEchoAttacks(this);
   updateEnemyPropulsion(this, delta);
+  updateTroyanos(this, delta);
   updateRedNeedles(this);
   updateScissors(this);
   updateRedEnemySway(this, time);

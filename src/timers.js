@@ -572,6 +572,7 @@ function resumeGameplaySpawning(scene, delayOverride = null) {
 function pauseTimedGameplay(scene) {
   scene.tweens.pauseAll();
   pauseSpikeDrones(scene);
+  pauseTroyanos(scene);
   [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activePlasmaWave, scene.activeBossWave]
     .forEach((countdown) => pauseCountdown(scene, countdown));
 
@@ -602,6 +603,7 @@ function pauseTimedGameplay(scene) {
 function resumeTimedGameplay(scene) {
   scene.tweens.resumeAll();
   resumeSpikeDrones(scene);
+  resumeTroyanos(scene);
   [scene.activeScoreBooster, scene.activeShieldBooster, scene.activeRedWave, scene.activeDroneWave, scene.activeAsteroidWave, scene.activePlasmaWave, scene.activeBossWave]
     .forEach((countdown) => resumeCountdown(scene, countdown));
 
