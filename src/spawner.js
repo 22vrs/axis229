@@ -354,6 +354,14 @@ function getActiveRegisters(scene) {
   ));
 }
 
+function getActiveMaterializedRegisters(scene) {
+  return getActiveRegisters(scene).filter((registerObject) => !registerObject.getData('isMaterializing'));
+}
+
+function recordActiveRegisterCount(scene) {
+  setRegisterMissionProgress(scene, 'masteryActiveRegisters', getActiveMaterializedRegisters(scene).length);
+}
+
 function createSingleRegisterReward(scene, mission, spawnedRegisters = []) {
   const position = getRandomRegisterPosition(scene, spawnedRegisters);
   const register = scene.balls.create(position.x, position.y, 'register');
@@ -439,6 +447,7 @@ function revealMaterializedRegister(scene, register) {
   register.setVisible(true);
   register.setData('isMaterializing', false);
   if (register.body) register.body.enable = true;
+  recordActiveRegisterCount(scene);
   scene.tweens.add({
     targets: register,
     alpha: 1,

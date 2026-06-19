@@ -354,6 +354,7 @@ function renderMissionsOverlay(overlay) {
 
 function getMissionCategories() {
   return [
+    { id: 'mastery', label: 'Maestría' },
     { id: 'bosses', label: 'Jefes' },
     { id: 'enemies', label: 'Enemigos' },
     { id: 'upgrades', label: 'Mejoras' },
@@ -371,7 +372,7 @@ function getMissionProgress(scene, mission) {
 function createMissionRow(mission, isCompleted, progress = 0) {
   const row = document.createElement('div');
   row.className = 'mission-row ' + (isCompleted ? 'is-completed' : 'is-locked');
-  row.classList.toggle('has-progress', mission.category === 'enemies' && Boolean(mission.goal));
+  row.classList.toggle('has-progress', Boolean(mission.goal));
 
   const name = document.createElement('span');
   name.className = 'mission-name';
@@ -386,7 +387,7 @@ function createMissionRow(mission, isCompleted, progress = 0) {
   reward.append(createRegisterCostContent(mission.reward));
 
   row.append(name, reward);
-  if (mission.category === 'enemies' && mission.goal) {
+  if (mission.goal) {
     row.append(createMissionProgressBar(progress, mission.goal));
   }
   return row;

@@ -630,6 +630,10 @@ function resetCounters() {
   shieldDefeatLevelBonus = 0;
   enemyTrailTimer = 0;
   this.previousShipPosition = null;
+  this.masteryStillnessMs = 0;
+  this.masteryStillnessAnchorX = null;
+  this.masteryStillnessAnchorY = null;
+  this.masteryStillnessLastReportedSecond = 0;
   this.echoAttackTarget = null;
   this.echoReturningHome = false;
   resetEchoPersonality(this);

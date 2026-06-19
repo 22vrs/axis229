@@ -28,6 +28,7 @@ function loseLife(scene) {
   updateLivesText(scene, { lostLifeIndex: lives });
   if (lives < previousLives) {
     showShipLifeChange(scene, previousLives, lives, 'damage');
+    advanceRegisterMissionProgress(scene, 'masteryLivesLost', previousLives - lives);
   }
 
   if (lives === 0) {
@@ -485,6 +486,7 @@ function pauseGame() {
   if (state !== 'playing') return;
   state = 'paused';
   isDraggingShip = false;
+  resetMasteryStillnessTimer(this);
   setPauseOverlayMode(this, 'normal');
   setXyControlActive(this, false);
   prepareControlPauseResume(this);

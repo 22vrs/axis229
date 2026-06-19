@@ -168,8 +168,26 @@ function createRegisterHudIcon() {
 }
 
 function getRegisterMissions() {
-  return getBossRegisterMissions()
+  return getMasteryRegisterMissions()
+    .concat(getBossRegisterMissions())
     .concat(getEnemyRegisterMissions(), getUpgradeRegisterMissions(), getLevelRegisterMissions(), getStreakRegisterMissions());
+}
+
+function getMasteryRegisterMissions() {
+  return [
+    { id: 'mastery_lives_lost_5', category: 'mastery', target: 'masteryLivesLost', name: 'Pierde 5 vidas', goal: 5, reward: 1 },
+    { id: 'mastery_lives_lost_10', category: 'mastery', target: 'masteryLivesLost', name: 'Pierde 10 vidas', goal: 10, reward: 2 },
+    { id: 'mastery_lives_lost_15', category: 'mastery', target: 'masteryLivesLost', name: 'Pierde 15 vidas', goal: 15, reward: 5 },
+    { id: 'mastery_orbs_lost_5', category: 'mastery', target: 'masteryOrbsLost', name: 'Pierde 5 orbes', goal: 5, reward: 1 },
+    { id: 'mastery_orbs_lost_10', category: 'mastery', target: 'masteryOrbsLost', name: 'Pierde 10 orbes', goal: 10, reward: 2 },
+    { id: 'mastery_orbs_lost_15', category: 'mastery', target: 'masteryOrbsLost', name: 'Pierde 15 orbes', goal: 15, reward: 5 },
+    { id: 'mastery_registers_active_5', category: 'mastery', target: 'masteryActiveRegisters', name: 'Acumula 5 registros', goal: 5, reward: 1 },
+    { id: 'mastery_registers_active_10', category: 'mastery', target: 'masteryActiveRegisters', name: 'Acumula 10 registros', goal: 10, reward: 2 },
+    { id: 'mastery_registers_active_15', category: 'mastery', target: 'masteryActiveRegisters', name: 'Acumula 15 registros', goal: 15, reward: 5 },
+    { id: 'mastery_still_4', category: 'mastery', target: 'masteryStillSeconds', name: 'No te muevas durante 4 segundos seguidos', goal: 4, reward: 1 },
+    { id: 'mastery_still_7', category: 'mastery', target: 'masteryStillSeconds', name: 'No te muevas durante 7 segundos seguidos', goal: 7, reward: 2 },
+    { id: 'mastery_still_10', category: 'mastery', target: 'masteryStillSeconds', name: 'No te muevas durante 10 segundos seguidos', goal: 10, reward: 5 },
+  ];
 }
 
 function getBossRegisterMissions() {
@@ -262,32 +280,60 @@ function getRegisterMissionByTarget(target) {
   return getRegisterMissions().find((mission) => mission.target === target) || null;
 }
 
+function getRegisterMissionsByTarget(target) {
+  return getRegisterMissions().filter((mission) => mission.target === target);
+}
+
 function advanceRegisterMissionProgress(scene, target, amount = 1) {
   if (!scene || !target || amount <= 0) return;
-  const mission = getRegisterMissionByTarget(target);
-  if (!mission) return;
+  const missions = getRegisterMissionsByTarget(target);
+  if (!missions.length) return;
   if (!scene.completedRegisterMissions) scene.completedRegisterMissions = {};
-  if (scene.completedRegisterMissions[mission.id]) return;
   if (!scene.registerMissionProgress) scene.registerMissionProgress = {};
 
-  const currentProgress = scene.registerMissionProgress[mission.id] || 0;
-  const nextProgress = Math.min(mission.goal || 1, currentProgress + amount);
-  scene.registerMissionProgress[mission.id] = nextProgress;
-  if (nextProgress < (mission.goal || 1)) return;
+  missions.forEach((mission) => {
+    if (scene.completedRegisterMissions[mission.id]) return;
+    const currentProgress = scene.registerMissionProgress[mission.id] || 0;
+    const nextProgress = Math.min(mission.goal || 1, currentProgress + amount);
+    scene.registerMissionProgress[mission.id] = nextProgress;
+    if (nextProgress < (mission.goal || 1)) return;
 
-  scene.completedRegisterMissions[mission.id] = true;
-  spawnRegisterReward(scene, mission);
+    scene.completedRegisterMissions[mission.id] = true;
+    spawnRegisterReward(scene, mission);
+  });
+}
+
+function setRegisterMissionProgress(scene, target, progress = 0, preserveHighest = true) {
+  if (!scene || !target) return;
+  const missions = getRegisterMissionsByTarget(target);
+  if (!missions.length) return;
+  if (!scene.completedRegisterMissions) scene.completedRegisterMissions = {};
+  if (!scene.registerMissionProgress) scene.registerMissionProgress = {};
+
+  missions.forEach((mission) => {
+    if (scene.completedRegisterMissions[mission.id]) return;
+    const currentProgress = scene.registerMissionProgress[mission.id] || 0;
+    const rawProgress = preserveHighest ? Math.max(currentProgress, progress || 0) : progress || 0;
+    const nextProgress = Math.min(mission.goal || 1, Math.max(0, rawProgress));
+    scene.registerMissionProgress[mission.id] = nextProgress;
+    if (nextProgress < (mission.goal || 1)) return;
+
+    scene.completedRegisterMissions[mission.id] = true;
+    spawnRegisterReward(scene, mission);
+  });
 }
 
 function completeRegisterMissionByTarget(scene, target) {
   if (!scene || !target) return;
-  const mission = getRegisterMissionByTarget(target);
-  if (!mission) return;
+  const missions = getRegisterMissionsByTarget(target);
+  if (!missions.length) return;
   if (!scene.completedRegisterMissions) scene.completedRegisterMissions = {};
-  if (scene.completedRegisterMissions[mission.id]) return;
 
-  scene.completedRegisterMissions[mission.id] = true;
-  spawnRegisterReward(scene, mission);
+  missions.forEach((mission) => {
+    if (scene.completedRegisterMissions[mission.id]) return;
+    scene.completedRegisterMissions[mission.id] = true;
+    spawnRegisterReward(scene, mission);
+  });
 }
 
 function completeRegisterMission(scene, mission) {

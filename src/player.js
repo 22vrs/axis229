@@ -178,6 +178,7 @@ function update(time, delta) {
   if (state !== 'playing') return;
 
   updateGameplayTime(this, delta);
+  updateMasteryStillnessMissions(this, delta);
   updateSpaceBackground(this, delta, time);
   updateShipPropulsion(this, delta);
   updateShipTilt(this);
@@ -206,6 +207,7 @@ function update(time, delta) {
   this.balls.getChildren().forEach((ball) => {
     if (ball.active && ball.y > getGameHeight(this) + 32) {
       if (isCollectibleBallKind(ball.getData('kind'))) {
+        advanceRegisterMissionProgress(this, 'masteryOrbsLost');
         ball.destroy();
         resetEnergyStreak();
         playBadSound(this);
@@ -217,6 +219,49 @@ function update(time, delta) {
       wrapAsteroidHorizontally(this, ball);
     }
   });
+}
+
+function updateMasteryStillnessMissions(scene, delta) {
+  if (!scene || !scene.ship || state !== 'playing' || !isDraggingShip) {
+    resetMasteryStillnessTimer(scene);
+    return;
+  }
+
+  const safeDelta = Number.isFinite(delta) ? Math.max(0, Math.min(delta, 100)) : 0;
+  if (safeDelta <= 0) return;
+
+  if (!Number.isFinite(scene.masteryStillnessAnchorX) || !Number.isFinite(scene.masteryStillnessAnchorY)) {
+    scene.masteryStillnessAnchorX = scene.ship.x;
+    scene.masteryStillnessAnchorY = scene.ship.y;
+  }
+
+  const movementTolerance = 3;
+  const moved = (
+    Math.abs(scene.ship.x - scene.masteryStillnessAnchorX) > movementTolerance ||
+    Math.abs(scene.ship.y - scene.masteryStillnessAnchorY) > movementTolerance
+  );
+  if (moved) {
+    scene.masteryStillnessMs = 0;
+    scene.masteryStillnessAnchorX = scene.ship.x;
+    scene.masteryStillnessAnchorY = scene.ship.y;
+    scene.masteryStillnessLastReportedSecond = 0;
+    return;
+  }
+
+  scene.masteryStillnessMs = (scene.masteryStillnessMs || 0) + safeDelta;
+  const stillSecond = Math.floor(scene.masteryStillnessMs / 1000);
+  if (stillSecond !== scene.masteryStillnessLastReportedSecond) {
+    scene.masteryStillnessLastReportedSecond = stillSecond;
+    setRegisterMissionProgress(scene, 'masteryStillSeconds', stillSecond);
+  }
+}
+
+function resetMasteryStillnessTimer(scene) {
+  if (!scene) return;
+  scene.masteryStillnessMs = 0;
+  scene.masteryStillnessAnchorX = null;
+  scene.masteryStillnessAnchorY = null;
+  scene.masteryStillnessLastReportedSecond = 0;
 }
 
 function moveShipTo(scene, x, y = scene.ship ? scene.ship.y : getShipY(scene)) {
